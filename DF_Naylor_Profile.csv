@@ -12,9 +12,9 @@ accel_gap_pct_points,18.6
 real_SB,52.0
 real_CS,7.0
 real_sb_pct,0.844
-expected_sb_pct,0.801
+expected_sb_pct,0.802
 sb_residual,0.042
 SSSI_v3_fixed,1.096
 rank_v3_fixed,10.0
-SSSI_v3_opt,2.101
+SSSI_v3_opt,2.1
 rank_v3_opt,1.0

@@ -65,7 +65,7 @@ SOTO_ID         = 665742
 ANCHOR_IDS      = {NAYLOR_ID, SOTO_ID}
 ANCHOR_LEAD_Z   = 2.0              # elite lead-tendency for Naylor + Soto
 SPEED_CAP       = 28.0
-OUTPUT_DIR      = Path("/Users/shunchen/Desktop/The Naylor Model")
+OUTPUT_DIR      = Path("/Users/shunchen/Desktop/The-Naylor-Model")
 
 np.random.seed(SEED)
 rng = np.random.default_rng(SEED)

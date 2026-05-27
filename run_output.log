@@ -1,0 +1,208 @@
+========================================================================
+ THE NAYLOR MODEL  ·  v3
+========================================================================
+
+[1/14] Fetching real Baseball Savant + batting data 2023–2026 …
+   Sprint-speed records:      2,304
+   Running-splits records:    2,000
+   batting_stats rows:        2,837
+   Merged runner-seasons:     2,000
+   With real SB+CS ≥ 10:    546
+
+   Naylor (647304) real-data spot-check:
+ season  sprint_speed  accel_0_30  total_90  SB  CS  real_sb_attempts
+   2023          25.8        1.83      4.16  10   3                13
+   2024          25.2        1.84      4.19   6   2                 8
+   2025          24.4        1.87      4.31  30   2                32
+   2026          24.5        1.84      4.18  12   2                14
+
+   Soto (665742) real-data spot-check:
+ season  sprint_speed  accel_0_30  total_90  SB  CS  real_sb_attempts
+   2023          26.8        1.80      4.04  12   5                17
+   2024          26.8        1.79      4.02   7   4                11
+   2025          25.8        1.85      4.18  38   4                42
+   2026          25.9        1.83      4.07   5   1                 6
+
+[2/14] Fitting expected-SB% given sprint speed …
+   League SB%: 0.788  Polynomial coeffs: [0.0043, -0.2319, 3.901]
+   Qualified for fit (real SB+CS ≥ 10): 546
+
+[3/14] Computing per-season percentiles + accel_gap …
+
+   Naylor percentiles:
+ season  pct_sprint_speed  pct_accel_0_30  pct_total_90  accel_gap
+   2023              12.7            35.9          21.1       23.2
+   2024               6.6            28.9          16.4       22.3
+   2025               1.9            12.9           5.3       11.0
+   2026               1.9            23.6          17.5       21.6
+
+   Soto percentiles:
+ season  pct_sprint_speed  pct_accel_0_30  pct_total_90  accel_gap
+   2023              34.0            54.5          45.2       20.5
+   2024              33.2            59.8          50.0       26.6
+   2025              11.8            19.9          16.5        8.1
+   2026              16.9            28.1          35.1       11.2
+
+[4/14] Building runner pool with anchored lead-tendencies …
+   Total runners in pool: 2,000
+
+[5/14] Simulating pitch-level observations …
+   Pitch rows: 256,765
+   Sim attempts: 33,513
+   Sim success rate: 58.4%
+
+[6/14] Filtering to real SB+CS ≥ 10 …
+   Qualified player-seasons: 546
+   Retained pitch rows:      100,446
+   ✓ Naylor qualifies in season(s): [2023, 2025, 2026]
+   ✓ Soto qualifies in season(s): [2023, 2024, 2025]
+
+[7/14] Engineering features …
+   Runner-season aggregates: 493
+
+[8/14] Speed-cap hinge analysis …
+parametrisation    AUC  LogLoss  sprint_speed_z  speed_capped_z  speed_lt28_z  speed_gt28_z
+linear_uncapped 0.6879   0.6027           0.216             NaN           NaN           NaN
+  linear_capped 0.6895   0.6020             NaN          0.2228           NaN           NaN
+piecewise_hinge 0.6895   0.6019             NaN             NaN        0.2056        0.0595
+
+[9/14] Fitting mixed-effects logistic models …
+   [attempt] fixed=15  random_intercepts≈429
+   [success] fixed=14  random_intercepts≈429
+
+  ── Success fixed effects (z-units) ──
+                    coef_std
+speed_capped_z        0.1925
+accel_0_30_z         -0.1374
+maintain_30_90_z     -0.0259
+lead_gain_z           0.4508
+primary_lead_z       -0.0298
+lead_off_dist_z       0.0197
+reaction_quality_z    0.3095
+bolts_z               0.1134
+pitcher_ttp_z         0.3373
+catcher_pop_z        -0.2761
+late_game            -0.0150
+outs                  0.0257
+p_throws_L           -0.1013
+stand_L               0.0223
+
+[10/14] Comparing candidate success models …
+   Best C for v3_full = 0.05  (best CV LL = 0.5940)
+         model  n_features    AUC  LogLoss  Brier    ECE  Lift@20
+    speed_only           7 0.6391   0.6263 0.2180 0.0094    1.221
+     speed_cap           7 0.6358   0.6283 0.2188 0.0133    1.226
+    accel_only           7 0.6281   0.6317 0.2206 0.0090    1.220
+speed_cap_gain           8 0.6845   0.6049 0.2088 0.0134    1.308
+speed_cap_jump           9 0.6991   0.5961 0.2050 0.0102    1.335
+       v2_full          12 0.6991   0.5959 0.2050 0.0086    1.335
+       v3_full          14 0.7025   0.5940 0.2041 0.0104    1.341
+           gbm          14 0.7052   0.5920 0.2032 0.0121    1.338
+
+[11/14] Computing SSSI v3 (fixed + optimised) …
+   Grid-searching optimised weights …
+   Searched 1,728 weight combinations. Best mean z = 3.946
+   Optimised weights: {'sb_residual_z': 0.25, 'accel_gap_z': 0.1, 'lead_gain_z': 0.05, 'jump_z': 0.05, 'lead_off_z': 0.2, 'speed_cap_z': -0.2}
+   Building sensitivity table …
+    perturbed  multiplier  naylor_best_rank  soto_best_rank
+sb_residual_z        0.75                 9              10
+sb_residual_z        1.25                 8              10
+  accel_gap_z        0.75                 7               9
+  accel_gap_z        1.25                11              13
+  lead_gain_z        0.75                 6               7
+  lead_gain_z        1.25                13              10
+       jump_z        0.75                 9              11
+       jump_z        1.25                10              11
+   lead_off_z        0.75                10              12
+   lead_off_z        1.25                 7              10
+  speed_cap_z        0.75                14              11
+  speed_cap_z        1.25                 6               9
+
+=== Top 10 by SSSI_v3_fixed ===
+                      player_name  season  sprint_speed  accel_0_30  accel_gap  real_sb_pct  sb_residual  SB  CS  SSSI_v3_fixed  rank_opt
+Rank_v3_fixed                                                                                                                            
+1                      Friedl, TJ    2024          26.5        1.77     46.154        0.863        0.079   9   1          1.477         4
+2               Yelich, Christian    2023          28.1        1.73     21.441        0.887        0.098  28   3          1.307        17
+3                  Cowser, Colton    2025          27.4        1.74     40.710        0.944        0.161  14   0          1.244        18
+4                     Rojas, Josh    2023          26.7        1.79     29.640        0.938        0.155  12   0          1.218         7
+5              Benintendi, Andrew    2023          27.3        1.75     37.928        0.847        0.064  13   2          1.173        11
+6                 Giménez, Andrés    2025          28.0        1.73     26.685        0.839        0.051  12   2          1.126        27
+7                      Abrams, CJ    2023          28.6        1.71     15.676        0.910        0.115  47   4          1.124        31
+8                   Turang, Brice    2024          29.3        1.71      2.627        0.884        0.077  50   6          1.109        30
+9                  Ohtani, Shohei    2024          28.1        1.71     25.516        0.926        0.137  59   4          1.108        39
+10                   Naylor, Josh    2025          24.4        1.87     11.020        0.917        0.108  30   2          1.096         1
+
+=== Top 10 by SSSI_v3_opt ===
+      player_name  season  sprint_speed  accel_0_30  accel_gap  real_sb_pct  sb_residual  SB  CS  SSSI_v3_opt  rank_opt
+     Naylor, Josh    2025          24.4        1.87     11.020        0.917        0.108  30   2        2.100         1
+     Naylor, Josh    2026          24.5        1.84     21.625        0.839        0.032  12   2        1.899         2
+       Soto, Juan    2025          25.8        1.85      8.106        0.892        0.105  38   4        1.611         3
+       Friedl, TJ    2024          26.5        1.77     46.154        0.863        0.079   9   1        1.519         4
+     Naylor, Josh    2023          25.8        1.83     23.243        0.774       -0.013  10   3        1.326         5
+ Freeman, Freddie    2024          25.8        1.81     33.583        0.809        0.021   9   2        1.307         6
+      Rojas, Josh    2023          26.7        1.79     29.640        0.938        0.155  12   0        1.202         7
+     Tucker, Kyle    2024          26.0        1.80     36.023        0.934        0.148  11   0        1.118         8
+     Lewis, Royce    2025          26.8        1.83     -1.639        0.839        0.056  12   2        1.025         9
+Goldschmidt, Paul    2024          26.3        1.84      7.129        0.934        0.150  11   0        1.010        10
+
+=== Naylor (all qualifying seasons) ===
+
+Naylor:
+ season  sprint_speed  accel_0_30  SB  CS  real_sb_pct  sb_residual  SSSI_v3_fixed  rank_fixed  SSSI_v3_opt  rank_opt
+   2023          25.8        1.83  10   3        0.774       -0.013          0.769          32        1.326         5
+   2025          24.4        1.87  30   2        0.917        0.108          1.096          10        2.100         1
+   2026          24.5        1.84  12   2        0.839        0.032          0.899          18        1.899         2
+
+Soto:
+ season  sprint_speed  accel_0_30  SB  CS  real_sb_pct  sb_residual  SSSI_v3_fixed  rank_fixed  SSSI_v3_opt  rank_opt
+   2023          26.8        1.80  12   5        0.725       -0.058          0.589          57        0.831        20
+   2024          26.8        1.79   7   4        0.684       -0.099          0.451         100        0.730        29
+   2025          25.8        1.85  38   4        0.892        0.105          1.076          11        1.611         3
+
+[12/14] Generating figures …
+   Saved 8 figures.
+
+[13/14] Generating PDF report …
+   Saved: Naylor_Model_Report.pdf
+
+[14/14] Exporting datasets …
+
+========================================================================
+ PIPELINE COMPLETE
+========================================================================
+
+Datasets:
+  DF_Acceleration.csv                   58.6 KB
+  DF_Model_Comparison.csv                0.4 KB
+  DF_Naylor_Contributions.csv            1.2 KB
+  DF_Naylor_Profile.csv                  0.4 KB
+  DF_Pitch_Level.csv                 50685.2 KB
+  DF_Real_SB.csv                        48.4 KB
+  DF_Runner_Stats.csv                  298.5 KB
+  DF_SSSI_Sensitivity.csv                0.3 KB
+  DF_Skill_Index.csv                   162.5 KB
+  DF_Speed_Cap_Analysis.csv              0.2 KB
+  DF_Speed_Expectation.csv               0.2 KB
+
+Figures:
+  Fig_Acceleration_vs_Speed.png         83.7 KB
+  Fig_Calibration_Curves.png           159.2 KB
+  Fig_Feature_Importance.png            80.9 KB
+  Fig_Model_Comparison.png             110.2 KB
+  Fig_Naylor_Profile.png               277.7 KB
+  Fig_SB_Residual.png                  104.3 KB
+  Fig_SSSI_Distribution.png             76.6 KB
+  Fig_Speed_Cap.png                    101.9 KB
+
+Report:
+  Naylor_Model_Report.pdf              697.7 KB
+
+Key numbers:
+  Qualified player-seasons (real SB+CS ≥ 10): 493
+  Best logit (v3_full): AUC 0.7025  Lift@20 1.341
+  GBM:                          AUC 0.7052  Lift@20 1.338
+
+  Naylor best rank — fixed: #10  optimised: #1
+  Soto best rank   — fixed: #11  optimised: #3
+
+  Optimised weights: {'sb_residual_z': 0.25, 'accel_gap_z': 0.1, 'lead_gain_z': 0.05, 'jump_z': 0.05, 'lead_off_z': 0.2, 'speed_cap_z': -0.2}
