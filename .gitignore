@@ -1,0 +1,29 @@
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+## IDE
+.vscode/
+.idea/
+
+## pybaseball cache
+.pybaseball_cache/
+*.cache
+
+## OS / editor noise
+*~
+*.swp
+*.swo
+
+## v1 legacy (still kept locally as reference, but don't push)
+stolen_base_analysis.py

@@ -1,0 +1,13 @@
+perturbed,multiplier,naylor_best_rank,soto_best_rank
+sb_residual_z,0.75,9,10
+sb_residual_z,1.25,8,10
+accel_gap_z,0.75,7,9
+accel_gap_z,1.25,11,13
+lead_gain_z,0.75,6,7
+lead_gain_z,1.25,13,10
+jump_z,0.75,9,11
+jump_z,1.25,10,11
+lead_off_z,0.75,10,12
+lead_off_z,1.25,7,10
+speed_cap_z,0.75,14,11
+speed_cap_z,1.25,6,9

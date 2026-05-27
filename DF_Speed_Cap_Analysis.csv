@@ -1,0 +1,4 @@
+parametrisation,AUC,LogLoss,sprint_speed_z,speed_capped_z,speed_lt28_z,speed_gt28_z
+linear_uncapped,0.6879,0.6027,0.216,,,
+linear_capped,0.6895,0.602,,0.2228,,
+piecewise_hinge,0.6895,0.6019,,,0.2056,0.0595
