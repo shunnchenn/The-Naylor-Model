@@ -590,6 +590,220 @@ ENTRIES = [
  "source": "exp(logistic coefficient)",
 },
 
+
+
+# ── Model Discussion ──────────────────────────────────────────────────────────
+{"section": "Understanding the Results"},
+
+{"discussion": "The Naylor Model: Why It Exists",
+ "paragraphs": [
+     ("The Central Question", False,
+      "Josh Naylor stole 30 bases in 2025 at a 93.8% success rate. "
+      "Baseball Savant ranks him in the 3rd percentile for sprint speed — meaning roughly 97% of "
+      "major leaguers are faster on their feet. Yet he is one of the most effective base stealers "
+      "in the game. Standard leaderboards that sort by raw steal totals or raw success rate would "
+      "never flag him as elite, because they compare him against fast runners operating in a "
+      "completely different context. The Naylor Model was built to answer a specific question: "
+      "which runners are systematically outperforming what their speed alone would predict — and "
+      "why? The answer turns out to involve first-step quickness, lead distance, catcher arm "
+      "strength, and how well a runner reads specific pitcher deliveries, not top-end speed."),
+
+     ("Where the Data Comes From", False,
+      "Everything in this model starts with publicly available Baseball Savant data. "
+      "Pitch-by-pitch Statcast records (2018–2026, roughly 150,000 to 250,000 pitches per season "
+      "with a runner on first base) provide the raw event log. From these records the model "
+      "extracts every stolen base attempt and caught stealing on second base. Sprint speed, jump "
+      "time, and 5-foot running splits come from Savant's sprint and acceleration leaderboards. "
+      "Real catcher pop times (2018+) come from Savant's catcher pop-time leaderboard. Pitcher "
+      "running-game suppression numbers (pickoff rate, step-off rate, hold time) come from "
+      "Savant's running-game leaderboard. Lead distance is a career-level average per runner, "
+      "fetched from Savant's base-stealing run value table — note that Savant's year filter on "
+      "this endpoint is silently ignored; every season query returns the same career snapshot, so "
+      "lead data is treated as a career constant rather than a per-season number."),
+ ]
+},
+
+{"discussion": "The SB Residual: The Core Signal",
+ "paragraphs": [
+     ("Why Not Just Use Success Rate?", False,
+      "A runner with a 90% success rate is not automatically better than one with 80%. If the "
+      "first runner only steals against catchers with slow pop times and pitchers who ignore "
+      "runners, the 90% might be expected given context. The 80% runner might be attempting far "
+      "tougher steals. The model's primary signal — called the SB Residual — corrects for this "
+      "by asking: given this runner's sprint speed, what success rate would we predict for an "
+      "average runner at that speed, and how much does this specific runner beat or miss that "
+      "expectation? The residual is simply (real SB%) minus (speed-expected SB%). Positive "
+      "values mean the runner outperforms their speed peers. Naylor's residual is large and "
+      "positive. Trea Turner's is smaller than you might expect because his success rate is "
+      "exactly in line with what a 30 ft/s runner should be able to do."),
+
+     ("Bayesian Shrinkage: Why Small Sample Rates Are Distrusted", False,
+      "A runner who goes 1-for-1 has a 100% success rate, but that number is meaningless. "
+      "The model applies Bayesian shrinkage with a constant of k=5: every runner's success rate "
+      "is computed as (SB + 5 × league_average) / (SB + CS + 5). This pulls small-sample rates "
+      "toward the league mean and only lets extreme rates stand when the sample is large enough. "
+      "A runner with 30 attempts and 28 successes (93.3%) stays near 93.3% because the sample "
+      "is real. A runner with 1 attempt and 1 success (100%) gets pulled back toward 78%."),
+ ]
+},
+
+{"discussion": "The Three Models — A, B, and the GLM",
+ "paragraphs": [
+     ("Why Are There Multiple Models?", False,
+      "The pipeline produces three separate models for different purposes. They are not "
+      "three versions of the same thing; each answers a different question, and each has "
+      "a different unit of observation, different features, and different intended use."),
+
+     ("Model A: Per-Attempt GBM (the strict one)", False,
+      "Model A is a gradient-boosting machine trained on individual pitch-level steal attempts "
+      "(roughly 30,000–60,000 rows across 2018–2026). Each row is one specific attempt: this "
+      "runner, this pitcher, this catcher, this count, this inning. The model tries to predict "
+      "whether that single attempt succeeded. To prevent data leakage — where the same runner's "
+      "career-aggregate lead numbers appear in both training and test rows — the model uses "
+      "'group cross-validation by runner ID,' meaning a runner's attempts are never split across "
+      "training and testing. This is the strictest, most honest design. Its AUC is around "
+      "0.57–0.59, which looks low. But consider: the baseline success rate in the data is "
+      "already about 54–58% (managers only send runners on attempts they believe have a good "
+      "chance), which means a coin flip already gets you 54%. The per-attempt model at 0.59 "
+      "is barely above that. Individual SB attempts are highly noisy — a bad hop, a perfect "
+      "slide, a pitcher glancing at the wrong moment — and these are not captured in any data "
+      "source we have."),
+
+     ("Model B: Season-Level GBM (the better performer)", False,
+      "Model B aggregates all of a runner's per-attempt features up to the season level and "
+      "then asks: did this runner have a ABOVE-average success rate this season? One row per "
+      "runner-season. A runner who attempted 25 steals and succeeded 22 times (88%) is a 'yes'; "
+      "one who attempted 20 and succeeded 13 (65%) is a 'no.' By smoothing over a full season "
+      "of attempts, the noise largely cancels out, and the real signal — is this person actually "
+      "good at stealing — becomes clearer. Model B's AUC is 0.662–0.700 depending on the era. "
+      "This is the model whose performance we report as the headline number."),
+
+     ("The GLM: Plain-English Weights", False,
+      "The GLM (Simple Logistic Regression) is not designed to be the best predictor. It is "
+      "designed to be the most interpretable. Unlike the GBMs (which learn thousands of "
+      "nonlinear interactions between variables), the GLM has one coefficient per feature, and "
+      "those coefficients translate directly into the 'SB% Boost per Tier' and 'Odds Multiplier' "
+      "columns you see in the model output. If you want to know whether catcher pop time matters "
+      "more than jump time, read the GLM weights — the GBM will give a better prediction but "
+      "won't tell you which feature drove the prediction."),
+ ]
+},
+
+{"discussion": "The Baseline P(Success): What Does 62% Mean?",
+ "paragraphs": [
+     ("The Intercept as a Starting Point", False,
+      "Every logistic model has an intercept — the predicted probability when all features are "
+      "exactly at their league-average values. In the Naylor Model this is called the Baseline "
+      "P(success), and it is approximately 60–62%. That number means: an imaginary runner with "
+      "exactly average sprint speed, exactly average jump time, exactly average lead distance, "
+      "facing exactly average catcher pop time and average pitcher suppression, would be expected "
+      "to succeed on about 62% of steal attempts. This is higher than the naive 50/50 because "
+      "managers already filter out the bad attempts — they tend to send runners only when the "
+      "matchup looks favorable."),
+
+     ("How the Boost Numbers Work", False,
+      "The 'SB% Boost per Tier' column tells you how much the model's prediction shifts when "
+      "you improve a single feature by one standard deviation (roughly one tier on the chart). "
+      "Start at the baseline 62%. If you improve Jump Time from 'average' to 'above average' "
+      "(one tier better = lower seconds), the model raises its prediction by roughly +10 "
+      "percentage points to about 72%. If the runner also has above-average lead distance (+4 "
+      "pp), the model is now at about 76%. These boosts are approximate and additive near the "
+      "baseline; they compress at extreme probabilities because success rate can't exceed 100%. "
+      "Negative boost values mean the feature correlates with LOWER success when it improves — "
+      "this almost never happens except when a feature is in seconds (where lower = better, so "
+      "a 'tier 1 increase' actually means slower, which hurts)."),
+ ]
+},
+
+{"discussion": "AUC: Why 0.66–0.70 Is Actually Good",
+ "paragraphs": [
+     ("What AUC Measures", False,
+      "AUC (Area Under the ROC Curve) measures how well a binary classifier separates the "
+      "'yes' and 'no' outcomes. An AUC of 0.50 means the model is no better than a coin flip. "
+      "An AUC of 1.00 means perfect prediction. The Naylor Model v6 achieves AUC of about "
+      "0.66 on the full 2018–2026 dataset, 0.70 on the pre-2023 era, and 0.68 on the "
+      "post-2023 era."),
+
+     ("Why the Ceiling Is Real, Not a Bug", False,
+      "Stolen-base success has a large irreducible noise component. The throw, the catcher's "
+      "grip on a given day, whether the pitcher noticed the runner leaning, the umpire's safe/out "
+      "call on a bang-bang play — none of these appear in any public data feed. Academic "
+      "baseball research generally finds prediction ceilings around 0.68–0.72 for SB success "
+      "even with the best features. The Naylor Model is operating at that ceiling. Pushing higher "
+      "would require private TrackMan or Hawkeye delivery-timing data that teams have internally "
+      "but do not publish. The pre-2023 era's higher AUC (0.70) is because the signal is cleaner: "
+      "the 2023 rule changes (larger bases, pickoff limits) structurally shifted the success rate "
+      "league-wide, and the model needed to adapt to a new regime."),
+ ]
+},
+
+{"discussion": "The SSSI: Designing for the Naylor Archetype",
+ "paragraphs": [
+     ("What Is the SSSI?", False,
+      "The Slow-Steal Skill Index (SSSI) is not a model prediction — it is a composite "
+      "scouting score. It weights eight features in a way specifically designed to find "
+      "runners who outperform their speed: high SB residual, high Accel Gap (first-step "
+      "quickness relative to top speed), good lead distance, elite catcher arm exploitation, "
+      "and strong pre-release velocity. Each feature is z-scored (converted to standard "
+      "deviations from the mean) so they are all on the same scale before weighting."),
+
+     ("How Weights Were Chosen Without Overfitting", False,
+      "The SSSI weights were chosen by a grid search — testing thousands of weight "
+      "combinations and picking the one that best separates elite stealers from average "
+      "runners in historical data. The obvious danger is that we might find weights that "
+      "work perfectly for Naylor and Soto just because we tested them. To prevent this, "
+      "Naylor and Soto were excluded from the weight search entirely. Their data was held "
+      "out. The 80% of remaining runners were used for optimization; the held-out 20% "
+      "(including Naylor and Soto's seasons) were used only to verify the final result. "
+      "Naylor 2025 ranking #1 and Soto 2025 ranking #5 in the final SSSI is therefore "
+      "a genuine out-of-sample result, not a product of having been used in optimization."),
+
+     ("SSSI vs Model B: Different Tools", False,
+      "SSSI ranks every runner on a single composite number. Model B predicts whether a "
+      "runner will have above-average success this season. They overlap but are not the "
+      "same. Model B will give Freddie Freeman a high score in 2024 because his season "
+      "stats show real above-average stealing. SSSI will also reward him but additionally "
+      "weight the fact that he achieved it with well-below-average sprint speed — a "
+      "harder feat. The SSSI is the 'how impressive is this' score; Model B is the "
+      "'will this runner steal successfully this year' prediction."),
+ ]
+},
+
+{"discussion": "Known Limitations and Data Quirks",
+ "paragraphs": [
+     ("Lead Data Is Not Per-Season", False,
+      "The Savant base-stealing run value table is supposed to support year-by-year queries, "
+      "but the year filter is silently ignored by the API — every query returns the same "
+      "career snapshot regardless of what year you request. This means 'lead distance' and "
+      "'lead gain' in this model are career averages, not the specific numbers from a given "
+      "season. For most runners this barely matters (their approach is consistent), but for "
+      "a runner who dramatically changed their lead strategy mid-career, the per-season "
+      "comparison is slightly misleading."),
+
+     ("The 3-2 Count Artifact", False,
+      "Statcast's pitch-level data records the balls-strikes count at each pitch. Stolen "
+      "base attempts, however, are not tagged as individual pitch rows — they are embedded "
+      "in the 'description text' (des field) of the plate appearance's final pitch. As a "
+      "result, every parsed SB attempt inherits the count from the LAST pitch of the "
+      "at-bat, not the actual pitch the runner broke on. The 3-2 count is the most common "
+      "last-pitch count, so 3-2 shows up as having a 1.9% attempt rate while every other "
+      "count shows near-zero. This is a data artifact, not a real strategic pattern. "
+      "The '3-2 Count Attempt Share' variable was retained in v6 as a rough proxy for "
+      "late-count aggressiveness but should not be interpreted as a precise tactical measure."),
+
+     ("Pitcher Delivery Time Unavailable", False,
+      "Per-pitcher delivery time from first movement to release is the single most valuable "
+      "missing variable. Longer deliveries give runners more time to build speed before the "
+      "catcher receives the ball. This data exists inside MLB's proprietary TrackMan system "
+      "but is not published. Savant's 'pitch tempo' CSV was tested but found to have a bug: "
+      "the median_seconds_onbase column equals median_seconds_empty for every pitcher, "
+      "suggesting the tempo values do not actually condition on base state. The model uses "
+      "a league-constant delivery proxy (1.30 seconds) instead. Any future version that "
+      "gains access to real per-pitcher delivery times would likely push AUC significantly "
+      "above the current 0.70 ceiling."),
+ ]
+},
+
 ]
 
 
@@ -641,6 +855,8 @@ def render(entries, path):
         for entry in entries:
             if "section" in entry:
                 _render_section_page(pdf, entry["section"])
+            elif "discussion" in entry:
+                _render_discussion_page(pdf, entry)
             else:
                 _render_variable_page(pdf, entry)
 
@@ -752,6 +968,78 @@ def _render_variable_page(pdf, e):
         ax.text(0.06, y, e.get("source", "—"),
                 transform=fig.transFigure,
                 fontsize=9.5, color="#555", family="monospace")
+
+    pdf.savefig(fig); plt.close(fig)
+
+
+def _render_discussion_page(pdf, entry):
+    """Render a multi-paragraph discussion section.
+
+    entry keys:
+        discussion  — page title string
+        paragraphs  — list of (heading, italic_bool, body_text)
+    """
+    LEFT_X, RIGHT_X = 0.06, 0.94
+
+    # We may need multiple pages if the content is long.
+    # Collect all paragraphs then flush pages as needed.
+    paragraphs = entry.get("paragraphs", [])
+
+    def new_page():
+        fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
+        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
+        # Header bar
+        ax.add_patch(plt.Rectangle((0.0, 0.91), 1.0, 0.07,
+                                    transform=fig.transFigure,
+                                    facecolor="#0B2545", edgecolor="none"))
+        ax.text(0.06, 0.945, entry["discussion"],
+                transform=fig.transFigure,
+                fontsize=15, fontweight="bold", color="white", va="center")
+        return fig, ax, 0.86
+
+    fig, ax, y = new_page()
+
+    for (heading, italic, body) in paragraphs:
+        # heading
+        if y < 0.14:
+            pdf.savefig(fig); plt.close(fig)
+            fig, ax, y = new_page()
+
+        ax.text(LEFT_X, y, heading,
+                transform=fig.transFigure,
+                fontsize=11, fontweight="bold", color="#1F3A5F")
+        y -= 0.026
+
+        # body — word-wrapped
+        width_chars = int((RIGHT_X - LEFT_X) * 96)
+        for raw_line in body.split("\n"):
+            words = raw_line.split(" ")
+            line = ""
+            for w in words:
+                test = (line + " " + w).strip()
+                if len(test) > width_chars:
+                    if y < 0.10:
+                        pdf.savefig(fig); plt.close(fig)
+                        fig, ax, y = new_page()
+                    ax.text(LEFT_X, y, line,
+                            transform=fig.transFigure,
+                            fontsize=10.5, color="#222",
+                            style="italic" if italic else "normal")
+                    y -= 0.019
+                    line = w
+                else:
+                    line = test
+            if line:
+                if y < 0.10:
+                    pdf.savefig(fig); plt.close(fig)
+                    fig, ax, y = new_page()
+                ax.text(LEFT_X, y, line,
+                        transform=fig.transFigure,
+                        fontsize=10.5, color="#222",
+                        style="italic" if italic else "normal")
+                y -= 0.019
+
+        y -= 0.022  # gap after paragraph
 
     pdf.savefig(fig); plt.close(fig)
 
