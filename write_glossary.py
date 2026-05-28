@@ -186,23 +186,61 @@ ENTRIES = [
 # ── Pitcher / catcher context ────────────────────────────────────────────────
 {"section": "Pitcher & Catcher Context"},
 
-{"name": "pitcher_ttp",
+{"name": "pitcher_ttp  /  pitcher_delivery_time",
  "short": "Pitcher Time-To-Plate: seconds from first motion to ball in glove.",
  "long":  "Slow deliveries (≥1.40 s) give the runner more time.  Fast "
           "deliveries (1.15 s slide-step) crush attempts.  League avg ~1.30 s.\n"
-          "v3 simulated this with N(1.30, 0.10).  v4 attempts to back this "
-          "out from Statcast pitch-by-pitch when runner is on first.",
- "source": "Statcast game logs (when wired up)",
+          "v3 SIMULATED this with N(1.30, 0.10).\n"
+          "v4 DROPPED — couldn't be derived.\n"
+          "v5 USES LEAGUE CONSTANT 1.30 s.  Real per-pitch delivery time is "
+          "not publicly available; Savant's pitch-tempo CSV is buggy at "
+          "source (median_seconds_empty equals median_seconds_onbase for "
+          "every row, and year= filter is ignored).",
+ "source": "v5: league constant 1.30 s",
  "expected": "+ on SB success (longer TTP helps the runner)",
 },
 
-{"name": "catcher_pop",
- "short": "Pop time: catcher receive-to-2B release-throw arrival.",
- "long":  "Elite catchers run pop times of 1.85 s and below.  Bad pop "
-          "times (2.05+) make stealing trivial against them.  League "
-          "avg ~1.95 s.",
- "source": "Baseball Savant catcher poptime leaderboard",
+{"name": "pop_time_2b  /  pop_2b_sba",
+ "short": "Pop time on stolen-base attempts to 2nd base (sec).",
+ "long":  "REAL per-catcher-per-year data (v5).  From Savant's catcher "
+          "poptime leaderboard.  Elite catchers run pop times of 1.85 s "
+          "and below.  Bad pop times (2.05+) make stealing trivial.  "
+          "League avg ~1.95 s.  Available 2018+ (not 2020).",
+ "source": "pybaseball.statcast_catcher_poptime(year, min_2b_att)",
  "expected": "− on SB success (faster catcher = harder to steal)",
+},
+
+{"name": "exchange_2b_3b_sba",
+ "short": "Catcher's glove-to-throwing-hand transfer time (sec).",
+ "long":  "Component of pop time.  Real per-catcher (v5).",
+ "source": "pybaseball.statcast_catcher_poptime",
+ "expected": "− on SB success",
+},
+
+{"name": "maxeff_arm_2b_3b_sba",
+ "short": "Catcher's max-effort arm strength on SB throws (mph).",
+ "long":  "Higher arm speed → faster throw → tighter window for steal.",
+ "source": "pybaseball.statcast_catcher_poptime",
+ "expected": "− on SB success",
+},
+
+{"name": "pitcher_lead_allowed_prim / sec / gain",
+ "short": "Per-pitcher career: how much primary, secondary, lead-gain runners take.",
+ "long":  "From Savant pitcher-running-game CSV.  Pitchers good at holding "
+          "runners SHOW UP HERE with smaller lead values.  Career-aggregate "
+          "snapshot (year filter ignored).  Cross-joined to each attempt by "
+          "pitcher_id.",
+ "source": "https://baseballsavant.mlb.com/leaderboard/pitcher-running-game",
+ "expected": "+ for runner side (more lead allowed = easier steal)",
+},
+
+{"name": "matchup_lead_diff",
+ "short": "runner_lead_gain  −  pitcher_lead_allowed",
+ "long":  "Positive = this runner-pitcher matchup favors the runner.  "
+          "Negative = the pitcher's running-game suppression overcomes "
+          "the runner's lead profile.  v5 matchup feature.",
+ "source": "v5: derived",
+ "expected": "+ on SB success",
 },
 
 # ── Real SB performance / residuals ──────────────────────────────────────────
@@ -323,6 +361,135 @@ ENTRIES = [
  "expected": "+ on SB success",
 },
 
+# ── Per-pitch features (v5) ──────────────────────────────────────────────────
+{"section": "Per-Pitch Features  (v5 only)"},
+
+{"name": "y_attempt  /  y_success",
+ "short": "Binary labels per attempt: was there an attempt? did it succeed?",
+ "long":  "Parsed from the Statcast `des` (description) text field.  Regex "
+          "matches 'steals (N) 2nd base' → SB; 'caught stealing 2nd' → CS; "
+          "'picks off ... at 1st' → PK.  CRITICAL LIMITATION: the count, "
+          "outs, and inning attached to an attempt are those of the at-bat's "
+          "FINAL pitch (where the SB des was recorded), not the actual "
+          "mid-at-bat pitch on which the SB happened.",
+ "source": "v5: regex on Statcast des field",
+ "expected": "Ground-truth outcome (y_success is the target of Model A)",
+},
+
+{"name": "balls,  strikes  (count)",
+ "short": "Pre-pitch count at the at-bat's final pitch (per-pitch field).",
+ "long":  "Real per-pitch from Statcast.  Used to compute count-leverage "
+          "(see is_count_HL below).",
+ "source": "Statcast",
+ "expected": "Context — interaction with attempt rate",
+},
+
+{"name": "count_label",
+ "short": "String 'balls-strikes', e.g. '1-1', '3-2'.",
+ "long":  "Used to bucket pitches into the 12 possible counts.",
+ "source": "v5: derived",
+ "expected": "Categorical context",
+},
+
+{"name": "is_count_HL  (high-leverage count flag)",
+ "short": "1 if this count's attempt rate is ≥ 60% of the peak count's rate.",
+ "long":  "Per user spec, low-attempt counts are DROPPED from per-attempt "
+          "training because they add noise.  The empirical HL set is "
+          "computed at runtime; typical HL counts: 0-0, 1-0, 2-1, 1-1, 3-1.",
+ "source": "v5: derived from league attempt-rate table",
+ "expected": "Flag — used as a feature AND a training filter",
+},
+
+{"name": "pct_in_HL  (per runner-season)",
+ "short": "Fraction of a runner's attempts that occurred in HL counts.",
+ "long":  "Aggregate version of is_count_HL.  Runners who pick their spots "
+          "well will have high pct_in_HL.",
+ "source": "v5: derived",
+ "expected": "+ on overall SB%",
+},
+
+{"name": "outs_when_up,  inning,  inning_topbot",
+ "short": "Game-state at the moment of the at-bat (real per-pitch).",
+ "long":  "Outs:  0/1/2.  Two-out steals are riskier; managers send less.\n"
+          "Inning:  1-15+.  Late-game leverage influences attempt rate.\n"
+          "Top/bot:  game half.",
+ "source": "Statcast per-pitch",
+ "expected": "Context",
+},
+
+{"name": "pre_rel_vel  (NEW v5 metric)",
+ "short": "Runner's avg velocity from pitcher's first move to release  (ft/s).",
+ "long":  "Formula:  r_sec_minus_prim_lead  /  pitcher_delivery_proxy_s\n"
+          "        = lead_gain (ft) / 1.30 s (league-constant proxy)\n"
+          "Variation in this metric is driven ENTIRELY by lead_gain "
+          "because we have no real per-pitcher delivery time.  Still "
+          "useful as a normalised distance-per-time metric.\n"
+          "User's intent: a runner who covers more ground in the same "
+          "pitcher-delivery window is more dangerous, even against fast "
+          "pitchers.",
+ "source": "v5: derived from runner career lead + league constant",
+ "expected": "+ on SB success",
+},
+
+{"name": "post_rel_dist  (NEW v5 metric)",
+ "short": "Distance runner covers during catcher's pop window  (ft).",
+ "long":  "Formula:  sprint_speed × pop_2b_sba  −  accel_correction\n"
+          "where accel_correction = 0.5 × max(0, accel_0_30 − 1.65)\n"
+          "                                × sprint_speed × pop_time.\n"
+          "Slower-acceleration runners haven't reached top speed yet so "
+          "the naive sprint × pop product over-counts.  The correction "
+          "scales the penalty with the runner's accel-time deficit.\n"
+          "User's intent: even a slow runner who covers a lot of ground "
+          "during the pop window is dangerous on the back end.",
+ "source": "v5: derived from real per-attempt pop + runner profile",
+ "expected": "+ on SB success",
+},
+
+{"name": "pre_rel_vel_avg,  post_rel_dist_avg  (per runner-season)",
+ "short": "Per-attempt mean of the above two metrics over a season.",
+ "long":  "Aggregated for use in Model B (season-level GBM) and SSSI v5.",
+ "source": "v5: groupby(runner_id, season).mean()",
+ "expected": "+ on overall SB%",
+},
+
+{"name": "avg_pop_faced",
+ "short": "Average catcher pop time across this runner's SB attempts.",
+ "long":  "Real per-attempt catcher pop (v5) → mean per runner-season.  "
+          "Runners who attack weak-arm catchers will have HIGH avg_pop_faced.",
+ "source": "v5: derived from per-attempt join",
+ "expected": "+ on overall SB%",
+},
+
+{"name": "seconds_since_hit_005  …  seconds_since_hit_090",
+ "short": "18 raw Statcast running-splits columns (5/10/15/.../90 ft).",
+ "long":  "Each column is seconds elapsed from contact at that distance "
+          "milestone.  v5 explores three representations of this curve "
+          "(see curve_a, curve_b, curve_c below).  Lower = faster.",
+ "source": "pybaseball.statcast_running_splits(year, raw_splits=True)",
+ "expected": "− on SB success (less time = better)",
+},
+
+{"name": "curve_a,  curve_b,  curve_c,  curve_rmse",
+ "short": "Quadratic fit to runner's velocity curve over 5-90 ft.",
+ "long":  "Fits time = a·d² + b·d + c to the 18 split points per runner-season.\n"
+          "a captures curvature (fatigue / late drag).\n"
+          "b is the linear time/distance slope (≈ 1/avg-speed).\n"
+          "c is the intercept (initial reaction time after contact).\n"
+          "rmse measures how well a quadratic fits the actual splits.\n"
+          "v5 'Path B' representation of the splits.",
+ "source": "v5: np.polyfit per row across 18 split columns",
+ "expected": "Combined ≈ 1 strong feature",
+},
+
+{"name": "SSSI_v5",
+ "short": "v5 composite — adds pre_rel_vel_z and post_rel_dist_z to v4.",
+ "long":  "Linear combination of 8 z-scored terms.  Weights are grid-searched "
+          "on 80% of runners (Naylor and Soto are HELD OUT from the grid "
+          "search to avoid overfitting them).",
+ "source": "Computed in v5_explore.py",
+ "expected": "+ identifies slow-steal archetype with new metrics included",
+},
+
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -342,7 +509,7 @@ def render(entries, path):
                 fontsize=28, fontweight="bold")
         ax.text(0.5, 0.72, "Variable Glossary", ha="center", va="center",
                 fontsize=22)
-        ax.text(0.5, 0.65, "Reference for every column in the v3/v4 model",
+        ax.text(0.5, 0.65, "Reference for every column in the v3 / v4 / v5 model",
                 ha="center", va="center", fontsize=12, style="italic",
                 color="#444")
         ax.text(0.5, 0.30,

@@ -1,0 +1,251 @@
+========================================================================
+ THE NAYLOR MODEL  ·  v5  (per-pitch feature layer)
+========================================================================
+
+[1/14] Fetching per-pitch data 2018–2026 …
+   Total pitches on-1B across 8 seasons: 1,718,862
+
+[2/14] Fetching catcher pop time per year …
+   Catcher-seasons: 799
+
+[3/14] Fetching pitcher running-game (career snapshot) …
+   Pitchers with running-game data: 444
+   Runners with lead profile: 394
+
+[4/14] Building runner-season aggregate (2015–2026) …
+   Runner-seasons: 6,113
+   With SB+CS ≥ 10: 1,465
+   League SB% = 0.779
+
+[5/14] Parsing SB attempts from `des` text field …
+   Pitch outcome breakdown: {'none': 1716334, 'sb': 1669, 'cs': 859}
+   Total attempts identified: 2,528
+   Per year: {2018: 328, 2019: 332, 2021: 309, 2022: 333, 2023: 401, 2024: 373, 2025: 347, 2026: 105}
+   By outcome:   {'sb': 1669, 'cs': 859}
+
+[6/14] Joining battery + runner context to attempts …
+   Join health (% non-null after merges):
+     pop_2b_sba                       98.0%
+     r_sec_minus_prim_lead            54.5%
+     sprint_speed                     94.5%
+     pitcher_lead_gain_allowed        43.4%
+
+[7/14] Computing per-attempt features …
+     pre_rel_vel           n= 1377  mean=  2.82  range=[0.73, 4.45]
+     post_rel_dist         n= 2390  mean= 51.53  range=[39.71, 62.48]
+     matchup_lead_diff     n=  697  mean= -0.12  range=[-3.67, 3.24]
+
+[8/14] Count leverage analysis …
+count_label  n_pitches  n_attempts  attempt_rate  is_HL
+        3-2      72699        1400      0.019257   True
+        2-2     124279         359      0.002889  False
+        0-2     120282         342      0.002843  False
+        1-2     155607         427      0.002744  False
+        0-0     479731           0      0.000000  False
+        0-1     226431           0      0.000000  False
+        1-0     175678           0      0.000000  False
+        1-1     167107           0      0.000000  False
+        2-0      59188           0      0.000000  False
+        2-1      84073           0      0.000000  False
+        3-0      19161           0      0.000000  False
+        3-1      34626           0      0.000000  False
+
+   HL counts (rate ≥ 0.0116 = 60% of max): ['3-2']
+
+   Aggregated season-level new features (sample):
+player_name  season  n_attempts  n_success  pct_in_HL  avg_pop_faced  pre_rel_vel_avg  post_rel_dist_avg
+  Juan Soto    2018         NaN        NaN        NaN            NaN              NaN                NaN
+  Juan Soto    2019         2.0        2.0        0.0          1.995            2.394             49.562
+Josh Naylor    2019         1.0        0.0        1.0          1.980            2.980             47.285
+Josh Naylor    2020         NaN        NaN        NaN            NaN              NaN                NaN
+  Juan Soto    2020         NaN        NaN        NaN            NaN              NaN                NaN
+  Juan Soto    2021         NaN        NaN        NaN            NaN              NaN                NaN
+Josh Naylor    2021         NaN        NaN        NaN            NaN              NaN                NaN
+  Juan Soto    2022         NaN        NaN        NaN            NaN              NaN                NaN
+Josh Naylor    2022         NaN        NaN        NaN            NaN              NaN                NaN
+  Juan Soto    2023         5.0        4.0        1.0          1.950            2.394             48.340
+Josh Naylor    2023         2.0        2.0        1.0          1.910            2.980             44.843
+  Juan Soto    2024         2.0        0.0        1.0          1.980            2.394             49.350
+Josh Naylor    2024         1.0        1.0        0.0          1.970            2.980             44.928
+  Juan Soto    2025         1.0        1.0        0.0          1.990            2.394             46.208
+Josh Naylor    2025         1.0        1.0        0.0          1.910            2.980             41.478
+  Juan Soto    2026         1.0        1.0        0.0          1.980            2.394             46.667
+Josh Naylor    2026         1.0        1.0        0.0          1.930            2.980             42.793
+
+[9/14] 5-ft splits exploration (raw / curve / PCA) …
+   Qualified runners with full splits: 1465
+                   path  n_feat  r2_resid  r2_pct
+v4 baseline (4 derived)       4   -0.0013  0.0262
+      A — 18 raw splits      18    0.0132  0.0440
+    B — quadratic curve       4    0.0046  0.0051
+              C — 3-PCA       3    0.0092  0.0479
+   ✓ Best split representation: A — 18 raw splits
+
+[10/14] Model A — per-attempt classifier with group-CV by runner_id …
+   Attempts in HL counts: 1,400 of 2,528
+   With features available: 1,349
+   Model A AUC — full: 0.5933  pre: 0.5771  post: 0.5953
+   (baseline rate y_success = 0.543)
+
+   Top 10 feature importances (Model A):
+                  feature  importance
+            post_rel_dist    0.118755
+     maxeff_arm_2b_3b_sba    0.109633
+                accel_gap    0.107681
+pitcher_lead_gain_allowed    0.092619
+           r_primary_lead    0.090908
+                   inning    0.072914
+               pop_2b_sba    0.051929
+       exchange_2b_3b_sba    0.049748
+             sprint_speed    0.046297
+               accel_0_30    0.037091
+
+   Top 10 |SHAP| (Model A):
+                  feature  mean_abs_shap
+                   inning         0.2493
+           r_primary_lead         0.2213
+            post_rel_dist         0.1970
+pitcher_lead_gain_allowed         0.1780
+     maxeff_arm_2b_3b_sba         0.1432
+                accel_gap         0.1171
+       exchange_2b_3b_sba         0.1019
+               pop_2b_sba         0.1003
+             sprint_speed         0.0891
+                 total_90         0.0587
+
+[11/14] Model B — season-level GBM with enhanced features …
+   Qualified rows: 519
+   Model B       full  n= 519  AUC=0.6794
+   Model B   pre_2023  n= 172  AUC=0.7600
+   Model B  post_2023  n= 347  AUC=0.7170
+
+   Model B importance pivot:
+epoch                    full  post_2023  pre_2023
+feature                                           
+accel_0_30             0.1624     0.2106    0.2172
+accel_5_30             0.1190     0.0540    0.1607
+accel_gap              0.2674     0.3005    0.3186
+avg_pop_faced          0.1835     0.2999    0.3193
+bolts                  0.1137     0.1651    0.4740
+maintain_30_90         0.1090     0.1304    0.0644
+n_attempts             0.1677     0.0687    0.4877
+pct_in_HL              0.1568     0.0994    0.3287
+post_rel_dist_avg      0.3234     0.2647    0.5205
+pre_rel_vel_avg        0.1681     0.2799    0.3927
+r_primary_lead         0.2345     0.3441    0.2607
+r_sec_minus_prim_lead  0.1541     0.2467    0.4471
+r_secondary_lead       0.2800     0.3256    0.5159
+speed_capped           0.1103     0.1456    0.0861
+sprint_speed           0.2313     0.3115    0.1548
+total_90               0.1685     0.2637    0.2284
+
+[12/14] Model C — simple GLM (hand-tunable weights) …
+              feature   mean     sd  coef_z  OR_per_SD
+         speed_capped 27.730  0.515  -0.200      0.819
+           accel_0_30  1.769  0.042  -0.462      0.630
+       r_primary_lead 11.890  0.837  -0.190      0.827
+r_sec_minus_prim_lead  3.727  0.756   0.151      1.163
+      pre_rel_vel_avg  2.867  0.582   0.151      1.163
+    post_rel_dist_avg 52.341  2.859   0.061      1.063
+        avg_pop_faced  1.968  0.043   0.071      1.074
+            accel_gap -1.714 20.244  -0.088      0.916
+                bolts 15.106 25.907   0.129      1.138
+            pct_in_HL  0.485  0.413  -0.176      0.839
+   Intercept = +0.506, baseline P = 0.624
+
+[13/14] SSSI v5 — 80/20 weight optimisation …
+   Train runners: 150
+   Holdout runners (incl. anchors): 38
+   Best (Naylor+Soto mean z, ranked vs train pool): 3.372
+   Weights: sb_res=0.1 accel_gap=0.05 lead_gain=0.05 jump=0.0 primary=0.05 speed=-0.3 pre_rel=0.0 post_rel=0.0
+
+   Top 10 by SSSI_v5:
+ rank_v5     player_name  season       era  sprint_speed  accel_0_30  r_primary_lead  r_sec_minus_prim_lead  pre_rel_vel_avg  post_rel_dist_avg  avg_pop_faced  SB  CS  real_sb_pct  sb_residual  SSSI_v5
+       1     Josh Naylor    2025 post_2023          24.4        1.87           9.808                  3.874            2.980             41.478          1.910  30   2        0.916        0.122    1.993
+       2     Josh Naylor    2026 post_2023          24.5        1.84           9.808                  3.874            2.980             42.793          1.930  12   2        0.837        0.045    1.868
+       3 Freddie Freeman    2024 post_2023          25.8        1.81          12.235                  4.332            3.332             46.760          1.970   9   2        0.806        0.042    1.311
+       4       Juan Soto    2025 post_2023          25.8        1.85          12.058                  3.112            2.394             46.208          1.990  38   4        0.891        0.128    1.261
+       5   Alec Burleson    2024 post_2023          25.5        1.88          11.441                  3.333            2.564             45.586          2.020   9   4        0.716       -0.052    1.176
+       6   Manny Machado    2024 post_2023          25.8        1.86          11.763                  3.305            2.542             45.951          1.990  11   2        0.827        0.064    1.169
+       7    Joc Pederson    2024 post_2023          25.5        1.83          10.410                  3.282            2.525             45.791          1.973   7   4        0.681       -0.087    1.125
+       8     Josh Naylor    2023 post_2023          25.8        1.83           9.808                  3.874            2.980             44.843          1.910  10   3        0.772        0.008    1.069
+       9       TJ Friedl    2024 post_2023          26.5        1.77          11.792                  3.880            2.985             49.820          2.000   9   1        0.860        0.103    0.951
+      10  Kyle Schwarber    2022  pre_2023          26.4        1.82          11.027                  4.432            3.409             48.312          2.000  10   1        0.868        0.111    0.947
+
+   Naylor + Soto under SSSI_v5:
+ rank_v5 player_name  season       era  sprint_speed  accel_0_30  r_primary_lead  r_sec_minus_prim_lead  pre_rel_vel_avg  post_rel_dist_avg  avg_pop_faced  SB  CS  real_sb_pct  sb_residual  SSSI_v5
+       1 Josh Naylor    2025 post_2023          24.4        1.87           9.808                  3.874            2.980             41.478          1.910  30   2        0.916        0.122    1.993
+       2 Josh Naylor    2026 post_2023          24.5        1.84           9.808                  3.874            2.980             42.793          1.930  12   2        0.837        0.045    1.868
+       4   Juan Soto    2025 post_2023          25.8        1.85          12.058                  3.112            2.394             46.208          1.990  38   4        0.891        0.128    1.261
+       8 Josh Naylor    2023 post_2023          25.8        1.83           9.808                  3.874            2.980             44.843          1.910  10   3        0.772        0.008    1.069
+      46   Juan Soto    2023 post_2023          26.8        1.80          12.058                  3.112            2.394             48.340          1.950  12   5        0.722       -0.033    0.512
+      50   Juan Soto    2024 post_2023          26.8        1.79          12.058                  3.112            2.394             49.350          1.980   7   4        0.681       -0.075    0.476
+      78   Juan Soto    2019  pre_2023          27.3        1.83          12.058                  3.112            2.394             49.562          1.995  12   1        0.883        0.127    0.304
+
+[14/14] Per-year leaderboards …
+   wrote DF_v5_Leaderboard_JumpTime.csv                (180 rows)
+   wrote DF_v5_Leaderboard_LeadGain.csv                (175 rows)
+   wrote DF_v5_Leaderboard_PreRelVel.csv               (120 rows)
+   wrote DF_v5_Leaderboard_PostRelDist.csv             (120 rows)
+
+   Top 10 by pre_rel_vel_avg (most ground / unit time) — 2025:
+ rank        player_name  sprint_speed  pre_rel_vel_avg  pre_rel_vel_avg  r_sec_minus_prim_lead  SB  CS  real_sb_pct
+    1  Jazz Chisholm Jr.          27.6            4.337            4.337                  5.638  31   8        0.793
+    2       Adam Frazier          26.6            4.008            4.008                  5.210   8   6        0.626
+    3        Luis Arraez          26.5            3.921            3.921                  5.098  11   4        0.745
+    4  William Contreras          26.2            3.880            3.880                  5.044   6   4        0.660
+    5       José Ramírez          28.4            3.871            3.871                  5.032  44   7        0.855
+    6       José Ramírez          28.4            3.871            3.871                  5.032  44   7        0.855
+    7       Bryce Harper          27.0            3.782            3.782                  4.917  12   2        0.837
+    8      Colton Cowser          27.4            3.717            3.717                  4.832  14   0        0.942
+    9      J.T. Realmuto          28.4            3.571            3.571                  4.643   8   2        0.793
+   10 Isiah Kiner-Falefa          27.4            3.489            3.489                  4.536  15   4        0.787
+
+   Top 10 by post_rel_dist_avg (most ground during pop) — 2025:
+ rank         player_name  sprint_speed  post_rel_dist_avg  post_rel_dist_avg  avg_pop_faced  SB  CS  real_sb_pct
+    1     Victor Scott II          30.2             59.494             59.494          2.000  34   4        0.881
+    2      Bobby Witt Jr.          30.2             57.682             57.682          2.000  38   9        0.806
+    3      Corbin Carroll          29.8             57.529             57.529          1.950  32   6        0.835
+    4    Chandler Simpson          29.6             57.070             57.070          1.948  44  12        0.785
+    5 DaShawn Keirsey Jr.          28.5             56.148             56.148          1.990  10   3        0.772
+    6         Jake Mangum          29.1             56.119             56.119          2.030  27   6        0.813
+    7         Jake Mangum          29.1             56.119             56.119          2.030  27   6        0.813
+    8   Brandon Lockridge          30.1             55.782             55.782          1.951  10   1        0.868
+    9         Trea Turner          30.3             55.754             55.754          1.968  36   7        0.831
+   10 Pete Crow-Armstrong          29.5             55.209             55.209          1.900  35   8        0.810
+
+[fig] Generating figures …
+   6 v5 figures written.
+
+[pdf] Generating v5 PDF report …
+   wrote /Users/shunchen/Desktop/The-Naylor-Model/Naylor_Model_v5_Report.pdf
+
+========================================================================
+ v5 EXPLORATORY PIPELINE COMPLETE
+========================================================================
+Outputs in /Users/shunchen/Desktop/The-Naylor-Model:
+   DF_v5_Count_Rates.csv                             0.4 KB
+   DF_v5_Granularity.csv                             0.3 KB
+   DF_v5_Leaderboard_JumpTime.csv                   21.2 KB
+   DF_v5_Leaderboard_LeadGain.csv                   24.4 KB
+   DF_v5_Leaderboard_PostRelDist.csv                17.5 KB
+   DF_v5_Leaderboard_PreRelVel.csv                  19.8 KB
+   DF_v5_ModelA_AUC.csv                              0.1 KB
+   DF_v5_ModelA_Importance.csv                       0.7 KB
+   DF_v5_ModelA_SHAP.csv                             0.7 KB
+   DF_v5_ModelB_AUC.csv                              0.1 KB
+   DF_v5_ModelB_Importance.csv                       1.9 KB
+   DF_v5_ModelC_GLM_Weights.csv                      0.4 KB
+   DF_v5_SSSI.csv                                  343.0 KB
+   Fig_v5_AUC_Comparison.png                        41.5 KB
+   Fig_v5_CountLeverage.png                         54.9 KB
+   Fig_v5_Granularity.png                           57.5 KB
+   Fig_v5_Importance_PrePost.png                    77.4 KB
+   Fig_v5_ModelA_Importance.png                     60.6 KB
+   Fig_v5_Velocity_Metrics.png                     186.8 KB
+   Naylor_Model_v5_Report.pdf                   420.1 KB
+
+AUC summary:
+  v4 baseline:       0.6300
+  v5 Model A:        0.5933   (target 0.70)
+  v5 Model B (full): 0.6794

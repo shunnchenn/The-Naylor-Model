@@ -20,6 +20,9 @@ venv/
 .pybaseball_cache/
 *.cache
 
+## v5 pickle cache (large pitch-by-pitch data, regenerable)
+.cache/
+
 ## OS / editor noise
 *~
 *.swp
