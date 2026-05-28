@@ -10,57 +10,97 @@ That's why specificity with the biomechanics suite matters. Knowing a runner has
 
 ---
 
-## What This Model Does
+## Navigation
 
-The Naylor Model is a pitch-level stolen base intelligence system built to identify and quantify what makes runners with below-average sprint speed effective at stealing bases. It uses real Statcast data — sprint speed, running splits at 5-ft increments (0–90 ft), catcher pop times, pitcher running-game suppression, and real season SB/CS records — to separate what is structurally fixed from what is technique-driven and trainable.
+| | |
+|---|---|
+| 📄 **[Full Report](reports/Naylor_Model_v6_Report.pdf)** | Complete v6 analysis — models, AUC, SSSI leaderboard, Naylor/Soto profile |
+| 📖 **[Variable Glossary](reports/Variable_Glossary.pdf)** | Plain-English reference for every metric. Tier charts, real examples, full model discussion |
+| 🖼️ **[Figures](figures/)** | All charts and visualizations |
+| 📊 **[Data](data/)** | All output CSVs — leaderboards, SSSI rankings, model results |
+| 🗂️ **[Previous Versions](Previous%20Versions/)** | Archived v3, v4, v5 pipelines and outputs |
 
-The core signal is the **SB Residual**: a runner's actual success rate minus the rate their sprint speed alone would predict. Positive means they outperform their speed peers. Naylor's residual is large and positive. Trea Turner's is smaller than you'd expect — his success rate is exactly in line with what a 30 ft/s runner should do.
+---
 
-## Key Metrics
+## Key Results
+
+### Naylor & Soto Profile
+![Naylor Soto Profile](figures/Fig_v6_NaylorSoto_Profile.png)
+
+### Feature Importance — Pre vs Post 2023
+![Feature Importance](figures/Fig_v6_Importance_PrePost.png)
+
+### Model Accuracy (AUC)
+![AUC](figures/Fig_v6_AUC.png)
+
+### GLM Weight Table — What Actually Moves the Needle
+![GLM](figures/Fig_v6_GLM_PlainEnglish.png)
+
+---
+
+## How It Works
+
+The core signal is the **SB Residual**: a runner's actual success rate minus the rate their sprint speed alone would predict. Positive means they outperform their speed peers. The model is built on real Statcast data — sprint speed, 5-ft running splits (0–90 ft), catcher pop times, pitcher running-game suppression, and season SB/CS records from 2015–2026.
+
+### Key Metrics
 
 | Metric | What it captures |
 |---|---|
 | `sprint_speed` | Top running speed (ft/s) — structural baseline |
-| `speed_capped` | Sprint speed capped at 28 ft/s — marginal benefit vanishes above this threshold |
-| `jump_time` | Time to cover the first 30 ft — first-step burst independent of top speed |
-| `accel_gap` | Percentile rank of jump time minus percentile rank of sprint speed — positive = faster off the line than top speed implies (the Naylor archetype) |
-| `sb_residual` | Real shrunk SB% minus speed-expected SB% — ground-truth speed-adjusted steal skill |
+| `speed_capped` | Sprint speed capped at 28 ft/s — marginal benefit vanishes above this |
+| `jump_time` | Time to cover the first 30 ft — first-step burst, independent of top speed |
+| `accel_gap` | Jump time percentile minus sprint speed percentile — positive = faster off the line than top speed implies (the Naylor archetype) |
+| `sb_residual` | Real SB% minus speed-expected SB% — ground-truth speed-adjusted steal skill |
 | `lead_gain` | Distance gained in secondary lead — a coachable behavioral pattern |
-| `avg_pop_faced` | Catcher pop time in matchups this runner faced — battery context |
+| `avg_pop_faced` | Catcher pop time in this runner's matchups — battery context |
 | `avg_pickoff_rate_faced` | Pitcher hold frequency — suppression context |
 
-## The SSSI — Slow-Steal Skill Index
+### The SSSI — Slow-Steal Skill Index
 
-A weighted composite of eight z-scored features designed to surface the Naylor/Soto archetype: elite-performing slow runners. Weights were optimised on 80% of runners with Naylor and Soto held out entirely — their ranking in the final index is a genuine out-of-sample result.
+A weighted composite of eight z-scored features designed to surface the Naylor/Soto archetype: elite-performing slow runners. Weights were optimised on 80% of runners with Naylor and Soto held out entirely — their ranking is a genuine out-of-sample result.
 
-**2025 SSSI Top 5:** Naylor #1 · Naylor 2026 #2 · Freeman 2024 #3 · Soto 2025 #5
+| Rank | Player | Season | SSSI |
+|---|---|---|---|
+| 1 | Josh Naylor | 2025 | +1.90 |
+| 2 | Josh Naylor | 2026 | +1.84 |
+| 3 | Freddie Freeman | 2024 | +1.71 |
+| 5 | Juan Soto | 2025 | +1.43 |
 
-## Models
+### Models
 
-Three models serve different purposes:
+| Model | Unit | AUC | Purpose |
+|---|---|---|---|
+| **Model B** (season GBM) | Runner-season | 0.662–0.700 | Headline predictor |
+| Model A (per-attempt GBM) | Individual attempt | ~0.59 | Strict noise-floor test |
+| GLM | Runner-season | — | Interpretable weight table |
 
-- **Model A (per-attempt GBM):** One row per steal attempt with strict group cross-validation by runner ID. AUC ~0.59 — at the noise ceiling for individual attempt prediction.
-- **Model B (season-level GBM):** One row per runner-season. AUC 0.662–0.700. The headline predictor.
-- **GLM:** Logistic regression with one coefficient per feature. Not the best predictor — the most interpretable. Produces the "SB% Boost per Tier" and "Odds Multiplier" columns in the output tables.
+---
 
 ## How to Run
 
 ```bash
-python3 v6_explore.py
+python3 v6_explore.py        # full pipeline → data/, figures/, reports/
+python3 write_glossary.py    # regenerate Variable Glossary → reports/
 ```
 
-Outputs all CSVs, figures, and the full PDF report into the project directory.
+---
 
 ## Repository Structure
 
-| File | Contents |
-|---|---|
-| `v6_explore.py` | Full v6 pipeline |
-| `write_glossary.py` | Generates the Variable Glossary PDF |
-| `Variable_Glossary.pdf` | Plain-English reference for every metric — Statcast-style with tier charts, real examples, and a full model discussion |
-| `Naylor_Model_v6_Report.pdf` | Complete analysis report |
-| `Previous Versions/` | Archived v3, v4, v5 pipelines and outputs |
-| `.cache/` | Pitch-level Statcast pickle cache (local only — not tracked) |
+```
+The-Naylor-Model/
+├── v6_explore.py              ← full v6 pipeline
+├── write_glossary.py          ← Variable Glossary generator
+├── figures/                   ← all output PNGs
+├── data/                      ← all output CSVs (leaderboards, SSSI, model results)
+├── reports/                   ← PDFs (full report + variable glossary)
+└── Previous Versions/
+    ├── v3/                    ← naylor_model.py + v3 outputs
+    ├── v4/                    ← v4_explore.py + v4 outputs
+    └── v5/                    ← v5_explore.py + v5 outputs
+```
+
+---
 
 ## Data Sources
 

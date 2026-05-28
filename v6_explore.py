@@ -79,6 +79,11 @@ NAYLOR_ID, SOTO_ID = 647304, 665742
 SPEED_CAP        = 28.0
 OUTPUT_DIR       = Path("/Users/shunchen/Desktop/The-Naylor-Model")
 CACHE_DIR        = OUTPUT_DIR / ".cache"
+FIGURES_DIR      = OUTPUT_DIR / "figures"
+DATA_DIR         = OUTPUT_DIR / "data"
+REPORTS_DIR      = OUTPUT_DIR / "reports"
+for _d in (FIGURES_DIR, DATA_DIR, REPORTS_DIR):
+    _d.mkdir(exist_ok=True)
 
 np.random.seed(SEED)
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.0)
@@ -410,7 +415,7 @@ for m in [m_full, m_pre, m_post]:
     if m is None: continue
     print(f"   {m['label']:>10}  n={m['n']:>4}  AUC={m['auc']:.4f}")
     auc_rows.append({"epoch":m["label"], "n":m["n"], "auc":round(m["auc"],4)})
-pd.DataFrame(auc_rows).to_csv(OUTPUT_DIR/"DF_v6_ModelB_AUC.csv", index=False)
+pd.DataFrame(auc_rows).to_csv(DATA_DIR/"DF_v6_ModelB_AUC.csv", index=False)
 
 # SHAP / importance
 shap_rows = []
@@ -431,7 +436,7 @@ for m in [m_full, m_pre, m_post]:
         shap_rows.append({"epoch":m["label"], "feature":f,
                           "importance": round(v, 4)})
 DF_Imp = pd.DataFrame(shap_rows)
-DF_Imp.to_csv(OUTPUT_DIR/"DF_v6_Importance.csv", index=False)
+DF_Imp.to_csv(DATA_DIR/"DF_v6_Importance.csv", index=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -505,7 +510,7 @@ for f, c, mean_, sd_ in zip(simple_feat, coef, sc.mean_, sc.scale_):
 DF_GLM = pd.DataFrame(rows).sort_values("sb_pct_boost_per_tier",
                                          key=lambda s: s.abs(),
                                          ascending=False)
-DF_GLM.to_csv(OUTPUT_DIR/"DF_v6_GLM_PlainEnglish.csv", index=False)
+DF_GLM.to_csv(DATA_DIR/"DF_v6_GLM_PlainEnglish.csv", index=False)
 
 print(f"\n   Baseline P(success) at all-mean inputs ≈ {baseline_p:.3f}")
 print(f"\n   {'Feature':<32}{'Boost (pp)':>12}{'Odds×':>9}  Note")
@@ -570,7 +575,7 @@ w_best = best[1]
 SSSI["SSSI_v6"] = score(w_best, SSSI)
 SSSI = SSSI.sort_values("SSSI_v6", ascending=False)
 SSSI["rank_v6"] = SSSI["SSSI_v6"].rank(ascending=False, method="min").astype(int)
-SSSI.to_csv(OUTPUT_DIR/"DF_v6_SSSI.csv", index=False)
+SSSI.to_csv(DATA_DIR/"DF_v6_SSSI.csv", index=False)
 
 print(f"   Best Naylor+Soto mean z: {best[0]:.3f}")
 print(f"   Weights: sb_res={w_best[0]} gap={w_best[1]} gain={w_best[2]} "
@@ -604,7 +609,7 @@ def board(col, asc, fname):
                          "avg_pre_release_velocity","avg_post_release_distance",
                          "avg_pop_faced","SB","CS","real_sb_pct","sb_residual",col]])
     out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
-    out.to_csv(OUTPUT_DIR/fname, index=False)
+    out.to_csv(DATA_DIR/fname, index=False)
     print(f"   {fname:<48}{len(out):>5} rows")
     return out
 
@@ -633,7 +638,7 @@ for i, v in enumerate(g["sb_pct_boost_per_tier"]):
     ax.text(v + (0.15 if v>=0 else -0.15), i, f"{v:+.1f}",
             ha="left" if v>=0 else "right", va="center", fontsize=9)
 fig.tight_layout()
-fig.savefig(OUTPUT_DIR/"Fig_v6_GLM_PlainEnglish.png", dpi=160); plt.close(fig)
+fig.savefig(FIGURES_DIR/"Fig_v6_GLM_PlainEnglish.png", dpi=160); plt.close(fig)
 
 # Fig: AUC across versions
 fig, ax = plt.subplots(figsize=(7, 4))
@@ -649,7 +654,7 @@ ax.set_title("Model AUC across versions")
 for i, v in enumerate(aucs):
     ax.text(i, v+0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=10)
 fig.tight_layout()
-fig.savefig(OUTPUT_DIR/"Fig_v6_AUC.png", dpi=160); plt.close(fig)
+fig.savefig(FIGURES_DIR/"Fig_v6_AUC.png", dpi=160); plt.close(fig)
 
 # Fig: Pre vs Post importance
 fig, ax = plt.subplots(figsize=(9, 6))
@@ -678,7 +683,7 @@ ax.set_xlabel("Mean |SHAP| importance")
 ax.set_title("v6 — Feature Importance · Pre vs Post 2023")
 ax.legend()
 fig.tight_layout()
-fig.savefig(OUTPUT_DIR/"Fig_v6_Importance_PrePost.png", dpi=160); plt.close(fig)
+fig.savefig(FIGURES_DIR/"Fig_v6_Importance_PrePost.png", dpi=160); plt.close(fig)
 
 
 # Fig: Naylor + Soto Statcast-style profile
@@ -705,7 +710,7 @@ runner_profile_panel(axes[0], NAYLOR_ID, "Josh Naylor", COLOR["naylor"])
 runner_profile_panel(axes[1], SOTO_ID, "Juan Soto", COLOR["soto"])
 fig.suptitle("Naylor + Soto · Season-by-Season Statcast-style Profile", y=1.02)
 fig.tight_layout()
-fig.savefig(OUTPUT_DIR/"Fig_v6_NaylorSoto_Profile.png", dpi=160, bbox_inches="tight")
+fig.savefig(FIGURES_DIR/"Fig_v6_NaylorSoto_Profile.png", dpi=160, bbox_inches="tight")
 plt.close(fig)
 
 print("   4 v6 figures written.")
@@ -745,7 +750,7 @@ def imgpage(pdf, title, img, caption=""):
         ax_c.text(0,1,caption,fontsize=10,color="#444",va="top",wrap=True)
     pdf.savefig(fig); plt.close(fig)
 
-pdf_path = OUTPUT_DIR/"Naylor_Model_v6_Report.pdf"
+pdf_path = REPORTS_DIR/"Naylor_Model_v6_Report.pdf"
 with PdfPages(pdf_path) as pdf:
     # Cover
     fig=plt.figure(figsize=(8.5,11)); fig.patch.set_facecolor("white")
@@ -787,19 +792,19 @@ with PdfPages(pdf_path) as pdf:
         for _, r in SSSI[SSSI["runner_id"].isin([NAYLOR_ID,SOTO_ID])].iterrows()
     ])
 
-    imgpage(pdf, "§1 · AUC Comparison", OUTPUT_DIR/"Fig_v6_AUC.png",
+    imgpage(pdf, "§1 · AUC Comparison", FIGURES_DIR/"Fig_v6_AUC.png",
             "v6 Model B at the season level, with the v6 feature set including "
             "real catcher pop, pitcher pickoff rate, lead variables.")
     imgpage(pdf, "§2 · GLM Plain-English Weight Chart",
-            OUTPUT_DIR/"Fig_v6_GLM_PlainEnglish.png",
+            FIGURES_DIR/"Fig_v6_GLM_PlainEnglish.png",
             "Each bar = predicted percentage-point change in SB success when "
             "the runner improves on that feature by ONE TIER (1 SD).  Positive "
             "and green = the feature HELPS; red/orange = HURTS.")
     imgpage(pdf, "§3 · Feature Importance · Pre vs Post 2023",
-            OUTPUT_DIR/"Fig_v6_Importance_PrePost.png",
+            FIGURES_DIR/"Fig_v6_Importance_PrePost.png",
             "How feature importance shifted after the 2023 rule change.")
     imgpage(pdf, "§4 · Naylor + Soto Statcast-style Profile",
-            OUTPUT_DIR/"Fig_v6_NaylorSoto_Profile.png",
+            FIGURES_DIR/"Fig_v6_NaylorSoto_Profile.png",
             "Season-by-season values of the key features for the two "
             "archetypal slow-but-effective stealers.")
 
@@ -868,12 +873,12 @@ print(f"   wrote {pdf_path}")
 print("\n" + "=" * 72)
 print(" v6 EXPLORATORY PIPELINE COMPLETE")
 print("=" * 72)
-for p in sorted(OUTPUT_DIR.glob("DF_v6_*.csv")):
+for p in sorted(DATA_DIR.glob("DF_v6_*.csv")):
     print(f"   {p.name:<45} {p.stat().st_size/1024:>7.1f} KB")
-for p in sorted(OUTPUT_DIR.glob("Fig_v6_*.png")):
+for p in sorted(FIGURES_DIR.glob("Fig_v6_*.png")):
     print(f"   {p.name:<45} {p.stat().st_size/1024:>7.1f} KB")
 print(f"   Naylor_Model_v6_Report.pdf            "
-      f"{(OUTPUT_DIR/'Naylor_Model_v6_Report.pdf').stat().st_size/1024:.1f} KB")
+      f"{(REPORTS_DIR/'Naylor_Model_v6_Report.pdf').stat().st_size/1024:.1f} KB")
 print()
 print(f"Headline:")
 print(f"  v4 baseline:       0.6300")
