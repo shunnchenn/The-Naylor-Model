@@ -1,0 +1,222 @@
+========================================================================
+ THE NAYLOR MODEL  ·  v4  (exploratory)
+========================================================================
+
+[1/12] Fetching real data for 12 seasons (2015-2026) …
+   Savant lead snapshot rows (per-player career): 394
+   Sprint-speed rows :   6,990
+   Running-splits    :   6,113
+   MLB SB rows       :  11,906
+   Distance splits present: ['seconds_since_hit_005', 'seconds_since_hit_010', 'seconds_since_hit_015', 'seconds_since_hit_020', 'seconds_since_hit_025', 'seconds_since_hit_030', 'seconds_since_hit_035', 'seconds_since_hit_040', 'seconds_since_hit_045', 'seconds_since_hit_050', 'seconds_since_hit_055', 'seconds_since_hit_060', 'seconds_since_hit_065', 'seconds_since_hit_070', 'seconds_since_hit_075', 'seconds_since_hit_080', 'seconds_since_hit_085', 'seconds_since_hit_090']
+   Merged runner-seasons    :   6,113
+   With real SB+CS ≥ 10:   1,465
+     · pre_2023 :  919
+     · post_2023:  546
+
+[2/12] Engineering features …
+   League SB%           : 0.753
+   Polynomial coeffs    : [0.006, -0.3249, 5.1195]
+
+   Naylor (647304) v4 spot-check:
+ season  sprint_speed  accel_0_30  r_primary_lead  r_secondary_lead  r_sec_minus_prim_lead  SB  CS  real_sb_pct  sb_residual
+   2019          26.1        1.82           9.808            13.682                  3.874   1   1        0.681       -0.072
+   2020          27.1        1.83           9.808            13.682                  3.874   1   0        0.795        0.045
+   2021          26.4        1.80           9.808            13.682                  3.874   1   0        0.795        0.044
+   2022          25.3        1.84           9.808            13.682                  3.874   6   1        0.814        0.049
+   2023          25.8        1.83           9.808            13.682                  3.874  10   3        0.765        0.008
+   2024          25.2        1.84           9.808            13.682                  3.874   6   2        0.751       -0.015
+   2025          24.4        1.87           9.808            13.682                  3.874  30   2        0.913        0.126
+   2026          24.5        1.84           9.808            13.682                  3.874  12   2        0.830        0.046
+
+   Soto (665742) v4 spot-check:
+ season  sprint_speed  accel_0_30  r_primary_lead  r_secondary_lead  r_sec_minus_prim_lead  SB  CS  real_sb_pct  sb_residual
+   2018          27.2        1.81          12.058             15.17                  3.112   5   2        0.731       -0.019
+   2019          27.3        1.83          12.058             15.17                  3.112  12   1        0.876        0.126
+   2020          26.3        1.85          12.058             15.17                  3.112   6   2        0.751       -0.000
+   2021          27.0        1.80          12.058             15.17                  3.112   9   7        0.608       -0.141
+   2022          26.6        1.82          12.058             15.17                  3.112   6   2        0.751        0.002
+   2023          26.8        1.80          12.058             15.17                  3.112  12   5        0.717       -0.033
+   2024          26.8        1.79          12.058             15.17                  3.112   7   4        0.673       -0.076
+   2025          25.8        1.85          12.058             15.17                  3.112  38   4        0.889        0.132
+   2026          25.9        1.83          12.058             15.17                  3.112   5   2        0.731       -0.025
+
+[3/12] Testing optimal running-split granularity …
+granularity  n_features    n  rmse_sb_pct  r2_sb_pct  r2_sb_residual
+5 ft  steps          18 1465       0.0825     0.0466          0.0135
+10 ft steps           9 1465       0.0828     0.0409          0.0083
+15 ft steps           6 1465       0.0828     0.0407          0.0085
+30 ft steps           3 1465       0.0833     0.0285          0.0004
+45 ft steps           2 1465       0.0834     0.0263         -0.0006
+   ✓ Best granularity (CV R² on sb_residual): 5 ft  steps
+
+[4/12] Fitting pre / post / full models …
+
+         full  n= 757   AUC_glm=0.610   AUC_gbm=0.630
+     pre_2023  n= 303   AUC_glm=0.587   AUC_gbm=0.568
+    post_2023  n= 454   AUC_glm=0.587   AUC_gbm=0.668
+
+   ── Standardised GLM coefficients ──
+epoch                    full  pre_2023  post_2023
+feature                                           
+accel_0_30             0.9194    0.7958     0.4988
+accel_5_30            -0.5687   -0.3549    -0.3935
+accel_gap              0.6154    0.7704     0.2692
+bolts                  0.0860    0.1922     0.1840
+maintain_30_90        -0.5460   -0.3755    -0.6233
+r_primary_lead        -0.1244   -0.0641    -0.2426
+r_sec_minus_prim_lead  0.2058    0.1221     0.2872
+r_secondary_lead       0.0449    0.0422    -0.0008
+speed_capped          -0.3654   -0.0103    -0.4020
+sprint_speed           0.4712    0.4071    -0.0281
+total_90               0.0134    0.0805    -0.2167
+
+[5/12] SHAP analysis …
+         full  top 5 by |SHAP|:
+         feature  mean_abs_shap
+r_secondary_lead         0.2626
+      accel_5_30         0.2491
+       accel_gap         0.2446
+  r_primary_lead         0.1934
+      accel_0_30         0.1819
+
+     pre_2023  top 5 by |SHAP|:
+       feature  mean_abs_shap
+     accel_gap         0.4344
+r_primary_lead         0.2516
+    accel_0_30         0.2390
+         bolts         0.2201
+  sprint_speed         0.2042
+
+    post_2023  top 5 by |SHAP|:
+              feature  mean_abs_shap
+             total_90         0.4410
+       r_primary_lead         0.3255
+     r_secondary_lead         0.2887
+r_sec_minus_prim_lead         0.2665
+                bolts         0.2200
+
+
+[6/12] Robustness CV with / without Naylor & Soto …
+    epoch  runner_id player_name  season  SB_used  CS_used  real_sb_pct  sb_residual  pred
+     full     665742   Juan Soto    2019       12        1        0.876        0.126 0.402
+     full     665742   Juan Soto    2021        9        7        0.608       -0.141 0.611
+     full     665742   Juan Soto    2023       12        5        0.717       -0.033 0.661
+     full     647304 Josh Naylor    2023       10        3        0.765        0.008 0.665
+     full     665742   Juan Soto    2024        7        4        0.673       -0.076 0.683
+     full     665742   Juan Soto    2025       38        4        0.889        0.132 0.518
+     full     647304 Josh Naylor    2025       30        2        0.913        0.126 0.418
+     full     647304 Josh Naylor    2026       12        2        0.830        0.046 0.647
+ pre_2023     665742   Juan Soto    2019       12        1        0.876        0.126 0.280
+ pre_2023     665742   Juan Soto    2021        9        7        0.608       -0.141 0.568
+post_2023     665742   Juan Soto    2023       12        5        0.717       -0.033 0.666
+post_2023     647304 Josh Naylor    2023       10        3        0.765        0.008 0.747
+post_2023     665742   Juan Soto    2024        7        4        0.673       -0.076 0.701
+post_2023     665742   Juan Soto    2025       38        4        0.889        0.132 0.495
+post_2023     647304 Josh Naylor    2025       30        2        0.913        0.126 0.529
+post_2023     647304 Josh Naylor    2026       12        2        0.830        0.046 0.785
+
+[7/12] Building leaderboards …
+    NOTE:  jump_metric = accel_0_30   (real Statcast, per-season, first 30 ft from a hit; LOWER = faster jump)
+    NOTE:  dist_metric = r_sec_minus_prim_lead  (real Savant; CAREER-aggregated per-player constant; HIGHER = more ground gained between pitcher first move and pitch release)
+
+   ρ(accel_0_30,        real_sb_pct) = -0.115   (LOW accel_0_30 = fast jump; expect − sign)
+   ρ(distance_covered,  real_sb_pct) = +0.002   (HIGH lead_gain = more ground; expect + sign)
+   ρ(accel_0_30,        sb_residual) = -0.021
+   ρ(distance_covered,  sb_residual) = +0.016
+   → accel_0_30 (jump time) is the better predictor of sb_residual.
+   wrote DF_v4_Leaderboard_JumpTime.csv  (180 rows)
+   wrote DF_v4_Leaderboard_LeadGain.csv  (175 rows)
+
+   Top 10 by JUMP TIME (fastest accel_0_30) — 2025:
+ rank         player_name  sprint_speed  accel_0_30  r_sec_minus_prim_lead  SB_used  CS_used  real_sb_pct  sb_residual
+    1         Nasim Nuñez          29.8        1.64                  4.506        9        1        0.851        0.051
+    2      Corbin Carroll          29.8        1.67                  3.851       32        6        0.832        0.032
+    3 DaShawn Keirsey Jr.          28.5        1.67                    NaN       10        3        0.765        0.000
+    4    Chandler Simpson          29.6        1.67                  3.597       44       12        0.783       -0.010
+    5     Victor Scott II          30.2        1.68                  3.274       34        4        0.878        0.063
+    6 Pete Crow-Armstrong          29.5        1.68                  3.924       35        8        0.808        0.018
+    7         Sal Frelick          28.9        1.69                  2.834       19        6        0.759       -0.015
+    8    Jasson Domínguez          28.7        1.70                    NaN       23        5        0.811        0.042
+    9       Leody Taveras          28.8        1.71                  3.286        9        3        0.751       -0.020
+   10      David Hamilton          29.3        1.71                  4.256       22        6        0.781       -0.003
+
+   Top 10 by DISTANCE COVERED (most ground gained) — 2025:
+ rank       player_name  sprint_speed  accel_0_30  r_sec_minus_prim_lead  SB_used  CS_used  real_sb_pct  sb_residual
+    1      Mookie Betts          26.9        1.82                  5.642        8        2        0.784        0.035
+    2 Jazz Chisholm Jr.          27.6        1.77                  5.638       31        8        0.790        0.038
+    3      Adam Frazier          26.6        1.78                  5.210        8        6        0.619       -0.130
+    4       Luis Arraez          26.5        1.79                  5.098       11        4        0.738       -0.012
+    5 William Contreras          26.2        1.84                  5.044        6        4        0.651       -0.101
+    6      José Ramírez          28.4        1.78                  5.032       44        7        0.853        0.090
+    7      José Ramírez          28.4        1.75                  5.032       44        7        0.853        0.090
+    8      Bryce Harper          27.0        1.80                  4.917       12        2        0.830        0.081
+    9     Colton Cowser          27.4        1.74                  4.832       14        0        0.935        0.184
+   10    Brayan Rocchio          27.0        1.82                  4.780        8        4        0.692       -0.057
+
+[8/12] Simple-GLM weight tables …
+              feature   mean     sd  coef_z  OR_per_SD                                                       interpret
+         speed_capped 27.711  0.539   0.045      1.046          1 SD increase in speed_capped multiplies odds by 1.046
+           accel_0_30  1.769  0.044  -0.005      0.995            1 SD increase in accel_0_30 multiplies odds by 0.995
+       r_primary_lead 11.831  0.840  -0.062      0.940         1 SD increase in r_primary_lead multiplies odds by 0.94
+r_sec_minus_prim_lead  3.743  0.780   0.218      1.243 1 SD increase in r_sec_minus_prim_lead multiplies odds by 1.243
+            accel_gap -1.697 19.421   0.243      1.275             1 SD increase in accel_gap multiplies odds by 1.275
+                bolts 13.538 24.070   0.449      1.567                 1 SD increase in bolts multiplies odds by 1.567
+
+   Intercept (log-odds at all-mean): +0.774
+   → P(success) at league average inputs ≈ 0.684
+
+[9/12] Computing SSSI v4 (real lead data, optimised weights) …
+   Best anchor mean z = 1.072
+   Optimised weights: sb_res=0.35 accel_gap=0.2 lead_gain=0.05 jump=0.0 primary_lead=0.05 speed_cap=-0.3
+
+   Top 10 by SSSI_v4_opt:
+ rank_v4_opt  rank_v4_fixed      player_name  season       era  sprint_speed  accel_0_30  r_primary_lead  r_sec_minus_prim_lead  SB_used  CS_used  real_sb_pct  sb_residual  SSSI_v4_fixed  SSSI_v4_opt
+           1            131      Josh Naylor    2025 post_2023          24.4        1.87           9.808                  3.874       30        2        0.913        0.126          0.517        2.354
+           2            186      Josh Naylor    2026 post_2023          24.5        1.84           9.808                  3.874       12        2        0.830        0.046          0.376        2.070
+           3             17      Kyle Tucker    2024 post_2023          26.0        1.80          10.725                  3.005       11        0        0.923        0.169          0.976        1.903
+           4            123        Juan Soto    2025 post_2023          25.8        1.85          12.058                  3.112       38        4        0.889        0.132          0.544        1.658
+           5             24   Kyle Schwarber    2025 post_2023          25.9        1.79          11.027                  4.432       10        2        0.810        0.055          0.907        1.642
+           6             35  Freddie Freeman    2024 post_2023          25.8        1.81          12.235                  4.332        9        2        0.798        0.041          0.835        1.624
+           7              5  Freddie Freeman    2023 post_2023          26.7        1.80          12.235                  4.332       23        1        0.923        0.174          1.190        1.568
+           8              8        TJ Friedl    2024 post_2023          26.5        1.77          11.792                  3.880        9        1        0.851        0.101          1.136        1.561
+           9            156 Paul Goldschmidt    2021  pre_2023          26.3        1.84          10.218                  2.831       12        0        0.927        0.176          0.425        1.431
+          10            165 Paul Goldschmidt    2024 post_2023          26.3        1.84          10.218                  2.831       11        0        0.923        0.172          0.403        1.409
+
+   Naylor + Soto under SSSI_v4_opt:
+ rank_v4_opt  rank_v4_fixed player_name  season       era  sprint_speed  accel_0_30  r_primary_lead  r_sec_minus_prim_lead  SB_used  CS_used  real_sb_pct  sb_residual  SSSI_v4_fixed  SSSI_v4_opt
+           1            131 Josh Naylor    2025 post_2023          24.4        1.87           9.808                  3.874       30        2        0.913        0.126          0.517        2.354
+           2            186 Josh Naylor    2026 post_2023          24.5        1.84           9.808                  3.874       12        2        0.830        0.046          0.376        2.070
+           4            123   Juan Soto    2025 post_2023          25.8        1.85          12.058                  3.112       38        4        0.889        0.132          0.544        1.658
+          23            298 Josh Naylor    2023 post_2023          25.8        1.83           9.808                  3.874       10        3        0.765        0.008          0.139        1.203
+         119            358   Juan Soto    2023 post_2023          26.8        1.80          12.058                  3.112       12        5        0.717       -0.033          0.028        0.530
+         139            382   Juan Soto    2019  pre_2023          27.3        1.83          12.058                  3.112       12        1        0.876        0.126          0.003        0.459
+         157            419   Juan Soto    2024 post_2023          26.8        1.79          12.058                  3.112        7        4        0.673       -0.076         -0.056        0.408
+         409            649   Juan Soto    2021  pre_2023          27.0        1.80          12.058                  3.112        9        7        0.608       -0.141         -0.532       -0.106
+
+[10/12] Generating figures …
+   8 v4 figures written.
+
+[11/12] Generating v4 PDF report …
+   Wrote /Users/shunchen/Desktop/The-Naylor-Model/Naylor_Model_v4_Report.pdf
+
+========================================================================
+ v4 EXPLORATORY PIPELINE COMPLETE
+========================================================================
+Outputs in /Users/shunchen/Desktop/The-Naylor-Model:
+   DF_v4_AUC_by_epoch.csv                       0.1 KB
+   DF_v4_GLM_Coefs.csv                          0.9 KB
+   DF_v4_Granularity.csv                        0.5 KB
+   DF_v4_Leaderboard_JumpTime.csv              18.5 KB
+   DF_v4_Leaderboard_LeadGain.csv              20.7 KB
+   DF_v4_Robustness.csv                         1.5 KB
+   DF_v4_Runner_Seasons.csv                  2000.7 KB
+   DF_v4_SHAP_Importance.csv                    0.9 KB
+   DF_v4_SSSI.csv                             404.1 KB
+   DF_v4_Simple_GLM_Weights.csv                 0.6 KB
+   Fig_v4_AUC_by_Epoch.png                     38.8 KB
+   Fig_v4_Coef_PrePost.png                     67.7 KB
+   Fig_v4_Granularity.png                      45.1 KB
+   Fig_v4_Importance_byEpoch.png               65.0 KB
+   Fig_v4_Jump_vs_Distance.png                176.0 KB
+   Naylor_Model_v4_Report.pdf            338.8 KB
+   Variable_Glossary.pdf                 108.3 KB

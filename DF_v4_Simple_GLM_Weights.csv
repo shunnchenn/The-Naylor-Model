@@ -1,0 +1,7 @@
+feature,mean,sd,coef_z,OR_per_SD,interpret
+speed_capped,27.711,0.539,0.045,1.046,1 SD increase in speed_capped multiplies odds by 1.046
+accel_0_30,1.769,0.044,-0.005,0.995,1 SD increase in accel_0_30 multiplies odds by 0.995
+r_primary_lead,11.831,0.84,-0.062,0.94,1 SD increase in r_primary_lead multiplies odds by 0.94
+r_sec_minus_prim_lead,3.743,0.78,0.218,1.243,1 SD increase in r_sec_minus_prim_lead multiplies odds by 1.243
+accel_gap,-1.697,19.421,0.243,1.275,1 SD increase in accel_gap multiplies odds by 1.275
+bolts,13.538,24.07,0.449,1.567,1 SD increase in bolts multiplies odds by 1.567
