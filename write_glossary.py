@@ -1,12 +1,28 @@
 #!/usr/bin/env python3
 """
-Variable Glossary  —  The Naylor Model
-======================================
-Produces Variable_Glossary.pdf: a standalone reference document explaining
-every variable used in the v3/v4 model.  Goal:  a person who has never seen
-this project should be able to read the glossary and understand exactly
-what each column means, how it is computed, what units it is in, and what
-sign of effect is expected on stolen-base success.
+Variable Glossary  —  The Naylor Model  ·  v6  (Statcast-style)
+================================================================
+
+Re-written for v6 with the goal of being readable by anyone who watches
+baseball.  No statistical jargon.  Every variable has:
+
+  ▸ Plain-English definition       (what is this?)
+  ▸ Units                          (how is it measured?)
+  ▸ League average                 (what's normal?)
+  ▸ Elite threshold                (what's great?)
+  ▸ Real example                   (which player has this number?)
+  ▸ Tier chart                     (Elite / Above Avg / Avg / Below / Poor)
+  ▸ How it affects steal success   (why does it matter?)
+
+The companion model report uses two columns instead of "coef_z":
+
+    SB% Boost per Tier   = pp change in predicted SB success rate
+                            when a runner improves the feature by 1 tier
+                            (1 standard deviation).
+    Odds Multiplier      = same idea, multiplicative on the odds.
+                            >1 means the feature helps, <1 means it hurts.
+
+Both are computed from the same underlying logistic-regression coefficient.
 """
 
 import matplotlib
@@ -18,595 +34,755 @@ from pathlib import Path
 OUTPUT_DIR = Path("/Users/shunchen/Desktop/The-Naylor-Model")
 OUT_PATH   = OUTPUT_DIR / "Variable_Glossary.pdf"
 
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Glossary entries.  Each entry:
+# Statcast-style entries.
+#
 #   name        — variable name as it appears in the CSVs / model
-#   short       — one-line plain-English description
-#   long        — multi-line explanation, formula, units
-#   source      — where the underlying data comes from
-#   expected    — expected sign of effect on SB success (↑ = helps, ↓ = hurts)
+#   plain       — 1 sentence in everyday language
+#   units       — e.g. "ft/s", "ft", "seconds", "count"
+#   avg         — league-average value (typical runner)
+#   elite       — what counts as elite
+#   example     — "Naylor 2025: 24.4 ft/s (3rd percentile)"
+#   tiers       — list of (label, range_string)
+#   impact      — how this variable affects SB success in plain English
+#   source      — where the data comes from
 # ─────────────────────────────────────────────────────────────────────────────
 
 ENTRIES = [
 
-# ── Core speed / acceleration ────────────────────────────────────────────────
+# ── Speed & Acceleration ───────────────────────────────────────────────────
 {"section": "Speed & Acceleration"},
 
-{"name": "sprint_speed",
- "short": "Maximum foot-speed during the fastest 1-second window of a play.",
- "long":  "Baseball Savant's 'Sprint Speed'.  Computed only from 'competitive' "
-          "runs (Statcast keeps the top ~2/3 of a player's sprints to remove "
-          "easy jogs).  Units: feet per second.  League average is roughly "
-          "27.0 ft/s.  Elite is 29+.  Naylor sits around 24.4 ft/s, which is "
-          "the ~3rd percentile of qualified MLB runners.",
- "source": "pybaseball.statcast_sprint_speed(year, min_opp=1)",
- "expected": "+ on SB success (faster = harder to throw out)",
+{"name":   "Sprint Speed",
+ "plain":  "Top running speed measured during the player's fastest sprints.",
+ "units":  "feet per second (ft/s)",
+ "avg":    "27.0",
+ "elite":  "29.0 +",
+ "example":"Bobby Witt Jr.: 30.2  (elite)   ·   Josh Naylor: 24.4  (3rd %ile)",
+ "tiers":  [("Elite",       "29.0 +"),
+            ("Above avg",   "27.5 – 29.0"),
+            ("Average",     "26.5 – 27.5"),
+            ("Below avg",   "25.5 – 26.5"),
+            ("Poor",        "≤ 25.5")],
+ "impact": "Faster runners are obviously harder to throw out, but the model "
+           "finds it matters LESS than raw acceleration on a 90-ft steal.  "
+           "Once you're above ~28 ft/s the extra speed is wasted because "
+           "you're past second base before the throw arrives anyway.",
+ "source": "Baseball Savant Sprint Speed leaderboard",
 },
 
-{"name": "speed_capped",
- "short": "sprint_speed clipped at 28 ft/s.",
- "long":  "Empirically the marginal SB-success effect of speed flattens above "
-          "~28 ft/s.  We confirmed this with a piecewise hinge regression: "
-          "below-28 slope ≈ 0.21 (z-units), above-28 slope ≈ 0.06.  Capping "
-          "at 28 prevents the model from over-rewarding speed once you are "
-          "already 'fast enough', and lets variables like lead and jump "
-          "matter more for elite-speed runners.",
- "source": "min(sprint_speed, 28.0)",
- "expected": "+ but flat at the top",
+{"name":   "Speed Capped",
+ "plain":  "Sprint speed, but anything over 28 ft/s is clipped to 28.",
+ "units":  "ft/s",
+ "avg":    "27.0",
+ "elite":  "28.0 (capped)",
+ "example":"Witt 30.2 → capped at 28.0   ·   Naylor 24.4 → unchanged",
+ "tiers":  [("≥ 28 ft/s",   "treated as 28.0 (no extra reward)"),
+            ("< 28 ft/s",   "kept as-is — every fraction matters")],
+ "impact": "The model adds this version because the marginal benefit of "
+           "more speed vanishes above 28 ft/s.  Capping prevents the model "
+           "from over-rewarding pure speedsters and lets it find smaller "
+           "advantages like jump and lead.",
+ "source": "computed from Sprint Speed",
 },
 
-{"name": "accel_0_30  (seconds to 30 ft)",
- "short": "Time, in seconds, to cover the first 30 feet from contact.",
- "long":  "Pulled directly from Statcast running splits as "
-          "seconds_since_hit_030.  This is the cleanest single number for "
-          "FIRST-BURST acceleration — the part of running that matters MOST "
-          "for steals (you are only running ~90 ft and the throw is in the "
-          "air long before you hit top speed).  League average ~1.78 s.  "
-          "Lower is better.  Naylor 2025: 1.87 (slow on paper) — but he is "
-          "fast in proportion to his small steps, see accel_gap below.",
- "source": "statcast_running_splits → seconds_since_hit_030",
- "expected": "− on SB success (less time = better)",
+{"name":   "Jump Time  (accel_0_30)",
+ "plain":  "How fast you cover the first 30 feet from contact.",
+ "units":  "seconds",
+ "avg":    "1.78",
+ "elite":  "≤ 1.65",
+ "example":"Corbin Carroll: 1.67  ·  Josh Naylor: 1.87 (slow)  ·  Nasim Nuñez: 1.64 (elite)",
+ "tiers":  [("Elite",       "≤ 1.68"),
+            ("Above avg",   "1.69 – 1.74"),
+            ("Average",     "1.75 – 1.80"),
+            ("Below avg",   "1.81 – 1.86"),
+            ("Poor",        "≥ 1.87")],
+ "impact": "The single most important running metric for steals — the throw "
+           "is in the air before you hit top speed, so what happens in the "
+           "first 30 ft decides everything.  In the v5/v6 simple GLM this "
+           "feature has the strongest weight of any speed variable.",
+ "source": "Statcast Running Splits  ·  seconds_since_hit_030",
 },
 
-{"name": "accel_5_30",
- "short": "Time from 5 ft to 30 ft.  Excludes the bat-flip/box variance.",
- "long":  "Subtracts seconds_since_hit_005 from seconds_since_hit_030 so the "
-          "metric is not contaminated by how quickly the runner cleared the "
-          "batter's box.  Pure 'first-burst once you are running' speed.",
- "source": "seconds_since_hit_030 − seconds_since_hit_005",
- "expected": "− on SB success",
+{"name":   "Acceleration Phase  (accel_5_30)",
+ "plain":  "Time from 5 ft to 30 ft — pure first-burst, excluding bat-flip.",
+ "units":  "seconds",
+ "avg":    "1.32",
+ "elite":  "≤ 1.22",
+ "example":"Witt: 1.23 (elite)  ·  Naylor: 1.38",
+ "tiers":  [("Elite",       "≤ 1.22"),
+            ("Above avg",   "1.23 – 1.28"),
+            ("Average",     "1.29 – 1.34"),
+            ("Below avg",   "1.35 – 1.40"),
+            ("Poor",        "≥ 1.41")],
+ "impact": "Cleaner version of Jump Time — removes how quickly the runner "
+           "cleared the batter's box.  Less noisy proxy of biomechanical "
+           "first-burst.",
+ "source": "Statcast Running Splits  ·  030 − 005",
 },
 
-{"name": "maintain_30_90",
- "short": "Time from 30 ft to 90 ft — top-speed maintenance.",
- "long":  "Captures the second half of the sprint, where elite top-end "
-          "matters.  For an SB attempt the runner only goes ~85 ft, so this "
-          "is partly a proxy for late-burst.  Lower = better.",
- "source": "seconds_since_hit_090 − seconds_since_hit_030",
- "expected": "− on SB success",
+{"name":   "Top-Speed Phase  (maintain_30_90)",
+ "plain":  "Time from 30 ft to 90 ft — back half of the sprint.",
+ "units":  "seconds",
+ "avg":    "2.27",
+ "elite":  "≤ 2.15",
+ "example":"Witt: 2.10 (elite)  ·  Naylor: 2.44",
+ "tiers":  [("Elite",       "≤ 2.15"),
+            ("Above avg",   "2.16 – 2.22"),
+            ("Average",     "2.23 – 2.30"),
+            ("Below avg",   "2.31 – 2.38"),
+            ("Poor",        "≥ 2.39")],
+ "impact": "Matters less for SBs than Jump Time — a steal of 2nd only "
+           "requires covering ~85 ft.  But it captures conditioning and "
+           "shows up in pre-2023 data as a stronger predictor than today.",
+ "source": "Statcast Running Splits  ·  090 − 030",
 },
 
-{"name": "total_90",
- "short": "Total time, contact-to-90-ft (i.e. home-to-first).",
- "long":  "Useful as a single 'how fast does this guy go a long way' number, "
-          "but redundant with accel_0_30 + maintain_30_90.  League avg ~4.05 s.",
- "source": "seconds_since_hit_090",
- "expected": "− on SB success",
+{"name":   "Total 90 (total_90)",
+ "plain":  "Full home-to-first time from contact.",
+ "units":  "seconds",
+ "avg":    "4.05",
+ "elite":  "≤ 3.95",
+ "example":"Carroll: 3.94 (elite)  ·  Naylor: 4.31 (15th percentile)",
+ "tiers":  [("Elite",       "≤ 3.95"),
+            ("Above avg",   "3.96 – 4.02"),
+            ("Average",     "4.03 – 4.10"),
+            ("Below avg",   "4.11 – 4.18"),
+            ("Poor",        "≥ 4.19")],
+ "impact": "A summary number — equals Jump Time + Top-Speed Phase.  Useful "
+           "for ranking 'overall fast' runners.  Naylor's 4.31 puts him in "
+           "the bottom 25%, yet his accel_gap (below) shows he's still "
+           "quick OFF THE LINE — the steal-relevant part.",
+ "source": "Statcast Running Splits  ·  seconds_since_hit_090",
 },
 
-{"name": "accel_gap",
- "short": "Percentile rank of acceleration minus percentile rank of speed.",
- "long":  "POSITIVE  ⇒ runner is faster off the line than their top speed "
-          "implies.  Naylor archetype.\n"
-          "Formula:   pctile(accel_0_30, inverted)  −  pctile(sprint_speed).\n"
-          "We invert accel_0_30 because LOW time = HIGH percentile.\n"
-          "Range roughly −80 to +80 percentile points.",
- "source": "Computed from sprint_speed + accel_0_30 percentiles within season",
- "expected": "+ on SB success (independent of raw speed)",
+{"name":   "Accel Gap",
+ "plain":  "How much faster the runner is off the line than their top speed implies.",
+ "units":  "percentile points",
+ "avg":    "0",
+ "elite":  "+ 25 or more",
+ "example":"Naylor: +22 to +30 across seasons  ·  Witt: −20 (slower off the line for his speed)",
+ "tiers":  [("Naylor archetype",  "+15 or more  (fast jump despite low speed)"),
+            ("Above expected",    "+5 to +15"),
+            ("As expected",       "−5 to +5"),
+            ("Below expected",    "−15 to −5"),
+            ("Pure speedster",    "≤ −15 (fast top speed but slow start)")],
+ "impact": "This is the heart of the Naylor archetype.  POSITIVE values "
+           "mean the runner is faster off the line than their top speed "
+           "would predict — exactly what a slow-but-effective stealer "
+           "looks like.  Pure speedsters often have NEGATIVE accel_gap "
+           "because they coast on top-end speed.",
+ "source": "computed:  pctile(Jump Time, inverted)  −  pctile(Sprint Speed)",
 },
 
-{"name": "bolts",
- "short": "Number of plays in a season where the runner exceeded 30 ft/s.",
- "long":  "Baseball Savant's 'Bolts' count.  A simple count of elite-speed "
-          "moments.  Most slow runners have 0 bolts.",
- "source": "Sprint-speed table → 'bolts' column",
- "expected": "+ on SB success",
-},
-
-# ── Lead distance (REAL in v4, simulated in v3) ──────────────────────────────
-{"section": "Lead Distance (real Baseball Savant data, v4)"},
-
-{"name": "primary_lead  /  lead_off_dist",
- "short": "Average distance off first base when the pitcher starts the motion.",
- "long":  "The lead the runner takes BEFORE the pitcher commits.  Real "
-          "league average is roughly 11.5 ft.  Aggressive baserunners push "
-          "13+ ft; conservative is 10.5 ft.\n"
-          "In v3 this was a simulated draw N(lead_tendency_z, 0.6).\n"
-          "In v4 we use the real Baseball Savant figure: r_primary_lead.",
- "source": "baseballsavant.mlb.com/leaderboard/basestealing-run-value "
-           "→ r_primary_lead (real, 2015 onward)",
- "expected": "+ on SB success (longer head start)",
-},
-
-{"name": "secondary_lead",
- "short": "Average distance off first base at the moment of pitch release.",
- "long":  "Primary lead PLUS the ground covered while the pitcher is "
-          "delivering.  League average ~14.5 ft.  Elite secondary leads "
-          "are 16+ ft.",
- "source": "Baseball Savant → r_secondary_lead",
- "expected": "+ on SB success",
-},
-
-{"name": "lead_gain  /  r_sec_minus_prim_lead",
- "short": "DISTANCE COVERED FROM PITCHER'S FIRST MOVE TO PITCH RELEASE.",
- "long":  "secondary_lead − primary_lead.  This is the single best measure "
-          "of what the user calls 'jerk' — how much ground the runner "
-          "covered in the tiny window where the pitcher is committed but "
-          "the ball is not yet released.  Big lead_gain ⇒ the runner read "
-          "the pitcher early AND had explosive first steps.\n"
-          "Naylor archetype lives here: his lead_gain is consistently >3.5 ft "
-          "despite mediocre raw acceleration on a hit ball.",
- "source": "Baseball Savant → r_sec_minus_prim_lead",
- "expected": "+ on SB success (strongly)",
-},
-
-{"name": "*_sbx  variants (e.g. r_sec_minus_prim_lead_sbx)",
- "short": "Same metric, restricted to plays that ENDED in a SB attempt.",
- "long":  "Baseball Savant publishes the lead metrics two ways: averaged "
-          "over ALL plays the runner had on first (the base metric) and "
-          "averaged only over plays where the runner went (the _sbx "
-          "variant).  The _sbx version is cleaner for predicting SB "
-          "success but smaller-sample.",
+{"name":   "Bolts",
+ "plain":  "Number of plays in a season where the runner topped 30 ft/s.",
+ "units":  "count",
+ "avg":    "13",
+ "elite":  "100 +",
+ "example":"Witt: 250+  ·  Carroll: 200+  ·  Naylor: 0 (never hit 30 ft/s)",
+ "tiers":  [("Elite",       "100 +"),
+            ("Above avg",   "30 – 100"),
+            ("Average",     "5 – 30"),
+            ("Below avg",   "1 – 5"),
+            ("Never",       "0")],
+ "impact": "A simple count of elite-speed moments.  Big leaderboard "
+           "presence; the model treats it as a speed credential.  Zero "
+           "bolts doesn't disqualify you (Naylor proves that), but it "
+           "puts you in the slow-steal archetype the model is designed "
+           "to identify.",
  "source": "Baseball Savant",
- "expected": "Same direction as base metric",
 },
 
-# ── Jump / reaction ──────────────────────────────────────────────────────────
-{"section": "Jump & Reaction"},
+# ── Lead Distance ──────────────────────────────────────────────────────────
+{"section": "Lead Distance  (real Baseball Savant)"},
 
-{"name": "jump_time  (derived)",
- "short": "Seconds from pitcher's first move to runner's break for second.",
- "long":  "Not directly published by Statcast as a stand-alone leaderboard "
-          "field.  We approximate it by combining lead_gain with the "
-          "running-splits acceleration profile: time to cover lead_gain "
-          "feet from a standing start, given the runner's accel_0_30.\n"
-          "Lower = better jump.  Range roughly 0.30 – 0.55 s.",
- "source": "Derived from r_sec_minus_prim_lead + statcast_running_splits",
- "expected": "− on SB success (less time = better)",
+{"name":   "Primary Lead",
+ "plain":  "Average distance off first base when the pitcher starts his motion.",
+ "units":  "feet (ft)",
+ "avg":    "11.5",
+ "elite":  "13.0 +",
+ "example":"Trea Turner: 13.1  (elite)  ·  Mookie Betts: 12.4  ·  Naylor: 9.8  (small lead)",
+ "tiers":  [("Aggressive",  "13.0 +"),
+            ("Above avg",   "12.0 – 13.0"),
+            ("Average",     "11.0 – 12.0"),
+            ("Conservative","10.0 – 11.0"),
+            ("Very small",  "≤ 10.0")],
+ "impact": "Bigger lead = less distance to cover.  But coaches push leads "
+           "to where the pitcher gets nervous, so big leads can also "
+           "increase pickoff risk.  Notably Naylor has one of the SMALLEST "
+           "primary leads in MLB (9.8 ft) yet steals 90%+ — his edge is "
+           "elsewhere.",
+ "source": "Savant Basestealing Run Value · r_primary_lead "
+           "(career snapshot — Savant ignores year filter on this endpoint)",
 },
 
-{"name": "reaction_quality",
- "short": "Composite of jump_time (low) + lead_gain (high).",
- "long":  "v3 used a simulated U(0.6, 0.95).  v4 builds it from real "
-          "components.  A 0–1 score where 1 = optimal jump.",
- "source": "v4: composite of real jump_time + lead_gain",
- "expected": "+ on SB success",
+{"name":   "Secondary Lead",
+ "plain":  "Average distance off first base at the moment of pitch release.",
+ "units":  "feet (ft)",
+ "avg":    "14.5",
+ "elite":  "16.0 +",
+ "example":"Mookie Betts: 18.1 (elite)  ·  Naylor: 13.7",
+ "tiers":  [("Elite",       "16.0 +"),
+            ("Above avg",   "15.0 – 16.0"),
+            ("Average",     "14.0 – 15.0"),
+            ("Below avg",   "13.0 – 14.0"),
+            ("Poor",        "≤ 13.0")],
+ "impact": "Primary lead PLUS ground covered while the pitcher is "
+           "delivering.  Big secondary leads compress the steal distance "
+           "AND give the runner momentum.",
+ "source": "Savant · r_secondary_lead (career snapshot)",
 },
 
-# ── Pitcher / catcher context ────────────────────────────────────────────────
-{"section": "Pitcher & Catcher Context"},
-
-{"name": "pitcher_ttp  /  pitcher_delivery_time",
- "short": "Pitcher Time-To-Plate: seconds from first motion to ball in glove.",
- "long":  "Slow deliveries (≥1.40 s) give the runner more time.  Fast "
-          "deliveries (1.15 s slide-step) crush attempts.  League avg ~1.30 s.\n"
-          "v3 SIMULATED this with N(1.30, 0.10).\n"
-          "v4 DROPPED — couldn't be derived.\n"
-          "v5 USES LEAGUE CONSTANT 1.30 s.  Real per-pitch delivery time is "
-          "not publicly available; Savant's pitch-tempo CSV is buggy at "
-          "source (median_seconds_empty equals median_seconds_onbase for "
-          "every row, and year= filter is ignored).",
- "source": "v5: league constant 1.30 s",
- "expected": "+ on SB success (longer TTP helps the runner)",
+{"name":   "Lead Gain  (the 'jerk' metric)",
+ "plain":  "Distance covered between pitcher's first move and pitch release.",
+ "units":  "feet (ft)",
+ "avg":    "3.5",
+ "elite":  "4.5 +",
+ "example":"Mookie Betts: 5.6 (elite — reads pitchers)  ·  Naylor: 3.9 (above avg)",
+ "tiers":  [("Elite",       "4.5 +"),
+            ("Above avg",   "3.8 – 4.5"),
+            ("Average",     "3.2 – 3.8"),
+            ("Below avg",   "2.6 – 3.2"),
+            ("Poor",        "≤ 2.6")],
+ "impact": "The user's 'jerk' metric.  Captures TWO things at once: how "
+           "well the runner READS the pitcher's first move AND how "
+           "explosively they take their secondary lead.  Big lead-gain "
+           "is a hallmark of smart baserunners (Betts, Chisholm Jr., "
+           "Frazier, Arraez).",
+ "source": "Savant · r_secondary_lead − r_primary_lead",
 },
 
-{"name": "pop_time_2b  /  pop_2b_sba",
- "short": "Pop time on stolen-base attempts to 2nd base (sec).",
- "long":  "REAL per-catcher-per-year data (v5).  From Savant's catcher "
-          "poptime leaderboard.  Elite catchers run pop times of 1.85 s "
-          "and below.  Bad pop times (2.05+) make stealing trivial.  "
-          "League avg ~1.95 s.  Available 2018+ (not 2020).",
- "source": "pybaseball.statcast_catcher_poptime(year, min_2b_att)",
- "expected": "− on SB success (faster catcher = harder to steal)",
+# ── New v5/v6 metrics ──────────────────────────────────────────────────────
+{"section": "v5 / v6 NEW Metrics"},
+
+{"name":   "Pre-Release Velocity  (pre_rel_vel)",
+ "plain":  "How much ground the runner covers per second between pitcher "
+           "first move and pitch release.",
+ "units":  "ft / sec",
+ "avg":    "2.7",
+ "elite":  "3.5 +",
+ "example":"Jazz Chisholm Jr. 2025: 4.34 (elite)  ·  Naylor: 2.98  ·  Soto: 2.39",
+ "tiers":  [("Elite",       "3.5 +"),
+            ("Above avg",   "3.0 – 3.5"),
+            ("Average",     "2.5 – 3.0"),
+            ("Below avg",   "2.0 – 2.5"),
+            ("Poor",        "≤ 2.0")],
+ "impact": "Even if a pitcher has a fast delivery, a runner who covers a "
+           "lot of ground in that small window is still dangerous.  We use "
+           "a league-constant delivery (1.30 s) as the divisor because "
+           "per-pitch pitcher TTP isn't publicly available — so variation "
+           "is driven by Lead Gain.  The leaderboard separates 'smart' "
+           "baserunners from pure speedsters.",
+ "source": "Lead Gain  ÷  1.30 s",
 },
 
-{"name": "exchange_2b_3b_sba",
- "short": "Catcher's glove-to-throwing-hand transfer time (sec).",
- "long":  "Component of pop time.  Real per-catcher (v5).",
- "source": "pybaseball.statcast_catcher_poptime",
- "expected": "− on SB success",
+{"name":   "Post-Release Distance  (post_rel_dist)",
+ "plain":  "How much ground the runner covers during the catcher's pop time.",
+ "units":  "feet (ft)",
+ "avg":    "51.5",
+ "elite":  "58.0 +",
+ "example":"Victor Scott II 2025: 59.5 (elite)  ·  Naylor: 41.5 (last %ile)",
+ "tiers":  [("Elite",       "58.0 +"),
+            ("Above avg",   "54.0 – 58.0"),
+            ("Average",     "50.0 – 54.0"),
+            ("Below avg",   "46.0 – 50.0"),
+            ("Poor",        "≤ 46.0")],
+ "impact": "After the pitcher releases the ball, the runner has ~1.95 "
+           "seconds (the catcher's pop time) to cover as much ground as "
+           "possible before the throw arrives.  Slower runners still "
+           "accelerating during this window cover LESS than sprint × pop "
+           "implies — we subtract an acceleration tax for them.  This is "
+           "the speedster-archetype metric: Witt, Carroll, Scott II "
+           "dominate.",
+ "source": "Sprint Speed × catcher pop_2b_sba − acceleration correction",
 },
 
-{"name": "maxeff_arm_2b_3b_sba",
- "short": "Catcher's max-effort arm strength on SB throws (mph).",
- "long":  "Higher arm speed → faster throw → tighter window for steal.",
- "source": "pybaseball.statcast_catcher_poptime",
- "expected": "− on SB success",
+{"name":   "3-2 Count Attempt Share  (pct_in_HL)",
+ "plain":  "Share of a runner's stolen-base attempts that came on a 3-2 (full) count.",
+ "units":  "fraction (0.0 – 1.0)",
+ "avg":    "≈ 0.55",
+ "elite":  "varies",
+ "example":"Naylor 2023:  100%  ·  Naylor 2025:  0%  ·  Most runners: 50–80%",
+ "tiers":  [("Heavy 3-2 stealer",  "0.75 +"),
+            ("Mostly 3-2",        "0.50 – 0.75"),
+            ("Balanced",          "0.25 – 0.50"),
+            ("Rarely 3-2",        "0.05 – 0.25"),
+            ("Never 3-2",         "0.00")],
+ "impact": "WHAT THIS REALLY MEASURES — there's a Statcast quirk: when we "
+           "parse SB attempts from play descriptions, the count attached "
+           "is the AT-BAT's FINAL count, not the count when the runner "
+           "actually broke for second.  So an SB that happens mid-AT-BAT "
+           "where the AB ended on 3-2 looks like 'an SB on a 3-2 count' "
+           "even if it really happened on 0-0.  This means pct_in_HL is "
+           "really 'fraction of this runner's attempts where the AB "
+           "happened to end on 3-2'.  It carries a small signal but mostly "
+           "reflects how often the at-bat went to full count.  "
+           "v6 plan: fix by pulling MLB Stats API play-by-play.",
+ "source": "regex on Statcast `des` field",
 },
 
-{"name": "pitcher_lead_allowed_prim / sec / gain",
- "short": "Per-pitcher career: how much primary, secondary, lead-gain runners take.",
- "long":  "From Savant pitcher-running-game CSV.  Pitchers good at holding "
-          "runners SHOW UP HERE with smaller lead values.  Career-aggregate "
-          "snapshot (year filter ignored).  Cross-joined to each attempt by "
-          "pitcher_id.",
- "source": "https://baseballsavant.mlb.com/leaderboard/pitcher-running-game",
- "expected": "+ for runner side (more lead allowed = easier steal)",
+# ── Real SB performance / residuals ────────────────────────────────────────
+{"section": "Real Stolen-Base Performance"},
+
+{"name":   "SB / CS",
+ "plain":  "Hard counts: stolen bases and caught stealings in the season.",
+ "units":  "count",
+ "avg":    "varies",
+ "elite":  "30 SB +",
+ "example":"Naylor 2025:  30 SB / 2 CS = 93.8% success",
+ "tiers":  [("Elite volume",  "30 + SB"),
+            ("Above avg",     "20 – 30 SB"),
+            ("Average",       "10 – 20 SB"),
+            ("Low",           "< 10 SB (excluded from model)")],
+ "impact": "Ground truth.  We require SB + CS ≥ 10 in a season for the "
+           "runner-season to qualify (smaller samples are too noisy).",
+ "source": "MLB Stats API",
 },
 
-{"name": "matchup_lead_diff",
- "short": "runner_lead_gain  −  pitcher_lead_allowed",
- "long":  "Positive = this runner-pitcher matchup favors the runner.  "
-          "Negative = the pitcher's running-game suppression overcomes "
-          "the runner's lead profile.  v5 matchup feature.",
- "source": "v5: derived",
- "expected": "+ on SB success",
+{"name":   "Real SB %  (shrunk)",
+ "plain":  "Stolen-base success rate, adjusted to prevent tiny samples from looking 100%.",
+ "units":  "fraction (0–1)",
+ "avg":    "0.78",
+ "elite":  "0.85 +",
+ "example":"Naylor 2025:  0.917 (30 SB, 2 CS)",
+ "tiers":  [("Elite",     "0.88 +"),
+            ("Above avg", "0.80 – 0.88"),
+            ("Average",   "0.72 – 0.80"),
+            ("Below avg", "0.65 – 0.72"),
+            ("Poor",      "≤ 0.65")],
+ "impact": "Shrinkage: a 1-for-1 runner doesn't look like 100%.  Formula: "
+           "(SB + 5·league%) ÷ (SB + CS + 5).  League-mean prior 'pulls' "
+           "small samples toward 78%.",
+ "source": "computed",
 },
 
-# ── Real SB performance / residuals ──────────────────────────────────────────
-{"section": "Real SB Performance & Residuals"},
-
-{"name": "SB  /  CS",
- "short": "Real stolen bases / caught stealing in the calendar season.",
- "long":  "Hard counts from the MLB Stats API.  We use them as ground "
-          "truth.  In v3 we required SB+CS ≥ 10 to qualify for the model.",
- "source": "statsapi.mlb.com/api/v1/stats?stats=season&group=hitting",
- "expected": "Ground-truth outcome",
+{"name":   "Expected SB %",
+ "plain":  "The SB% you'd expect from this runner based ONLY on their speed.",
+ "units":  "fraction (0–1)",
+ "avg":    "≈ Real SB %",
+ "elite":  "n/a",
+ "example":"Naylor 2025 expected:  0.79 (3rd %ile speed)  ·  actual: 0.92",
+ "tiers":  [("Used as a baseline", "compare against Real SB% to get residual")],
+ "impact": "Baseline.  Subtracting from Real SB% gives the 'speed-adjusted "
+           "skill' signal.",
+ "source": "2nd-order polynomial fit on Sprint Speed across qualified runners",
 },
 
-{"name": "real_sb_pct",
- "short": "Shrunk Bayesian estimate of true SB% with k=5.",
- "long":  "Formula:  (SB + k·LeagueSB%) / (SB + CS + k),  k = 5.\n"
-          "Shrinkage prevents 1-for-1 runners from being scored as 100%.\n"
-          "League SB% is roughly 78% in the modern era.",
- "source": "Computed from SB/CS",
- "expected": "+ proxy for skill (used as model target sometimes)",
+{"name":   "SB Residual  (the KEY signal)",
+ "plain":  "How much better (or worse) the runner is than their speed predicts.",
+ "units":  "fraction (typically −0.20 to +0.20)",
+ "avg":    "0",
+ "elite":  "+0.10 or more",
+ "example":"Naylor 2025: +0.122 (huge overperformer)  ·  Soto 2025: +0.128",
+ "tiers":  [("Massive overperformer",  "+0.10 +"),
+            ("Above expectation",      "+0.04 to +0.10"),
+            ("As expected",            "−0.04 to +0.04"),
+            ("Below expectation",      "−0.10 to −0.04"),
+            ("Far below",              "≤ −0.10")],
+ "impact": "POSITIVE values mean the runner steals MORE successfully than "
+           "their raw speed suggests.  This is the Naylor / Soto story.  "
+           "We weight it heavily in the SSSI index.",
+ "source": "Real SB%  −  Expected SB%",
 },
 
-{"name": "expected_sb_pct",
- "short": "Polynomial-predicted SB% given only the runner's sprint_speed.",
- "long":  "We fit a 2nd-order polynomial of real_sb_pct on sprint_speed "
-          "across all qualified runners.  This is the SB% you'd expect "
-          "for a 'replacement-level baserunner' with the same speed.",
- "source": "np.polyfit(sprint_speed, real_sb_pct, deg=2)",
- "expected": "Baseline for residual",
+# ── Battery context (real per-attempt) ────────────────────────────────────
+{"section": "Battery Context  (real per-attempt)"},
+
+{"name":   "Catcher Pop Time  (pop_2b_sba)",
+ "plain":  "Catcher's time from glove to second base on a steal attempt.",
+ "units":  "seconds",
+ "avg":    "1.95",
+ "elite":  "≤ 1.85",
+ "example":"Patrick Bailey: 1.85 (elite)  ·  league avg: 1.95",
+ "tiers":  [("Elite arm",   "≤ 1.85"),
+            ("Above avg",   "1.86 – 1.92"),
+            ("Average",     "1.93 – 1.97"),
+            ("Below avg",   "1.98 – 2.04"),
+            ("Poor",        "≥ 2.05")],
+ "impact": "REAL per-catcher-per-year data starting 2018.  Low pop time = "
+           "throw arrives at 2B sooner = harder to steal.  In Model A "
+           "this is one of the top 5 features.",
+ "source": "Statcast Catcher Poptime leaderboard",
 },
 
-{"name": "sb_residual",
- "short": "real_sb_pct  −  expected_sb_pct.  THE key v3 signal.",
- "long":  "Positive sb_residual ⇒ the runner over-performs what their "
-          "raw speed predicts.  This is the empirical, speed-adjusted "
-          "demonstrated steal skill.  Naylor 2025: +0.108 (huge).  "
-          "Soto 2025: +0.105.  This is what the SSSI is built around.",
- "source": "real_sb_pct − expected_sb_pct",
- "expected": "+ direct measure of slow-steal skill",
+{"name":   "Catcher Arm Strength  (maxeff_arm_2b_3b_sba)",
+ "plain":  "Maximum-effort throw velocity to second base.",
+ "units":  "mph",
+ "avg":    "84.0",
+ "elite":  "88.0 +",
+ "example":"Korey Lee 2024: 88.3 mph (elite)",
+ "tiers":  [("Elite",       "88.0 +"),
+            ("Above avg",   "85.0 – 88.0"),
+            ("Average",     "82.0 – 85.0"),
+            ("Below avg",   "79.0 – 82.0"),
+            ("Poor",        "≤ 79.0")],
+ "impact": "Component of Pop Time.  Some catchers have weak arms but quick "
+           "transfers; some have rockets but slow exchanges.  v5/v6 use "
+           "both as separate features.",
+ "source": "Statcast Catcher Poptime",
 },
 
-# ── Context dummies / situational ────────────────────────────────────────────
-{"section": "Situational Variables"},
-
-{"name": "late_game",
- "short": "Indicator: inning ≥ 7.",
- "long":  "Defenses may be more attentive late; runners may take fewer risks.",
- "source": "Pitch-level data",
- "expected": "Small − on attempts",
+{"name":   "Catcher Exchange  (exchange_2b_3b_sba)",
+ "plain":  "Time from glove receive to throwing-hand release.",
+ "units":  "seconds",
+ "avg":    "0.64",
+ "elite":  "≤ 0.60",
+ "example":"Patrick Bailey 2024: 0.60",
+ "tiers":  [("Elite",       "≤ 0.60"),
+            ("Above avg",   "0.61 – 0.63"),
+            ("Average",     "0.64 – 0.66"),
+            ("Below avg",   "0.67 – 0.69"),
+            ("Poor",        "≥ 0.70")],
+ "impact": "Fast exchange compensates for a weak arm and vice-versa.",
+ "source": "Statcast Catcher Poptime",
 },
 
-{"name": "outs",
- "short": "Number of outs (0/1/2) in the half-inning.",
- "long":  "Two-out steals are riskier; managers send less.",
- "source": "Pitch-level data",
- "expected": "Ambiguous on success; − on attempt rate",
+{"name":   "Pitcher Lead Allowed",
+ "plain":  "Average lead distance runners take against THIS pitcher (career).",
+ "units":  "feet (ft)",
+ "avg":    "3.5  (lead gain allowed)",
+ "elite":  "≤ 2.8  (pitcher is great at suppressing leads)",
+ "example":"Best at holding runners → low value;  Slow to plate → high value",
+ "tiers":  [("Suppresses leads", "≤ 2.8"),
+            ("Above avg",        "2.8 – 3.3"),
+            ("Average",          "3.3 – 3.7"),
+            ("Below avg",        "3.7 – 4.1"),
+            ("Gives up leads",   "≥ 4.1")],
+ "impact": "Career-aggregate.  When this number is small, the pitcher is "
+           "good at holding runners.  Big = runners feast.  Joined to "
+           "each SB attempt for matchup-level modelling.",
+ "source": "Savant Pitcher Running-Game Run Value",
 },
 
-{"name": "p_throws_L,  stand_L",
- "short": "Dummies: pitcher throws left / batter stands left.",
- "long":  "Lefty pitchers face the runner directly → harder to steal.\n"
-          "Lefty batter blocks the catcher's throwing lane → slightly easier.",
- "source": "Pitch-level data",
- "expected": "p_throws_L:  −     stand_L:  +",
+{"name":   "Pitcher TTP  (Time-to-Plate)",
+ "plain":  "Seconds from pitcher's first motion to ball-in-catcher's-glove.",
+ "units":  "seconds",
+ "avg":    "1.30",
+ "elite":  "≤ 1.15  (slide-step)",
+ "example":"league constant used in v5/v6 (real per-pitch not published)",
+ "tiers":  [("Slide step",  "≤ 1.15"),
+            ("Fast",        "1.16 – 1.25"),
+            ("Average",     "1.26 – 1.35"),
+            ("Slow",        "1.36 – 1.45"),
+            ("Very slow",   "≥ 1.46")],
+ "impact": "Real per-pitch TTP would be the single most useful new data "
+           "source — but Statcast doesn't publish it.  Savant's "
+           "pitch-tempo CSV is buggy at source (the 'with-runners-on' "
+           "column equals the 'bases-empty' column for every row).  "
+           "v6 substitutes the league constant 1.30 s.",
+ "source": "league constant 1.30 (v6)",
 },
 
-# ── Compound indices ─────────────────────────────────────────────────────────
-{"section": "Compound Skill Indices (SSSI)"},
+# ── Situational / context ─────────────────────────────────────────────────
+{"section": "Game Situation"},
 
-{"name": "Z-score notation  (suffix _z)",
- "short": "Any variable with _z is standardized to mean 0, SD 1.",
- "long":  "Standardization happens within the qualified-runner pool.  So "
-          "lead_off_z = (lead_off_dist − pool mean) / pool SD.  A value of "
-          "+2 means '2 standard deviations above league'.  This lets us "
-          "add unlike variables (feet, seconds, percentiles) into one "
-          "composite score.",
- "source": "sklearn.preprocessing.StandardScaler",
- "expected": "Same direction as un-standardized variable",
+{"name":   "Inning",
+ "plain":  "Which inning the play occurred.",
+ "units":  "integer 1 – 15",
+ "avg":    "—",
+ "elite":  "—",
+ "example":"Late-game (7+) shows different attempt rates than early.",
+ "tiers":  [("Early",       "1 – 3"),
+            ("Middle",      "4 – 6"),
+            ("Late",        "7 – 9"),
+            ("Extras",      "10 +")],
+ "impact": "Surprisingly important in Model A — the highest SHAP feature.  "
+           "Late-inning leverage changes manager decisions and runner "
+           "risk tolerance.",
+ "source": "Statcast pitch-level",
 },
 
-{"name": "SSSI_v3_fixed",
- "short": "Fixed-weight Slow-Steal Skill Index.",
- "long":  "Plan-default linear combination of z-scores:\n"
-          "    0.35 · z(sb_residual)\n"
-          "  + 0.25 · z(accel_gap)\n"
-          "  + 0.15 · z(lead_gain)\n"
-          "  + 0.10 · z(reaction_quality)   (= 'jump')\n"
-          "  + 0.10 · z(lead_off_dist)\n"
-          "  − 0.05 · z(speed_capped)\n"
-          "Higher = better slow-steal archetype.  Designed to reward "
-          "skill independent of raw speed.",
- "source": "Computed in v3 pipeline",
- "expected": "+ identifies slow-but-effective basestealers",
+{"name":   "Outs (outs_when_up)",
+ "plain":  "Number of outs in the half-inning (0, 1, or 2).",
+ "units":  "0 / 1 / 2",
+ "avg":    "—",
+ "elite":  "—",
+ "example":"Two-out steals are riskier; managers send less often.",
+ "tiers":  [("0 outs",  "highest attempt rate"),
+            ("1 out",   "average"),
+            ("2 outs",  "lowest — risk of ending inning")],
+ "impact": "Used as a feature; not a huge signal but small reliable effect.",
+ "source": "Statcast pitch-level",
 },
 
-{"name": "SSSI_v3_opt  (optimised)",
- "short": "Grid-searched weights that maximise Naylor+Soto z-score.",
- "long":  "From 1,728 weight combinations on a 6-d grid we picked:\n"
-          "    0.25 · z(sb_residual)\n"
-          "  + 0.10 · z(accel_gap)\n"
-          "  + 0.05 · z(lead_gain)\n"
-          "  + 0.05 · z(reaction_quality)\n"
-          "  + 0.20 · z(lead_off_dist)\n"
-          "  − 0.20 · z(speed_capped)\n"
-          "Under these weights Naylor 2025 ranks #1 (SSSI = 2.10), "
-          "Soto 2025 ranks #3 (SSSI = 1.61).",
- "source": "Grid search inside v3 pipeline",
- "expected": "Optimal for the slow-steal archetype",
+{"name":   "Balls / Strikes  (count)",
+ "plain":  "Number of balls / strikes BEFORE the current pitch.",
+ "units":  "integers 0–3 / 0–2",
+ "avg":    "—",
+ "elite":  "—",
+ "example":"3-2 (full count) is by far the most common SB-attempt context.",
+ "tiers":  [("Full count 3-2",   "highest by far (1.9% per pitch)"),
+            ("Two-strike",       "0.27 – 0.29%"),
+            ("All other counts", "≈ 0% (data quirk — see 3-2 share above)")],
+ "impact": "Feeds into 3-2 Count Attempt Share.  See limitation note "
+           "in that entry — exact count at SB is not in `des` text.",
+ "source": "Statcast pitch-level",
 },
 
-{"name": "lead_tendency_z  (latent variable)",
- "short": "Latent runner-specific tendency to take big leads.",
- "long":  "In v3 this was a random N(0,1) draw — except Naylor and Soto "
-          "were anchored at +2.0 (documented elite leads).  In v4 this "
-          "is REPLACED with real r_primary_lead z-score and the anchoring "
-          "is removed.",
- "source": "v3 simulated; v4 = z(r_primary_lead)",
- "expected": "+ on SB success",
+# ── Compound indices ──────────────────────────────────────────────────────
+{"section": "Composite Scores"},
+
+{"name":   "SSSI v5  (Slow-Steal Skill Index)",
+ "plain":  "A weighted composite score that identifies slow-but-effective stealers.",
+ "units":  "z-score units (typically −3 to +3)",
+ "avg":    "0",
+ "elite":  "+2.0 or more",
+ "example":"Naylor 2025: +1.99  ·  Soto 2025: +1.26  ·  league mean: 0",
+ "tiers":  [("Elite slow-steal", "+2.0 +"),
+            ("Above avg",        "+1.0 to +2.0"),
+            ("Average",          "−0.5 to +1.0"),
+            ("Below avg",        "−1.5 to −0.5"),
+            ("Poor",             "≤ −1.5")],
+ "impact": "Weighted average of eight standardized features (see v5 "
+           "report).  Designed to find the Naylor / Soto archetype: "
+           "elite-performing slow runners.  Weights were tuned on 80% "
+           "of runners with Naylor + Soto HELD OUT to avoid overfitting.",
+ "source": "computed in v5/v6 pipeline",
 },
 
-# ── Per-pitch features (v5) ──────────────────────────────────────────────────
-{"section": "Per-Pitch Features  (v5 only)"},
+# ── Coefficient interpretation ────────────────────────────────────────────
+{"section": "How to Read the Model's Weight Table"},
 
-{"name": "y_attempt  /  y_success",
- "short": "Binary labels per attempt: was there an attempt? did it succeed?",
- "long":  "Parsed from the Statcast `des` (description) text field.  Regex "
-          "matches 'steals (N) 2nd base' → SB; 'caught stealing 2nd' → CS; "
-          "'picks off ... at 1st' → PK.  CRITICAL LIMITATION: the count, "
-          "outs, and inning attached to an attempt are those of the at-bat's "
-          "FINAL pitch (where the SB des was recorded), not the actual "
-          "mid-at-bat pitch on which the SB happened.",
- "source": "v5: regex on Statcast des field",
- "expected": "Ground-truth outcome (y_success is the target of Model A)",
+{"name":   "SB % Boost per Tier  (standardised logit coefficient)",
+ "plain":  "If a runner improves this feature by 1 tier "
+           "(1 standard deviation), how much does the model's predicted "
+           "SB success rate go up?",
+ "units":  "percentage points (pp)",
+ "avg":    "0",
+ "elite":  "+5 pp or more = a strongly helpful feature",
+ "example":"Jump Time has  −10.6 pp  → improving Jump Time by 1 tier "
+           "raises predicted SB% from 62% to 51% (-10.6 pp).  Wait, that's "
+           "WORSE?  No — Jump Time is in seconds, and LOWER is better.  "
+           "So a 1-tier INCREASE (slower) hurts by 10.6 pp.  The model "
+           "shows direction with a sign.",
+ "tiers":  [("Strongly helps",   "+5 pp +"),
+            ("Helps a little",   "+1 to +5 pp"),
+            ("Neutral",          "−1 to +1 pp"),
+            ("Hurts a little",   "−5 to −1 pp"),
+            ("Hurts a lot",      "≤ −5 pp")],
+ "impact": "Replaces the old 'coef_z' column.  Plain-English version of "
+           "the same number.  Compute as:\n"
+           "    P_baseline = sigmoid(intercept)\n"
+           "    P_after    = sigmoid(intercept + coef)\n"
+           "    boost_pp   = (P_after − P_baseline) × 100",
+ "source": "logistic regression coefficient × baseline probability slope",
 },
 
-{"name": "balls,  strikes  (count)",
- "short": "Pre-pitch count at the at-bat's final pitch (per-pitch field).",
- "long":  "Real per-pitch from Statcast.  Used to compute count-leverage "
-          "(see is_count_HL below).",
- "source": "Statcast",
- "expected": "Context — interaction with attempt rate",
-},
-
-{"name": "count_label",
- "short": "String 'balls-strikes', e.g. '1-1', '3-2'.",
- "long":  "Used to bucket pitches into the 12 possible counts.",
- "source": "v5: derived",
- "expected": "Categorical context",
-},
-
-{"name": "is_count_HL  (high-leverage count flag)",
- "short": "1 if this count's attempt rate is ≥ 60% of the peak count's rate.",
- "long":  "Per user spec, low-attempt counts are DROPPED from per-attempt "
-          "training because they add noise.  The empirical HL set is "
-          "computed at runtime; typical HL counts: 0-0, 1-0, 2-1, 1-1, 3-1.",
- "source": "v5: derived from league attempt-rate table",
- "expected": "Flag — used as a feature AND a training filter",
-},
-
-{"name": "pct_in_HL  (per runner-season)",
- "short": "Fraction of a runner's attempts that occurred in HL counts.",
- "long":  "Aggregate version of is_count_HL.  Runners who pick their spots "
-          "well will have high pct_in_HL.",
- "source": "v5: derived",
- "expected": "+ on overall SB%",
-},
-
-{"name": "outs_when_up,  inning,  inning_topbot",
- "short": "Game-state at the moment of the at-bat (real per-pitch).",
- "long":  "Outs:  0/1/2.  Two-out steals are riskier; managers send less.\n"
-          "Inning:  1-15+.  Late-game leverage influences attempt rate.\n"
-          "Top/bot:  game half.",
- "source": "Statcast per-pitch",
- "expected": "Context",
-},
-
-{"name": "pre_rel_vel  (NEW v5 metric)",
- "short": "Runner's avg velocity from pitcher's first move to release  (ft/s).",
- "long":  "Formula:  r_sec_minus_prim_lead  /  pitcher_delivery_proxy_s\n"
-          "        = lead_gain (ft) / 1.30 s (league-constant proxy)\n"
-          "Variation in this metric is driven ENTIRELY by lead_gain "
-          "because we have no real per-pitcher delivery time.  Still "
-          "useful as a normalised distance-per-time metric.\n"
-          "User's intent: a runner who covers more ground in the same "
-          "pitcher-delivery window is more dangerous, even against fast "
-          "pitchers.",
- "source": "v5: derived from runner career lead + league constant",
- "expected": "+ on SB success",
-},
-
-{"name": "post_rel_dist  (NEW v5 metric)",
- "short": "Distance runner covers during catcher's pop window  (ft).",
- "long":  "Formula:  sprint_speed × pop_2b_sba  −  accel_correction\n"
-          "where accel_correction = 0.5 × max(0, accel_0_30 − 1.65)\n"
-          "                                × sprint_speed × pop_time.\n"
-          "Slower-acceleration runners haven't reached top speed yet so "
-          "the naive sprint × pop product over-counts.  The correction "
-          "scales the penalty with the runner's accel-time deficit.\n"
-          "User's intent: even a slow runner who covers a lot of ground "
-          "during the pop window is dangerous on the back end.",
- "source": "v5: derived from real per-attempt pop + runner profile",
- "expected": "+ on SB success",
-},
-
-{"name": "pre_rel_vel_avg,  post_rel_dist_avg  (per runner-season)",
- "short": "Per-attempt mean of the above two metrics over a season.",
- "long":  "Aggregated for use in Model B (season-level GBM) and SSSI v5.",
- "source": "v5: groupby(runner_id, season).mean()",
- "expected": "+ on overall SB%",
-},
-
-{"name": "avg_pop_faced",
- "short": "Average catcher pop time across this runner's SB attempts.",
- "long":  "Real per-attempt catcher pop (v5) → mean per runner-season.  "
-          "Runners who attack weak-arm catchers will have HIGH avg_pop_faced.",
- "source": "v5: derived from per-attempt join",
- "expected": "+ on overall SB%",
-},
-
-{"name": "seconds_since_hit_005  …  seconds_since_hit_090",
- "short": "18 raw Statcast running-splits columns (5/10/15/.../90 ft).",
- "long":  "Each column is seconds elapsed from contact at that distance "
-          "milestone.  v5 explores three representations of this curve "
-          "(see curve_a, curve_b, curve_c below).  Lower = faster.",
- "source": "pybaseball.statcast_running_splits(year, raw_splits=True)",
- "expected": "− on SB success (less time = better)",
-},
-
-{"name": "curve_a,  curve_b,  curve_c,  curve_rmse",
- "short": "Quadratic fit to runner's velocity curve over 5-90 ft.",
- "long":  "Fits time = a·d² + b·d + c to the 18 split points per runner-season.\n"
-          "a captures curvature (fatigue / late drag).\n"
-          "b is the linear time/distance slope (≈ 1/avg-speed).\n"
-          "c is the intercept (initial reaction time after contact).\n"
-          "rmse measures how well a quadratic fits the actual splits.\n"
-          "v5 'Path B' representation of the splits.",
- "source": "v5: np.polyfit per row across 18 split columns",
- "expected": "Combined ≈ 1 strong feature",
-},
-
-{"name": "SSSI_v5",
- "short": "v5 composite — adds pre_rel_vel_z and post_rel_dist_z to v4.",
- "long":  "Linear combination of 8 z-scored terms.  Weights are grid-searched "
-          "on 80% of runners (Naylor and Soto are HELD OUT from the grid "
-          "search to avoid overfitting them).",
- "source": "Computed in v5_explore.py",
- "expected": "+ identifies slow-steal archetype with new metrics included",
+{"name":   "Odds Multiplier  (odds ratio per SD)",
+ "plain":  "If a runner improves by 1 tier, what happens to their "
+           "ODDS of success?",
+ "units":  "multiplicative factor",
+ "avg":    "1.0",
+ "elite":  "1.20 +  = feature multiplies odds by 20%",
+ "example":"Lead Gain has Odds Multiplier 1.16  → improving by 1 tier "
+           "multiplies the runner's success-odds by 1.16.\n"
+           "Jump Time has Odds Multiplier 0.63  → 1 tier SLOWER cuts the "
+           "odds to 63% of baseline.",
+ "tiers":  [("Strongly helps",   "1.20 +"),
+            ("Helps",            "1.05 – 1.20"),
+            ("Neutral",          "0.95 – 1.05"),
+            ("Hurts",            "0.80 – 0.95"),
+            ("Strongly hurts",   "≤ 0.80")],
+ "impact": "Replaces the old 'OR/SD' column.  Multiply with current odds "
+           "to get new odds.  Equivalent to e^coefficient.",
+ "source": "exp(logistic coefficient)",
 },
 
 ]
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Render to PDF
 # ─────────────────────────────────────────────────────────────────────────────
+TIER_COLOR = ["#10B981", "#3B82F6", "#6B7280", "#F59E0B", "#DC2626"]
+
 def render(entries, path):
     PAGE_W, PAGE_H = 8.5, 11
-    LEFT, RIGHT, TOP, BOTTOM = 0.6, 0.6, 0.6, 0.6
-    LINE_H = 0.16        # inches per text line approx
-    PER_PAGE_USABLE = PAGE_H - TOP - BOTTOM
+    LEFT, RIGHT, TOP, BOTTOM = 0.55, 0.55, 0.55, 0.55
 
     with PdfPages(path) as pdf:
-        # Cover page
+
+        # ─── Cover page ────────────────────────────────────────────────
         fig = plt.figure(figsize=(PAGE_W, PAGE_H)); fig.patch.set_facecolor("white")
         ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
-        ax.text(0.5, 0.78, "The Naylor Model", ha="center", va="center",
-                fontsize=28, fontweight="bold")
-        ax.text(0.5, 0.72, "Variable Glossary", ha="center", va="center",
-                fontsize=22)
-        ax.text(0.5, 0.65, "Reference for every column in the v3 / v4 / v5 model",
-                ha="center", va="center", fontsize=12, style="italic",
-                color="#444")
-        ax.text(0.5, 0.30,
-                "Every variable has:\n"
-                "  •  a plain-English definition\n"
-                "  •  the exact formula and units\n"
-                "  •  the data source\n"
-                "  •  the expected direction of effect on steal success",
-                ha="center", va="center", fontsize=11, color="#222",
+        ax.text(0.5, 0.82, "The Naylor Model",
+                ha="center", va="center", fontsize=30, fontweight="bold")
+        ax.text(0.5, 0.74, "Variable Glossary",
+                ha="center", va="center", fontsize=22, color="#1F3A5F")
+        ax.text(0.5, 0.66, "Statcast-style reference  ·  v6",
+                ha="center", va="center", fontsize=13, style="italic",
+                color="#555")
+
+        ax.text(0.5, 0.50,
+                "Every variable in this glossary tells you:\n\n"
+                "• what it actually measures (plain English)\n"
+                "• the units and a typical value\n"
+                "• what's elite and what's poor\n"
+                "• a real player example\n"
+                "• why it affects steal success",
+                ha="center", va="center", fontsize=11.5, color="#222",
+                linespacing=1.9)
+
+        ax.text(0.5, 0.22,
+                "No statistical jargon.\n"
+                "Replace 'coef_z' and 'OR/SD' with\n"
+                "'SB % Boost per Tier' and 'Odds Multiplier'.",
+                ha="center", va="center", fontsize=11, color="#444",
                 linespacing=1.6)
-        ax.text(0.5, 0.10,
+
+        ax.text(0.5, 0.07,
                 "Generated for The Naylor Model · 2026",
                 ha="center", va="center", fontsize=9, color="#888")
         pdf.savefig(fig); plt.close(fig)
 
-        # Content pages — flow entries page by page
-        y_cursor = PAGE_H - TOP
-        fig = plt.figure(figsize=(PAGE_W, PAGE_H)); fig.patch.set_facecolor("white")
-        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
-
-        def new_page():
-            nonlocal fig, ax, y_cursor
-            pdf.savefig(fig); plt.close(fig)
-            fig = plt.figure(figsize=(PAGE_W, PAGE_H)); fig.patch.set_facecolor("white")
-            ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
-            y_cursor = PAGE_H - TOP
-
-        def need(space_in):
-            nonlocal y_cursor
-            if y_cursor - space_in < BOTTOM:
-                new_page()
-
-        for e in entries:
-            if "section" in e:
-                need(0.7)
-                # section bar
-                y_cursor -= 0.35
-                ax.add_patch(plt.Rectangle(
-                    (LEFT/PAGE_W, y_cursor/PAGE_H),
-                    (PAGE_W - LEFT - RIGHT)/PAGE_W, 0.025,
-                    transform=fig.transFigure, facecolor="#1F3A5F",
-                    edgecolor="none"))
-                ax.text(LEFT/PAGE_W + 0.01, y_cursor/PAGE_H + 0.008,
-                        e["section"], transform=fig.transFigure,
-                        fontsize=14, fontweight="bold", color="white",
-                        va="center")
-                y_cursor -= 0.20
-                continue
-
-            # estimate height: name (1) + short (1) + long (~3-6) + source (1) + expected (1) + spacing
-            long_lines = sum(len(ln)//90 + 1 for ln in e["long"].split("\n"))
-            est_h = 0.18 + 0.16 + 0.14*long_lines + 0.14 + 0.14 + 0.16
-            need(est_h)
-
-            # name (bold, large)
-            y_cursor -= 0.20
-            ax.text(LEFT/PAGE_W, y_cursor/PAGE_H, e["name"],
-                    transform=fig.transFigure, fontsize=12.5, fontweight="bold",
-                    color="#0B2545", va="center")
-            # short (italic)
-            y_cursor -= 0.18
-            ax.text(LEFT/PAGE_W, y_cursor/PAGE_H, e["short"],
-                    transform=fig.transFigure, fontsize=10.5, style="italic",
-                    color="#222", va="center")
-            # long (wrap manually)
-            for raw_line in e["long"].split("\n"):
-                # naive wrap at 95 chars
-                line = raw_line
-                while len(line) > 95:
-                    cut = line.rfind(" ", 0, 95)
-                    if cut < 30: cut = 95
-                    y_cursor -= 0.14
-                    ax.text(LEFT/PAGE_W, y_cursor/PAGE_H, line[:cut],
-                            transform=fig.transFigure, fontsize=9.5,
-                            color="#333", va="center", family="serif")
-                    line = line[cut:].lstrip()
-                y_cursor -= 0.14
-                ax.text(LEFT/PAGE_W, y_cursor/PAGE_H, line,
-                        transform=fig.transFigure, fontsize=9.5,
-                        color="#333", va="center", family="serif")
-            # source
-            y_cursor -= 0.14
-            ax.text(LEFT/PAGE_W, y_cursor/PAGE_H,
-                    f"Source:   {e['source']}",
-                    transform=fig.transFigure, fontsize=9, color="#555",
-                    va="center", family="monospace")
-            # expected
-            y_cursor -= 0.14
-            ax.text(LEFT/PAGE_W, y_cursor/PAGE_H,
-                    f"Expected effect:   {e['expected']}",
-                    transform=fig.transFigure, fontsize=9, color="#555",
-                    va="center")
-            y_cursor -= 0.10  # spacer
-
-        pdf.savefig(fig); plt.close(fig)
+        # ─── Variable pages ────────────────────────────────────────────
+        for entry in entries:
+            if "section" in entry:
+                _render_section_page(pdf, entry["section"])
+            else:
+                _render_variable_page(pdf, entry)
 
     print(f"Wrote {path}")
+
+
+def _render_section_page(pdf, title):
+    fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
+    ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
+
+    # Big section header
+    ax.add_patch(plt.Rectangle((0.06, 0.45), 0.88, 0.12,
+                                transform=fig.transFigure,
+                                facecolor="#0B2545", edgecolor="none"))
+    ax.text(0.5, 0.51, title,
+            transform=fig.transFigure,
+            ha="center", va="center",
+            fontsize=24, fontweight="bold", color="white")
+    pdf.savefig(fig); plt.close(fig)
+
+
+def _render_variable_page(pdf, e):
+    fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
+    ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
+
+    # === Header bar ===
+    ax.add_patch(plt.Rectangle((0.0, 0.91), 1.0, 0.07,
+                                transform=fig.transFigure,
+                                facecolor="#0B2545", edgecolor="none"))
+    ax.text(0.06, 0.945, e["name"],
+            transform=fig.transFigure,
+            fontsize=17, fontweight="bold", color="white", va="center")
+
+    y = 0.86
+
+    # === Plain English ===
+    ax.text(0.06, y, "What it is",
+            transform=fig.transFigure,
+            fontsize=11, fontweight="bold", color="#1F3A5F")
+    y -= 0.025
+    y = _wrap_text(ax, e["plain"], LEFT_X=0.06, RIGHT_X=0.94, y=y,
+                    fontsize=11, color="#222", fig=fig)
+    y -= 0.025
+
+    # === Quick-facts panel (units / avg / elite) ===
+    facts_y = y - 0.005
+    facts = [("Units",        e.get("units",   "—")),
+             ("League avg",   e.get("avg",     "—")),
+             ("Elite",        e.get("elite",   "—"))]
+    box_w = 0.88 / 3
+    for i, (label, val) in enumerate(facts):
+        x0 = 0.06 + i * box_w
+        ax.add_patch(plt.Rectangle((x0+0.005, facts_y - 0.06),
+                                    box_w-0.01, 0.058,
+                                    transform=fig.transFigure,
+                                    facecolor="#F3F4F6", edgecolor="#D1D5DB"))
+        ax.text(x0 + box_w/2, facts_y - 0.018, label,
+                transform=fig.transFigure,
+                ha="center", fontsize=8.5, color="#6B7280")
+        ax.text(x0 + box_w/2, facts_y - 0.043, val,
+                transform=fig.transFigure,
+                ha="center", fontsize=12, fontweight="bold", color="#0B2545")
+    y = facts_y - 0.085
+
+    # === Example ===
+    ax.text(0.06, y, "Real example",
+            transform=fig.transFigure,
+            fontsize=11, fontweight="bold", color="#1F3A5F")
+    y -= 0.024
+    y = _wrap_text(ax, e["example"], LEFT_X=0.06, RIGHT_X=0.94, y=y,
+                    fontsize=10.5, color="#333", fig=fig,
+                    family="serif", italic=True)
+    y -= 0.025
+
+    # === Tier chart ===
+    ax.text(0.06, y, "Tier chart",
+            transform=fig.transFigure,
+            fontsize=11, fontweight="bold", color="#1F3A5F")
+    y -= 0.030
+    for i, (label, rng) in enumerate(e.get("tiers", [])):
+        color = TIER_COLOR[min(i, len(TIER_COLOR)-1)]
+        ax.add_patch(plt.Rectangle((0.06, y - 0.020), 0.018, 0.018,
+                                    transform=fig.transFigure,
+                                    facecolor=color, edgecolor="none"))
+        ax.text(0.085, y - 0.011, label,
+                transform=fig.transFigure,
+                fontsize=10, color="#222", fontweight="bold", va="center")
+        ax.text(0.31, y - 0.011, rng,
+                transform=fig.transFigure,
+                fontsize=10, color="#444", family="serif", va="center")
+        y -= 0.026
+    y -= 0.010
+
+    # === Impact ===
+    ax.text(0.06, y, "Why it matters",
+            transform=fig.transFigure,
+            fontsize=11, fontweight="bold", color="#1F3A5F")
+    y -= 0.024
+    y = _wrap_text(ax, e["impact"], LEFT_X=0.06, RIGHT_X=0.94, y=y,
+                    fontsize=10, color="#333", fig=fig)
+    y -= 0.012
+
+    # === Source ===
+    if y > 0.05:
+        ax.text(0.06, y, "Source",
+                transform=fig.transFigure,
+                fontsize=10, fontweight="bold", color="#1F3A5F")
+        y -= 0.020
+        ax.text(0.06, y, e.get("source", "—"),
+                transform=fig.transFigure,
+                fontsize=9.5, color="#555", family="monospace")
+
+    pdf.savefig(fig); plt.close(fig)
+
+
+def _wrap_text(ax, text, LEFT_X, RIGHT_X, y, fontsize, color, fig,
+                family="sans-serif", italic=False):
+    """Naive word-wrap rendered with figure-fraction coordinates."""
+    width_chars = int((RIGHT_X - LEFT_X) * 92)
+    style = "italic" if italic else "normal"
+    for raw in text.split("\n"):
+        words = raw.split(" ")
+        line = ""
+        for w in words:
+            test = (line + " " + w).strip()
+            if len(test) > width_chars:
+                ax.text(LEFT_X, y, line,
+                        transform=fig.transFigure,
+                        fontsize=fontsize, color=color, family=family,
+                        style=style)
+                y -= 0.018
+                line = w
+            else:
+                line = test
+        if line:
+            ax.text(LEFT_X, y, line,
+                    transform=fig.transFigure,
+                    fontsize=fontsize, color=color, family=family,
+                    style=style)
+            y -= 0.018
+    return y
+
 
 if __name__ == "__main__":
     render(ENTRIES, OUT_PATH)
