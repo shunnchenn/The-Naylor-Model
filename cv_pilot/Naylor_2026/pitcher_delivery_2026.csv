@@ -1,0 +1,11 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2026-04-24,669467,Andre Pallante,R,Stolen Base 2B,Iván Herrera,b4c675af_pallante_R.mp4,b4c675af-e1da-3562-894c-aec3d29f3201,59.73,1.3031,True,0.747,full,
+2026-04-25,592773,Ryne Stanek,R,Stolen Base 2B,Pedro Pagés,98f1e9ec_stanek_R.mp4,98f1e9ec-6aa1-3989-8951-42eb50863093,59.7,0.8645,True,0.866,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2026-04-25,669461,Matthew Liberatore,L,Stolen Base 2B,Pedro Pagés,f3932884_liberatore_L.mp4,f3932884-75d2-33a8-aa11-f9b3769c6f8c,59.742,1.6176,True,0.988,full,
+2026-04-28,657746,Joe Ryan,R,Caught Stealing 2B,Victor Caratini,34b669d2_ryan_R.mp4,34b669d2-2193-3c9e-8187-159028f8e6af,59.732,0.815,True,0.75,full,
+2026-05-05,628452,Raisel Iglesias,R,Stolen Base 2B,Drake Baldwin,42124bfe_iglesias_R.mp4,42124bfe-a332-3e01-8273-1d5bc876b39b,59.701,,False,0.632,full,not reliably measurable from this clip (pitcher track contaminated by camera follow)
+2026-05-05,693821,Bryce Elder,R,Stolen Base 2B,Drake Baldwin,5765baf6_elder_R.mp4,5765baf6-7284-3e74-ad95-e24eb09a3c6f,59.662,1.5294,True,0.411,capped_6s,recovered via 6s analysis cap (broadcast follows runner); LOW pose confidence (wide runner-hold angle) — rough
+2026-05-06,800311,Didier Fuentes,R,Stolen Base 2B,Drake Baldwin,2915c326_fuentes_R.mp4,2915c326-51bc-3d0d-90b5-751b1655017b,59.7,1.4233,True,0.672,full,
+2026-05-12,837227,Tatsuya Imai,R,Stolen Base 2B,Christian Vázquez,17b5aad7_imai_R.mp4,17b5aad7-3ed3-3b3b-9f01-460c4669ce34,59.764,0.9576,True,0.949,full,
+2026-05-18,685126,Brandon Eisert,L,Stolen Base 3B,Drew Romo,1de0bff2_eisert_L.mp4,1de0bff2-6088-3ea0-a6db-89e8660745d9,59.69,1.0768,True,0.952,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2026-05-18,702273,Noah Schultz,L,Stolen Base 2B,Drew Romo,754772f8_schultz_L.mp4,754772f8-5188-3cc8-ae8d-78072cc87dce,59.708,1.1275,True,0.865,full,

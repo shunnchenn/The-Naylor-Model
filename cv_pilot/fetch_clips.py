@@ -42,6 +42,7 @@ cv_pilot/clips/<clip_id>.mp4  downloaded video (with --download; gitignored)
 
 from __future__ import annotations
 import argparse
+import html
 import re
 import sys
 import time
@@ -120,7 +121,9 @@ def sporty_mp4_url(play_id: str) -> str | None:
         return None
     m = MP4_RE.search(r.text)
     time.sleep(SLEEP)
-    return m.group(0) if m else None
+    # the scraped URL can carry HTML entities (e.g. trailing == shows as
+    # &#x3D;&#x3D;); unescape so the link actually resolves
+    return html.unescape(m.group(0)) if m else None
 
 
 def _ascii_last(name: str) -> str:
@@ -187,6 +190,39 @@ def from_attempts(csv_path: Path) -> list[dict]:
     return recs
 
 
+def from_targets(csv_path: Path) -> list[dict]:
+    """Fetch specific plays by play_id (e.g. exact steal pitches from GUMBO).
+
+    targets.csv needs columns: game_pk, play_id  [, is_naylor, clip_prefix]
+    Matches each play_id against its game's gf feed to recover full relational
+    metadata (at_bat/pitch/catcher/names) and tags the row for clip naming.
+    """
+    df = pd.read_csv(csv_path)
+    need = {"game_pk", "play_id"}
+    if not need.issubset(df.columns):
+        sys.exit(f"{csv_path} must have columns {need}")
+    want = {}
+    for r in df.itertuples():
+        want[str(r.play_id)] = {
+            "is_naylor": int(getattr(r, "is_naylor", 0) or 0),
+            "clip_prefix": str(getattr(r, "clip_prefix", "") or ""),
+        }
+    recs = []
+    for pk in sorted(df["game_pk"].astype(int).unique()):
+        print(f"[gf] game_pk={pk}")
+        for r in gf_records(int(pk)):
+            tag = want.get(str(r.get("play_id")))
+            if tag is not None:
+                r["_is_naylor"] = tag["is_naylor"]
+                r["_clip_prefix"] = tag["clip_prefix"]
+                recs.append(r)
+    found = {str(r["play_id"]) for r in recs}
+    missing = set(want) - found
+    if missing:
+        print(f"  ! play_ids not found in gf feeds: {len(missing)}")
+    return recs
+
+
 def resolve_play_ids(play_ids, season, home_team, opps) -> list[dict]:
     """Reverse-resolve play_ids by scanning a home team's games vs given opponents."""
     targets = set(play_ids)
@@ -218,6 +254,8 @@ def main():
     ap = argparse.ArgumentParser(description="Fetch Savant pitch clips with relational metadata")
     ap.add_argument("--game-pks", nargs="*", type=int, help="game_pk(s) to pull")
     ap.add_argument("--attempts", help="CSV with game_pk,at_bat_number,pitch_number")
+    ap.add_argument("--targets", help="CSV with game_pk,play_id[,is_naylor,clip_prefix]")
+    ap.add_argument("--out-dir", help="base output dir (clips/, clips_meta.csv, clips_manifest.csv)")
     ap.add_argument("--resolve", help="comma-separated play_ids to reverse-resolve")
     ap.add_argument("--season", type=int, default=2024)
     ap.add_argument("--home-team", type=int, default=119, help="MLBAM team id (default 119 LAD)")
@@ -227,7 +265,17 @@ def main():
     ap.add_argument("--download", action="store_true", help="download the mp4s (else manifest only)")
     args = ap.parse_args()
 
-    if args.attempts:
+    global CLIPS_DIR, MANIFEST_CSV, META_CSV
+    if args.out_dir:
+        base = Path(args.out_dir)
+        base.mkdir(parents=True, exist_ok=True)
+        CLIPS_DIR    = base / "clips"
+        MANIFEST_CSV = base / "clips_manifest.csv"
+        META_CSV     = base / "clips_meta.csv"
+
+    if args.targets:
+        recs = from_targets(Path(args.targets))
+    elif args.attempts:
         recs = from_attempts(Path(args.attempts))
     elif args.resolve:
         opps = [int(x) for x in args.opp.split(",") if x.strip()]
@@ -237,14 +285,21 @@ def main():
     elif args.game_pks:
         recs = from_game_pks(args.game_pks, sb_only=args.sb_only)
     else:
-        sys.exit("Provide one of: --game-pks / --attempts / --resolve")
+        sys.exit("Provide one of: --game-pks / --attempts / --targets / --resolve")
 
     if not recs:
         sys.exit("No records resolved.")
 
     # build manifest + resolve mp4 urls (+ optional download)
     for r in recs:
-        r["clip_id"] = clip_id_for(r)
+        cid = clip_id_for(r)
+        # name the clip Naylor actually faced so it is self-identifying
+        if r.get("_is_naylor"):
+            cid = "NAYLOR_" + cid
+        elif r.get("_clip_prefix"):
+            cid = f"{r['_clip_prefix']}_" + cid
+        r["clip_id"] = cid
+        r["is_naylor"] = int(r.get("_is_naylor", 0) or 0)
         r["mp4_url"] = sporty_mp4_url(r["play_id"])
         if args.download and r["mp4_url"]:
             dest = CLIPS_DIR / r["clip_id"]
@@ -261,7 +316,7 @@ def main():
     # detector-facing metadata (relational join keys + names)
     meta_cols = ["clip_id", "pitcher_name", "pitcher_id", "p_throws",
                  "catcher_name", "catcher_id", "batter_name", "play_id",
-                 "game_pk", "at_bat_number", "pitch_number"]
+                 "game_pk", "at_bat_number", "pitch_number", "is_naylor"]
     meta = man.rename(columns={"pitcher": "pitcher_id", "catcher": "catcher_id"})
     meta = meta.reindex(columns=meta_cols)
     meta.to_csv(META_CSV, index=False)

@@ -13,7 +13,8 @@ results row plus an annotated QA video so each measurement can be eyeballed.
 
 Pipeline (see cv_pilot plan):
   A  read frames + true container fps
-  B  scene-cut guard       (analyse only the opening pitching shot)
+  B  scene-cut split       (enumerate shots; pick the one with the full delivery,
+                           since a steal clip may open on a runner-on-first angle)
   C  YOLOv8-pose + pitcher selection/tracking  (crowded MLB frames)
   D  "set" window          (low-motion plateau before delivery)
   E  first movement        (motion-energy onset; hand-break / leg-lift cross-check)
@@ -59,6 +60,19 @@ META_PATH   = ROOT / "clips_meta.csv"
 RESULTS_CSV = ROOT / "pilot_results.csv"
 YOLO_WEIGHTS = "yolov8m-pose.pt"        # downloaded on first run
 
+# Inference knobs (set from CLI in main()).  DEVICE=None lets ultralytics
+# auto-select; on Apple-Silicon we resolve it to "mps" so the M2 GPU is used
+# instead of CPU (the single biggest speedup).  IMGSZ trades detail for speed.
+DEVICE = None
+IMGSZ  = 640
+HALF   = False
+# Optional cap (seconds) on how much of each clip to analyse.  Steal broadcasts
+# put the delivery near the start, then pan to follow the runner; that late
+# runner-slide motion can outweigh the pitch and pull the detector off-target.
+# Capping trims it — faster AND more robust on continuous follow-shots.
+# None = analyse the whole clip (preserves the validated pool behaviour).
+MAX_ANALYSIS_S = None
+
 # COCO-17 keypoint indices (YOLOv8-pose)
 NOSE = 0
 L_SHO, R_SHO = 5, 6
@@ -71,6 +85,7 @@ L_ANK, R_ANK = 15, 16
 KPT_CONF_MIN   = 0.30      # ignore keypoints below this confidence
 SCENE_CUT_CORR = 0.55      # histogram-correlation below this = scene cut
 PLAUSIBLE_BAND = (0.80, 1.80)   # delivery_s sanity band (first-move -> release)
+MIN_SEG_FRAMES = 40        # a contiguous shot shorter than this can't hold a full delivery
 
 # Pose-skeleton edges for the QA overlay
 SKELETON = [(5,7),(7,9),(6,8),(8,10),(5,6),(5,11),(6,12),(11,12),
@@ -140,6 +155,33 @@ def first_scene_cut(frames: list[np.ndarray]) -> int:
     return len(frames)
 
 
+def scene_segments(frames: list[np.ndarray]) -> list[tuple[int, int]]:
+    """Split the clip into contiguous shots at EVERY scene cut.
+
+    Broadcast steal clips sometimes OPEN on a runner-on-first / different
+    camera angle and only show the pitcher's full throw in a later shot.  So we
+    can't assume the delivery is in the opening segment — we enumerate all shots
+    and let the caller pick the one where the pitcher's throw is fully visible.
+
+    Returns a list of (start, end) frame-index pairs (end exclusive).
+    """
+    prev_hist = None
+    cuts = [0]
+    for i, f in enumerate(frames):
+        hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV)
+        hist = cv2.calcHist([hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+        cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+        if prev_hist is not None:
+            corr = cv2.compareHist(prev_hist, hist, cv2.HISTCMP_CORREL)
+            # require a gap from the previous cut so a multi-frame dissolve
+            # doesn't register as several cuts in a row
+            if corr < SCENE_CUT_CORR and (i - cuts[-1]) > 3:
+                cuts.append(i)
+        prev_hist = hist
+    cuts.append(len(frames))
+    return [(cuts[k], cuts[k + 1]) for k in range(len(cuts) - 1)]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # C — YOLOv8-pose detection + pitcher selection / tracking
 # ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +194,8 @@ def run_pose(frames: list[np.ndarray], model):
     tracks: dict[int, list] = {}
     for fi, frame in enumerate(frames):
         res = model.track(frame, persist=True, verbose=False,
-                          classes=[0], tracker="bytetrack.yaml")[0]
+                          classes=[0], tracker="bytetrack.yaml",
+                          device=DEVICE, imgsz=IMGSZ, half=HALF)[0]
         if res.boxes is None or res.boxes.id is None or res.keypoints is None:
             continue
         ids   = res.boxes.id.cpu().numpy().astype(int)
@@ -289,34 +332,78 @@ def find_set_and_first_move(me):
     return set_hi, fm, floor, std
 
 
-def leg_lift_frame(kpts, p_throws, set_end, peak):
-    """PRIMARY first-move signal: lead foot leaves the ground.
+def leg_lift_frame(kpts, p_throws, set_end, peak, diag_ref):
+    """PRIMARY first-move signal: the lead leg leaves its planted stance.
 
-    Per the project definition, "first movement" = the moment the lead foot
-    leaves the ground (RHP→left ankle, LHP→right).  We find where the lead
-    ankle's image-y first rises (decreases in pixels) clearly above its
-    planted baseline, and sub-frame interpolate the threshold crossing.
-    Returns a sub-frame float index, or None if the ankle is too occluded.
+    Per the project (and user) definition, "first movement" = the lead leg
+    starting to move — *upwards OR horizontally* (slide-steps barely lift the
+    foot but always shift it).  The old version watched only the lead ankle's
+    vertical rise against a hard pixel floor, which missed subtle / horizontal
+    loading and fired tens of frames late.
+
+    Fix: track the **total displacement** (√Δx²+Δy²) of BOTH the lead ankle and
+    lead knee from a *rolling* baseline (median of the recent planted position,
+    so a slow camera pan doesn't count as motion).  First move = the first frame
+    after the set where that displacement clears a noise-relative threshold and
+    stays elevated.  Scale-normalised by the frame diagonal so the threshold is
+    framing-independent.  Returns a sub-frame float index, or None if both
+    lead-leg keypoints are too occluded.
     """
-    a = lead_ankle(p_throws)
-    y = kpts[:, a, 1].copy()
-    c = kpts[:, a, 2]
-    y[c < KPT_CONF_MIN] = np.nan
-    if np.isfinite(y).sum() < 5:
+    la = lead_ankle(p_throws)
+    lk = L_KNE if str(p_throws).upper().startswith("R") else R_KNE
+    if (np.isfinite(np.where(kpts[:, la, 2] > KPT_CONF_MIN, kpts[:, la, 1], np.nan)).sum() < 5
+            and np.isfinite(np.where(kpts[:, lk, 2] > KPT_CONF_MIN, kpts[:, lk, 1], np.nan)).sum() < 5):
         return None
-    y = pd.Series(y).interpolate().bfill().ffill().values
 
-    lo = max(0, set_end - 8)
-    base = float(np.nanmedian(y[lo:set_end + 1]))        # planted ankle height
-    noise = float(np.nanstd(y[lo:set_end + 1]))
-    rise = base - y                                      # grows as foot lifts
-    thresh = max(0.02 * abs(base), 3.0 * noise, 6.0)     # px the foot must rise
+    def pos(idx):
+        x = np.where(kpts[:, idx, 2] > KPT_CONF_MIN, kpts[:, idx, 0], np.nan)
+        y = np.where(kpts[:, idx, 2] > KPT_CONF_MIN, kpts[:, idx, 1], np.nan)
+        x = pd.Series(x).interpolate().bfill().ffill().values
+        y = pd.Series(y).interpolate().bfill().ffill().values
+        return x, y
 
-    hi = max(set_end + 1, peak + 1)
-    for i in range(max(1, set_end), hi):
-        # require a sustained lift (not a 1-frame blip)
-        if rise[i] > thresh and np.all(rise[i:min(i + 3, len(rise))] > thresh * 0.6):
-            return interp_crossing(i - 1, rise[i - 1], rise[i], thresh)
+    ax, ay = pos(la)
+    kx, ky = pos(lk)
+    n = len(ax)
+
+    # FIXED baseline = the planted lead-leg position during the set.  We anchor
+    # it on the *quietest* sub-window of the pre-set frames, NOT the raw window
+    # edge — otherwise frames where the pitcher is still settling INTO the set
+    # contaminate both the baseline position and the noise estimate (observed:
+    # a 16 px threshold that hid the real first move).  (A rolling baseline is
+    # also wrong here: it tracks an oscillating keypoint and hides the move.)
+    w0 = max(0, set_end - 18)
+    w1 = max(w0 + 7, set_end + 2)
+
+    def disp_from(px, py, lo, hi):
+        bx = float(np.nanmedian(px[lo:hi]))
+        by = float(np.nanmedian(py[lo:hi]))
+        return np.hypot(px - bx, py - by)
+
+    # pass 1: rough displacement to locate the quietest 7-frame plateau
+    d0 = np.maximum(disp_from(ax, ay, w0, w1), disp_from(kx, ky, w0, w1))
+    qs, qbest = w0, 1e18
+    for j in range(w0, max(w0 + 1, w1 - 7)):
+        v = float(np.nanstd(d0[j:j + 7]))
+        if v < qbest:
+            qbest, qs = v, j
+    qe = qs + 7
+
+    # pass 2: planted baseline + noise from that quiet plateau
+    m = np.maximum(disp_from(ax, ay, qs, qe), disp_from(kx, ky, qs, qe)) / max(diag_ref, 1.0)
+    m = smooth(m, 3)
+    noise = float(np.nanstd(m[qs:qe]))
+    # floor ≈ 7 px on a 1280×720 clip: clears pre-pitch micro-drift / camera sway
+    # so we fire on the genuine delivery initiation, not the settle.
+    thresh = max(4.0 * noise, 0.0048)
+
+    start = max(1, set_end - 3)
+    hi = max(start + 1, peak + 1)
+    for i in range(start, min(hi, n)):
+        # commit on first crossing whose *median* over the next 5 frames stays
+        # elevated — median ignores 1–2 flicker dropouts (robust to noisy joints)
+        if m[i] > thresh and float(np.nanmedian(m[i:min(i + 5, n)])) > thresh:
+            return interp_crossing(i - 1, m[i - 1], m[i], thresh)
     return None
 
 
@@ -364,21 +451,82 @@ def find_release(kpts, p_throws, first_move_idx, diag_ref):
     reach = np.hypot(wx - bx, wy - by) / max(diag_ref, 1.0)
     reach = smooth(reach, 3)
 
-    lo = int(np.ceil(first_move_idx))
     n = len(speed)
-    if lo >= n - 1:
+    lo = int(np.ceil(first_move_idx)) + 3
+    if lo >= n - 2:
         return float(n - 1), 0.0
-    # combine speed (dominant) with reach; release is near max hand speed
-    combo = speed.copy()
-    combo[:lo] = -1e9
-    pk = int(np.nanargmax(combo))
+    hi = min(n - 1, lo + 95)                 # cap the delivery window (~1.6 s @60fps);
+                                             # excludes the far follow-through whip that
+                                             # otherwise wins a naive global speed-argmax.
+
+    # Is the throwing wrist actually tracked well? (reach must have real dynamic
+    # range — a flat reach means the keypoint is barely moving / poorly detected.)
+    rw = reach[lo:hi]
+    spread = float(np.nanpercentile(rw, 90) - np.nanpercentile(rw, 10))
+
+    if spread >= 0.010:
+        method = "extension_collapse"
+        # ── good tracking: extension-then-collapse model ──────────────────────
+        # At release the throwing hand is at max forward extension while HIGH
+        # (out front), then `reach` collapses as the arm whips down across the
+        # body.  Earlier reach humps (arm swinging *down* during the leg lift)
+        # are rejected by requiring the wrist to be in the upper part of its
+        # vertical travel.  Release = peak hand speed between that high-hand
+        # extension peak and the reach-collapse onset.
+        wyw = wy[lo:hi]
+        wy_gate = float(np.nanmin(wyw) + 0.55 * (np.nanmax(wyw) - np.nanmin(wyw)))
+        rg = reach.copy()
+        rg[wy > wy_gate] = -1e9              # drop low-hand (arm-swing-down) frames
+        rg[:lo] = -1e9
+        rg[hi:] = -1e9
+        r_ext = int(np.nanargmax(rg))
+        if rg[r_ext] <= -1e8:                # all frames gated out — fall back
+            r_ext = lo + int(np.nanargmax(reach[lo:hi]))
+        peakv = reach[r_ext]
+
+        coll = None
+        for j in range(r_ext + 1, min(r_ext + 12, hi)):
+            if reach[j] < 0.5 * peakv:
+                coll = j
+                break
+        end_ref = coll if coll is not None else min(r_ext + 8, hi)
+
+        a = max(lo, r_ext)
+        b = max(a + 1, int(np.ceil(end_ref)))
+        seg = speed[a:b]
+        pk = a + int(np.nanargmax(seg)) if seg.size and not np.all(np.isnan(seg)) else r_ext
+    else:
+        # ── poor wrist tracking (flat reach): reach is uninformative.  Use the
+        #    PEAK WRIST HEIGHT (top of the throwing arc) as the release proxy,
+        #    but take the FIRST turning point — not the global min — because a
+        #    poorly-tracked wrist jumps around in the follow-through and would
+        #    otherwise win the global extreme.  Heavy smoothing kills jitter so
+        #    the descent-to-top-then-drop reads as one clean local minimum.
+        method = "flat_reach_height"
+        hh = min(n - 1, lo + 85)
+        wysm = smooth(wy, 7)
+        rise_margin = 0.004 * diag_ref               # hand must come back down ≥~6 px
+        pk = None
+        for i in range(lo + 3, hh - 5):
+            # local min that the hand clearly comes back DOWN from (wy rises)
+            if (wysm[i] <= wysm[i - 1]
+                    and float(np.nanmedian(wysm[i + 1:i + 6])) > wysm[i] + rise_margin
+                    and wysm[i] < float(np.nanmedian(wysm[lo:lo + 4]))):
+                pk = i
+                break
+        if pk is None:
+            seg = wy[lo:hh]
+            pk = lo + int(np.nanargmin(seg)) if seg.size and not np.all(np.isnan(seg)) else lo
+
     conf = float(kpts[pk, w, 2]) if not np.isnan(kpts[pk, w, 2]) else 0.0
+    if method == "flat_reach_height":
+        conf *= 0.7                          # weaker estimator → flag lower trust
     # sub-frame parabolic refine on the speed curve
     if 0 < pk < n - 1:
         off = parabolic_peak(speed[pk - 1], speed[pk], speed[pk + 1])
     else:
         off = 0.0
-    return pk + off, conf
+    return pk + off, conf, method
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -432,6 +580,42 @@ def parse_hint(s):
         return None
 
 
+def _detect_in_segment(seg, p_throws, model, diag, bbox_hint=None):
+    """Run pose + event detection on one contiguous shot.
+
+    Returns a dict of segment-relative results (or None if no pitcher track).
+    All frame indices are relative to the START of this segment.
+    """
+    tracks = run_pose(seg, model)
+    tid, pseq = select_pitcher(tracks, seg[0].shape[1], seg[0].shape[0], bbox_hint)
+    if pseq is None:
+        return None
+
+    kpts, boxes = densify(pseq, len(seg))
+    me = motion_energy_series(kpts, diag)
+    peak = int(np.nanargmax(me))
+
+    set_i, motion_onset, floor, std = find_set_and_first_move(me)
+    # FIRST MOVEMENT = lead foot leaves the ground (project definition).
+    # Priority: leg-lift (primary) -> hand-break -> generic motion onset.
+    ll = leg_lift_frame(kpts, p_throws, set_i, peak, diag)
+    hb = hand_break_frame(kpts, set_i, peak)
+    if ll is not None:
+        fm, fm_cue = float(ll), "leg_lift"
+    elif hb is not None:
+        fm, fm_cue = float(hb), "hand_break"
+    else:
+        fm, fm_cue = float(motion_onset), "motion_onset"
+
+    rel, rel_conf, rel_method = find_release(kpts, p_throws, fm, diag)
+    return {
+        "tid": tid, "kpts": kpts, "boxes": boxes,
+        "set_i": set_i, "fm": fm, "rel": rel, "fm_cue": fm_cue,
+        "rel_conf": rel_conf, "rel_method": rel_method,
+        "ll": ll, "hb": hb, "me_peak": float(me[peak]),
+    }
+
+
 def process_clip(path: Path, p_throws: str, model, bbox_hint=None, make_qa=True):
     cap = cv2.VideoCapture(str(path))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -443,76 +627,113 @@ def process_clip(path: Path, p_throws: str, model, bbox_hint=None, make_qa=True)
         frames.append(fr)
     cap.release()
 
+    n_full = len(frames)
+    if MAX_ANALYSIS_S is not None and fps > 0:
+        cap_n = int(round(MAX_ANALYSIS_S * fps))
+        if 0 < cap_n < len(frames):
+            frames = frames[:cap_n]
+
     row = {"clip_id": path.name, "p_throws": p_throws, "fps": round(fps, 3),
-           "n_frames": len(frames), "status": "ok"}
+           "n_frames": n_full, "analysis_frames": len(frames), "status": "ok"}
     if len(frames) < 8:
         row["status"] = "too_short"
         return row
 
-    cut = first_scene_cut(frames)
-    seg = frames[:cut]
-    row["analysis_frames"] = len(seg)
-    row["scene_cut_at"] = cut if cut < len(frames) else -1
-
-    h, w = seg[0].shape[:2]
+    h, w = frames[0].shape[:2]
     diag = float(np.hypot(w, h))
 
-    tracks = run_pose(seg, model)
-    tid, pseq = select_pitcher(tracks, w, h, bbox_hint)
-    if pseq is None:
+    # Enumerate every contiguous shot.  The pitcher's full delivery may NOT be in
+    # the opening shot (broadcast can open on a runner-on-first angle), so we
+    # scan shots in order and keep the first one that yields a clean, fully
+    # visible delivery (trackable throwing hand + in-band timing).  Shorter
+    # shots that can't physically contain a delivery are skipped.
+    segments = scene_segments(frames)
+    candidates = [(s, e) for (s, e) in segments if (e - s) >= MIN_SEG_FRAMES]
+    if not candidates:                       # nothing long enough — use longest shot
+        candidates = [max(segments, key=lambda se: se[1] - se[0])]
+    row["n_segments"] = len(segments)
+    row["scene_cut_at"] = segments[0][1] if len(segments) > 1 else -1
+
+    best = None                              # (quality_key, seg, det)
+    chosen = None
+    for (s, e) in candidates:
+        det = _detect_in_segment(frames[s:e], p_throws, model, diag, bbox_hint)
+        if det is None:
+            continue
+        delivery_s = (det["rel"] - det["fm"]) / fps
+        in_band = PLAUSIBLE_BAND[0] <= delivery_s <= PLAUSIBLE_BAND[1]
+        good_track = (det["rel_method"] != "flat_reach_height")
+        good_conf = det["rel_conf"] >= KPT_CONF_MIN
+        # rank: a fully-visible throw (good_track) that is in-band and well
+        # tracked wins; ties broken by detection confidence then motion energy.
+        qkey = (int(good_track), int(in_band), int(good_conf),
+                det["rel_conf"], det["me_peak"])
+        if best is None or qkey > best[0]:
+            best = (qkey, (s, e), det)
+        # short-circuit: a clean in-band, well-tracked delivery is good enough
+        if good_track and in_band and good_conf:
+            chosen = (s, e, det)
+            break
+
+    if best is None:
         row["status"] = "no_pitcher"
         return row
-    row["pitcher_track_id"] = tid
+    if chosen is None:
+        chosen = (best[1][0], best[1][1], best[2])
+    s, e, det = chosen
 
-    kpts, boxes = densify(pseq, len(seg))
-    me = motion_energy_series(kpts, diag)
-    peak = int(np.nanargmax(me))
-
-    set_i, motion_onset, floor, std = find_set_and_first_move(me)
-    # FIRST MOVEMENT = lead foot leaves the ground (project definition).
-    # Priority: leg-lift (primary) -> hand-break -> generic motion onset.
-    # The raw motion-energy onset is noise-sensitive, so it is only a fallback.
-    ll = leg_lift_frame(kpts, p_throws, set_i, peak)
-    hb = hand_break_frame(kpts, set_i, peak)
-    if ll is not None:
-        fm, fm_cue = float(ll), "leg_lift"
-    elif hb is not None:
-        fm, fm_cue = float(hb), "hand_break"
-    else:
-        fm, fm_cue = float(motion_onset), "motion_onset"
-
-    rel, rel_conf = find_release(kpts, p_throws, fm, diag)
-
+    kpts, boxes = det["kpts"], det["boxes"]
+    set_i, fm, rel = det["set_i"], det["fm"], det["rel"]
+    rel_conf, rel_method, fm_cue = det["rel_conf"], det["rel_method"], det["fm_cue"]
+    ll, hb = det["ll"], det["hb"]
     delivery_s = (rel - fm) / fps
+
+    row["pitcher_track_id"] = det["tid"]
+    row["analysis_frames"] = e - s
+    row["chosen_segment"] = f"[{s}:{e}]"
+    row["segment_index"] = segments.index((s, e)) if (s, e) in segments else -1
+    # report event frames in FULL-CLIP coordinates (so they line up with manual
+    # labels, which are numbered against the whole clip)
+    off = s
     row.update({
-        "set_frame": set_i,
-        "first_move_frame": round(fm, 2),
-        "release_frame": round(rel, 2),
+        "set_frame": set_i + off,
+        "first_move_frame": round(fm + off, 2),
+        "release_frame": round(rel + off, 2),
         "delivery_s": round(delivery_s, 4),
         "release_kpt_conf": round(rel_conf, 3),
+        "release_method": rel_method,
         "first_move_cue": fm_cue,
-        "leg_lift_frame": round(ll, 2) if ll is not None else None,
-        "hand_break_frame": round(hb, 2) if hb is not None else None,
+        "leg_lift_frame": round(ll + off, 2) if ll is not None else None,
+        "hand_break_frame": round(hb + off, 2) if hb is not None else None,
     })
 
     # confidence flags
     in_band = PLAUSIBLE_BAND[0] <= delivery_s <= PLAUSIBLE_BAND[1]
-    pre_cut = (cut == len(frames)) or (int(round(rel)) < cut)
     good_conf = rel_conf >= KPT_CONF_MIN
+    # a delivery detected within a contiguous shot is, by construction, not cut
+    # off mid-throw; pre_cut stays True for any successful in-shot detection.
+    pre_cut = True
+    # `flat_reach_height` means YOLO never tracked the throwing hand (reach was
+    # flat) — the release estimate is unreliable, so the clip is NOT usable for
+    # accuracy.  It still counts toward coverage (flag what we can't measure
+    # rather than emit a silently-wrong release).
+    good_track = (rel_method != "flat_reach_height")
+    row["good_track"] = bool(good_track)
     row["in_band"] = bool(in_band)
     row["release_pre_cut"] = bool(pre_cut)
-    row["usable"] = bool(in_band and pre_cut and good_conf)
+    row["usable"] = bool(in_band and pre_cut and good_conf and good_track)
     row["confidence"] = round(
-        (0.5 * good_conf + 0.3 * in_band + 0.2 * pre_cut), 3)
+        (0.4 * good_conf + 0.25 * in_band + 0.15 * pre_cut + 0.2 * good_track), 3)
 
     if make_qa:
         QA_DIR.mkdir(parents=True, exist_ok=True)
         out = QA_DIR / f"{path.stem}_annotated.mp4"
         try:
-            write_qa(seg, fps, kpts, boxes, set_i, fm, rel, delivery_s, out)
+            # QA overlay uses segment-relative indices on the chosen shot
+            write_qa(frames[s:e], fps, kpts, boxes, set_i, fm, rel, delivery_s, out)
             row["qa_video"] = out.name
-        except Exception as e:               # QA is non-critical
-            row["qa_video"] = f"ERR:{e}"
+        except Exception as e2:               # QA is non-critical
+            row["qa_video"] = f"ERR:{e2}"
     return row
 
 
@@ -530,8 +751,43 @@ def main():
     ap = argparse.ArgumentParser(description="Pitch-delivery CV detector")
     ap.add_argument("--clip", help="process a single clip filename in clips/")
     ap.add_argument("--no-qa", action="store_true", help="skip QA videos")
-    ap.add_argument("--weights", default=YOLO_WEIGHTS)
+    ap.add_argument("--weights", default=YOLO_WEIGHTS,
+                    help="pose weights; yolov8n-pose.pt is ~5-8x faster than -m")
+    ap.add_argument("--device", default="auto",
+                    help="auto|mps|cpu|cuda|0  (auto picks MPS on Apple Silicon)")
+    ap.add_argument("--imgsz", type=int, default=640,
+                    help="inference image size (lower = faster, less detail)")
+    ap.add_argument("--half", action="store_true", help="FP16 inference where supported")
+    ap.add_argument("--max-analysis-s", type=float, default=None,
+                    help="only analyse the first N seconds of each clip "
+                         "(faster; trims runner-follow tail on continuous shots)")
+    ap.add_argument("--clips-dir", help="override clips/ directory")
+    ap.add_argument("--meta", help="override clips_meta.csv path")
+    ap.add_argument("--out", help="override pilot_results.csv output path")
+    ap.add_argument("--qa-dir", help="override qa/ directory")
     args = ap.parse_args()
+
+    global CLIPS_DIR, QA_DIR, META_PATH, RESULTS_CSV, DEVICE, IMGSZ, HALF, MAX_ANALYSIS_S
+    MAX_ANALYSIS_S = args.max_analysis_s
+    # Resolve compute device.  On a fanless M2 the GPU (MPS) is far faster than
+    # CPU and avoids pegging all cores; fall back to CPU if MPS is unavailable.
+    dev = args.device
+    if dev == "auto":
+        try:
+            import torch
+            dev = "mps" if torch.backends.mps.is_available() else "cpu"
+        except Exception:
+            dev = "cpu"
+    DEVICE, IMGSZ, HALF = dev, args.imgsz, args.half
+    print(f"[device] {DEVICE}  imgsz={IMGSZ}  half={HALF}")
+    if args.clips_dir:
+        CLIPS_DIR = Path(args.clips_dir)
+    if args.qa_dir:
+        QA_DIR = Path(args.qa_dir)
+    if args.meta:
+        META_PATH = Path(args.meta)
+    if args.out:
+        RESULTS_CSV = Path(args.out)
 
     if not CLIPS_DIR.exists() or not any(CLIPS_DIR.glob("*.mp4")):
         sys.exit(f"No clips found in {CLIPS_DIR}.  Drop pilot mp4s there first.")
@@ -570,7 +826,7 @@ def main():
         # carry relational metadata (join keys to the Naylor model) from meta
         for col in ("pitcher_name", "pitcher_id", "catcher_name", "catcher_id",
                     "batter_name", "play_id", "game_pk", "at_bat_number",
-                    "pitch_number"):
+                    "pitch_number", "is_naylor"):
             if col in m and pd.notna(m[col]):
                 row[col] = m[col]
         print(f"        -> {row.get('status')}  "
@@ -581,9 +837,11 @@ def main():
     cols = ["clip_id", "pitcher_name", "pitcher_id", "catcher_name", "catcher_id",
             "play_id", "game_pk", "at_bat_number", "pitch_number",
             "p_throws", "fps", "n_frames", "analysis_frames", "scene_cut_at",
+            "n_segments", "segment_index", "chosen_segment",
             "set_frame", "first_move_frame", "release_frame", "delivery_s",
             "first_move_cue", "leg_lift_frame", "hand_break_frame",
-            "release_kpt_conf", "in_band", "release_pre_cut", "usable",
+            "release_method", "release_kpt_conf", "good_track",
+            "in_band", "release_pre_cut", "usable",
             "confidence", "qa_video", "pitcher_track_id", "status"]
     df = df.reindex(columns=[c for c in cols if c in df.columns])
     df.to_csv(RESULTS_CSV, index=False)
