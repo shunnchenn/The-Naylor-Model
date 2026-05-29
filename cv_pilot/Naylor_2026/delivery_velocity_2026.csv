@@ -1,0 +1,11 @@
+date,pitcher_name,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,avg_velocity_ftps
+2026-04-24,Andre Pallante,R,2B,SB,0.20,24.3,39.8,15.5,1.3031,0.747,True,full,11.895
+2026-04-25,Ryne Stanek,R,2B,SB,0.20,18.6,27.1,8.5,0.8645,0.866,True,capped_6s,9.832
+2026-04-25,Matthew Liberatore,L,2B,SB,0.20,17.2,25.6,8.4,1.6176,0.988,True,full,5.193
+2026-04-28,Joe Ryan,R,2B,CS,-0.45,13.3,21.6,8.4,0.815,0.75,True,full,10.307
+2026-05-05,Raisel Iglesias,R,2B,SB,0.20,15.4,25.9,10.5,,0.632,False,full,
+2026-05-05,Bryce Elder,R,2B,SB,0.20,12.3,21.2,8.9,1.5294,0.411,True,capped_6s,5.819
+2026-05-06,Didier Fuentes,R,2B,SB,0.20,19.1,26.6,7.5,1.4233,0.672,True,full,5.269
+2026-05-12,Tatsuya Imai,R,2B,SB,0.20,24.9,40.2,15.2,0.9576,0.949,True,full,15.873
+2026-05-18,Noah Schultz,L,2B,SB,0.20,14.2,24.0,9.8,1.1275,0.865,True,full,8.692
+2026-05-18,Brandon Eisert,L,3B,SB,0.20,18.0,29.4,11.3,1.0768,0.952,True,capped_6s,10.494
