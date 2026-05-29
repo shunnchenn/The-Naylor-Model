@@ -1,0 +1,9 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-04-16,675911,"Strider, Spencer",R,Caught Stealing 2B,"Murphy, Sean",vladdy_91317944_strider_R.mp4,91317944-ec65-3cca-8dce-f83e4ec08b6b,59.71,1.1763,True,0.708,full,
+2025-06-04,605447,"Romano, Jordan",R,Stolen Base 2B,"Marchán, Rafael",vladdy_565559e5_romano_R.mp4,565559e5-b074-3cf2-a0b0-bf47ff181d6f,59.716,1.2838,True,0.474,full,
+2025-06-11,669461,"Liberatore, Matthew",L,Stolen Base 2B,"Pozo, Yohel",vladdy_7391d322_liberatore_L.mp4,7391d322-a1bd-3997-b32f-a85acc7e4df6,59.681,1.2303,True,0.689,full,
+2025-06-18,593958,"Rodriguez, Eduardo",L,Caught Stealing 2B,"Herrera, Jose",vladdy_615a5fa5_rodriguez_L.mp4,615a5fa5-f8a4-308e-b1b2-384598d7226e,59.712,1.0239,True,0.888,full,
+2025-06-27,678394,"Bello, Brayan",R,Stolen Base 2B,"Wong, Connor",vladdy_08ca2f2e_bello_R.mp4,08ca2f2e-07dd-36df-9646-423fecc50ee8,59.738,1.2053,True,0.931,full,
+2025-07-07,680732,"Burke, Sean",R,Stolen Base 2B,"Teel, Kyle",vladdy_04152a7f_burke_R.mp4,04152a7f-4532-3bcd-80c6-832553c08556,59.74,1.571,True,0.775,full,
+2025-09-02,691172,"Zulueta, Yosver",R,Stolen Base 3B,"Trevino, Jose",vladdy_48792f2e_zulueta_R.mp4,48792f2e-9133-35d4-bf43-47bffdbf7861,59.797,0.8797,True,0.93,full,
+2025-09-21,680742,"Bowlan, Jonathan",R,Caught Stealing 2B,"Jensen, Carter",vladdy_6f46c564_bowlan_R.mp4,6f46c564-be95-3225-9e84-13a6a10e283b,59.681,0.9811,False,0.013,full,un-measurable; no same-pitcher fallback available

@@ -1,0 +1,5 @@
+clip_id,pitcher_name,pitcher_id,p_throws,catcher_name,catcher_id,batter_name,play_id,game_pk,at_bat_number,pitch_number,is_naylor
+torres_ec5d841c_allen_L.mp4,Logan Allen,671106,L,Austin Hedges,595978,Riley Greene,ec5d841c-c7ec-3a2c-bb4d-eade67e579ab,777780,7,4,0
+torres_9f92858e_sousa_L.mp4,Bennett Sousa,656986,L,Yainer Diaz,673237,Riley Greene,9f92858e-cdcb-3136-b026-da26cd99b71f,778124,36,4,0
+torres_98e86d9d_pivetta_R.mp4,Nick Pivetta,601713,R,Elias Díaz,553869,Riley Greene,98e86d9d-8def-391e-b023-a3efc0400315,778221,6,5,0
+torres_3894b152_treinen_R.mp4,Blake Treinen,595014,R,Will Smith,669257,Spencer Torkelson,3894b152-758f-309b-a700-d687904cda59,778546,72,5,0

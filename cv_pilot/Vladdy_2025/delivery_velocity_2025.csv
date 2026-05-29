@@ -1,0 +1,9 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-04-16,"Strider, Spencer",675911,R,2B,CS,-0.449,11.5,22.4,10.9,1.1763,0.708,True,full,91317944-ec65-3cca-8dce-f83e4ec08b6b,9.266
+2025-06-04,"Romano, Jordan",605447,R,2B,SB,0.193,10.8,24.7,13.9,1.2838,0.474,True,full,565559e5-b074-3cf2-a0b0-bf47ff181d6f,10.827
+2025-06-11,"Liberatore, Matthew",669461,L,2B,SB,0.198,12.3,25.2,12.9,1.2303,0.689,True,full,7391d322-a1bd-3997-b32f-a85acc7e4df6,10.485
+2025-06-18,"Rodriguez, Eduardo",593958,L,2B,CS,-0.451,11.7,15.8,4.2,1.0239,0.888,True,full,615a5fa5-f8a4-308e-b1b2-384598d7226e,4.102
+2025-06-27,"Bello, Brayan",678394,R,2B,SB,0.198,12.1,26.5,14.4,1.2053,0.931,True,full,08ca2f2e-07dd-36df-9646-423fecc50ee8,11.947
+2025-07-07,"Burke, Sean",680732,R,2B,SB,0.199,12.2,23.0,10.8,1.571,0.775,True,full,04152a7f-4532-3bcd-80c6-832553c08556,6.875
+2025-09-02,"Zulueta, Yosver",691172,R,3B,SB,0.198,19.3,33.0,13.7,0.8797,0.93,True,full,48792f2e-9133-35d4-bf43-47bffdbf7861,15.573
+2025-09-21,"Bowlan, Jonathan",680742,R,2B,CS,-0.45,13.3,24.0,10.7,0.9811,0.013,False,full,6f46c564-be95-3225-9e84-13a6a10e283b,

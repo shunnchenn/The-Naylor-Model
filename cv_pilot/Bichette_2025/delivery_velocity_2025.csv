@@ -1,0 +1,8 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-03-28,"Suárez, Albert",544150,R,2B,CS,-0.452,12.0,22.1,10.2,1.1367,0.929,True,full,d685c07b-35a4-3476-8d70-fbc787dda775,8.973
+2025-04-18,"Woo, Bryan",693433,R,2B,SB,0.2,13.6,28.0,14.4,1.5338,0.536,True,full,5af14a65-872a-3ac1-9806-2b9ee2affc38,9.388
+2025-04-19,"Gilbert, Logan",669302,R,2B,SB,0.197,12.9,29.9,17.1,0.912,0.903,True,full,a0d706da-8e65-3127-bc05-880cb22afa1b,18.75
+2025-04-29,"Crochet, Garrett",676979,L,2B,SB,0.198,12.6,24.3,11.7,1.3194,0.968,True,full,7b3f5733-f6ba-3252-8303-3cd32bc20dfc,8.868
+2025-04-29,"Crochet, Garrett",676979,L,3B,CS,-0.45,14.4,30.9,16.5,0.9154,0.924,True,full,79ad29db-36c3-37d8-985e-31c118be6ad5,18.025
+2025-05-03,"Williams, Gavin",668909,,2B,PK,-0.447,,,,,,False,full,b650582d-c2fa-3b23-896a-ea6aadfa1a49,
+2025-05-04,"Clase, Emmanuel",661403,R,2B,SB,0.199,11.4,24.7,13.3,1.6336,0.925,True,full,7e0bedb8-97e5-303a-aa3d-17ab31a8e661,8.142

@@ -1,0 +1,5 @@
+date,pitcher_name,result,avg_velocity_ftps,lead_at_release_ft,delivery_s,analysis_method,runner_sprint_speed_ftps,runner_secondary_lead_sbx_ft
+2025-04-29,"Sousa, Bennett",SB,18.6,43.0,1.3333,full,26.2,34.33
+2025-04-22,"Pivetta, Nick",SB,14.76,32.6,1.2669,full,26.2,34.33
+2025-03-27,"Treinen, Blake",SB,12.671,27.4,1.3811,full,26.2,34.33
+2025-05-25,"Allen, Logan",CS,9.003,19.7,1.1107,capped_6s,26.2,34.33

@@ -12,6 +12,7 @@ Sources (all under cv_pilot/):
   - Naylor_2026/pitcher_delivery_2026.csv per-attempt (usable)
   - Soto_2025/pitcher_delivery_2025.csv   per-attempt (usable, NOT reused)
   - Soto_2026/pitcher_delivery_2026.csv   per-attempt (usable)
+  - {Vladdy,Yandy,Torres,Bichette}_2025/pitcher_delivery_2025.csv  per-attempt
   - Naylor_2024  leads + /tmp detector rows (3 attempts)
 
 We pool independent measurements per pitcher_id and take the MEDIAN. Rows flagged
@@ -49,7 +50,11 @@ if os.path.exists(pool):
 for rel in ("Naylor_2025/pitcher_delivery_2025.csv",
             "Naylor_2026/pitcher_delivery_2026.csv",
             "Soto_2025/pitcher_delivery_2025.csv",
-            "Soto_2026/pitcher_delivery_2026.csv"):
+            "Soto_2026/pitcher_delivery_2026.csv",
+            "Vladdy_2025/pitcher_delivery_2025.csv",
+            "Yandy_2025/pitcher_delivery_2025.csv",
+            "Torres_2025/pitcher_delivery_2025.csv",
+            "Bichette_2025/pitcher_delivery_2025.csv"):
     p = os.path.join(HERE, rel)
     if not os.path.exists(p):
         continue

@@ -1,0 +1,8 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-03-28,544150,"Suárez, Albert",R,Caught Stealing 2B,"Rutschman, Adley",bichette_d685c07b_suarez_R.mp4,d685c07b-35a4-3476-8d70-fbc787dda775,59.699,1.1367,True,0.929,full,
+2025-04-18,693433,"Woo, Bryan",R,Stolen Base 2B,"Raleigh, Cal",bichette_5af14a65_woo_R.mp4,5af14a65-872a-3ac1-9806-2b9ee2affc38,59.688,1.5338,True,0.536,full,
+2025-04-19,669302,"Gilbert, Logan",R,Stolen Base 2B,"Raleigh, Cal",bichette_a0d706da_gilbert_R.mp4,a0d706da-8e65-3127-bc05-880cb22afa1b,59.705,0.912,True,0.903,full,
+2025-04-29,676979,"Crochet, Garrett",L,Stolen Base 2B,"Narváez, Carlos",bichette_7b3f5733_crochet_L.mp4,7b3f5733-f6ba-3252-8303-3cd32bc20dfc,59.739,1.3194,True,0.968,full,
+2025-04-29,676979,"Crochet, Garrett",L,Caught Stealing 3B,"Narváez, Carlos",bichette_79ad29db_crochet_L.mp4,79ad29db-36c3-37d8-985e-31c118be6ad5,59.813,0.9154,True,0.924,full,
+2025-05-03,668909,"Williams, Gavin",,Stolen Base 2B,"Hedges, Austin",,b650582d-c2fa-3b23-896a-ea6aadfa1a49,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-05-04,661403,"Clase, Emmanuel",R,Stolen Base 2B,"Naylor, Bo",bichette_7e0bedb8_clase_R.mp4,7e0bedb8-97e5-303a-aa3d-17ab31a8e661,59.814,1.6336,True,0.925,full,

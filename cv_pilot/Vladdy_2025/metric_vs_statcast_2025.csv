@@ -1,0 +1,9 @@
+date,pitcher_name,result,avg_velocity_ftps,lead_at_release_ft,delivery_s,analysis_method,runner_sprint_speed_ftps,runner_secondary_lead_sbx_ft
+2025-09-02,"Zulueta, Yosver",SB,15.573,33.0,0.8797,full,26.9,26.48
+2025-06-27,"Bello, Brayan",SB,11.947,26.5,1.2053,full,26.9,26.48
+2025-06-04,"Romano, Jordan",SB,10.827,24.7,1.2838,full,26.9,26.48
+2025-06-11,"Liberatore, Matthew",SB,10.485,25.2,1.2303,full,26.9,26.48
+2025-04-16,"Strider, Spencer",CS,9.266,22.4,1.1763,full,26.9,26.48
+2025-07-07,"Burke, Sean",SB,6.875,23.0,1.571,full,26.9,26.48
+2025-06-18,"Rodriguez, Eduardo",CS,4.102,15.8,1.0239,full,26.9,26.48
+2025-09-21,"Bowlan, Jonathan",CS,,24.0,0.9811,full,26.9,26.48

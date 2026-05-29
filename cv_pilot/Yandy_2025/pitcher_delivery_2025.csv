@@ -1,0 +1,2 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-09-06,683769,"Gaddis, Hunter",R,Caught Stealing 2B,"Naylor, Bo",yandy_25c804a2_gaddis_R.mp4,25c804a2-f0a6-3587-a719-9f75c87d286a,59.751,1.628,True,0.665,full,

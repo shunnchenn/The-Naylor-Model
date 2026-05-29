@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Pooled per-attempt steal model (Josh Naylor + Juan Soto) — does the CV delivery-window
-velocity metric add discrimination over the lead/timing features alone?
+Pooled multi-runner per-attempt steal model — does the CV delivery-window velocity
+metric add discrimination over the lead/timing features alone?
 
-Pools every Statcast-tracked attempt we have CV deliveries for, across both runners:
-    Naylor 2024 (3) + 2025 (23) + 2026 (9 usable)
-    Soto   2025 (28 usable) + 2026 (2)            = ~65 attempts.
+Pools every Statcast-tracked attempt we have CV deliveries for, across runners:
+    Naylor   2024 + 2025 + 2026     (slow, 24.5 ft/s, high-success)
+    Soto     2025 + 2026            (fast, 25.8 ft/s, 30/0)
+    Vladdy / Yandy / Torres / Bichette 2025   (26-27 ft/s, LOW-success stealers)
 
-NOTE on the headline shrinking vs Naylor-alone: Soto went 30/0 (no tracked CS), so adding
-his attempts injects 28 more POSITIVES and zero new negatives. With still only 3 CS in the
-whole pool, the SB-success classification AUC is dominated by the all-SB majority and the
-+VELOCITY−BASE delta dilutes (~+0.07 Naylor-only -> ~+0.005 pooled). The univariate SB-vs-CS
-separation and the continuous run_value regression are the more stable reads at this mix.
+The low-success runners are the key addition: they contribute most of the CS
+negatives the pool was starved of (Soto/Naylor are near-perfect stealers), which is
+exactly what the SB-success classification needs to be anything but noise. Headlines:
+  - +VELOCITY−BASE classification delta (sensitive to the SB/CS balance)
+  - univariate SB-vs-CS separation per feature (stable)
+  - continuous run_value regression (stable)
+Still treat the classification AUC as proof-of-harness — even pooled, CS are a minority.
 
 Two targets:
   (1) y_success  = 1 if SB else 0           -> logistic, leave-one-out CV AUC
@@ -42,6 +45,10 @@ SOURCES = [
     os.path.join(ROOT, "Naylor_2026", "delivery_velocity_2026.csv"),
     os.path.join(ROOT, "Soto_2025", "delivery_velocity_2025.csv"),
     os.path.join(ROOT, "Soto_2026", "delivery_velocity_2026.csv"),
+    os.path.join(ROOT, "Vladdy_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Yandy_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Torres_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Bichette_2025", "delivery_velocity_2025.csv"),
 ]
 
 try:
@@ -76,12 +83,14 @@ def load_pool():
             print(f"  ! missing {path} (skipping)")
             continue
         yr = os.path.basename(path).split("_")[-1][:4]
+        runner = os.path.basename(os.path.dirname(path)).split("_")[0]
         for r in csv.DictReader(open(path)):
             # require a usable CV velocity (drops the few unmeasurable attempts)
             if r.get("avg_velocity_ftps", "") == "":
                 continue
             rec = {
                 "year": yr,
+                "runner": runner,
                 "date": r["date"],
                 "pitcher_name": r["pitcher_name"],
                 "result": r["result"],
@@ -133,13 +142,15 @@ def main():
     n_sb = sum(r["y_success"] for r in rows)
     n_cs = n - n_sb
     print("=" * 78)
-    print("POOLED PER-ATTEMPT STEAL MODEL (Naylor + Soto) — does CV velocity add over lead/timing?")
+    print("POOLED MULTI-RUNNER PER-ATTEMPT STEAL MODEL — does CV velocity add over lead/timing?")
     print("=" * 78)
-    by_yr = {}
+    by_run = {}
     for r in rows:
-        by_yr.setdefault(r["year"], []).append(r)
-    print(f"pooled attempts: {n}  ({n_sb} SB / {n_cs} CS)   "
-          + "  ".join(f"{y}:{len(v)}" for y, v in sorted(by_yr.items())))
+        by_run.setdefault(r["runner"], []).append(r)
+    print(f"pooled attempts: {n}  ({n_sb} SB / {n_cs} CS)")
+    print("  by runner:  " + "  ".join(
+        f"{rn}:{sum(x['y_success'] for x in v)}SB/{sum(1-x['y_success'] for x in v)}CS"
+        for rn, v in sorted(by_run.items())))
     print(f"** small-sample caveat: only {n_cs} CS -> classification AUC is HIGH-VARIANCE")
     print(f"   (wide CIs). Treat as proof-of-harness; univariate + run_value reads below")
     print(f"   are more stable. Real power comes when pooled with Soto et al.")

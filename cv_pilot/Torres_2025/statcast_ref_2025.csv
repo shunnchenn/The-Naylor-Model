@@ -1,0 +1,2 @@
+player,season,sprint_speed_ftps,hp_to_1b_s,competitive_runs,n_tracked_attempts,n_sb,n_cs,sb_success_pct,steal_run_value,primary_lead_ft,secondary_lead_ft,sec_minus_prim_lead_ft,primary_lead_sbx_ft,secondary_lead_sbx_ft,source_note
+Gleyber Torres,2025,26.2,4.69,218,4,3,1,75.0,0.144,12.9,30.68,17.75,14.0,34.33,SB anchors from per-attempt basestealing-running-game (year-correct); sprint from sprint_speed leaderboard; leaderboard CSV year-param is broken

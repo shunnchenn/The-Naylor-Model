@@ -1,0 +1,2 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-09-06,"Gaddis, Hunter",683769,R,2B,CS,-0.451,9.6,19.2,9.6,1.628,0.665,True,full,25c804a2-f0a6-3587-a719-9f75c87d286a,5.897

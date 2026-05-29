@@ -1,0 +1,8 @@
+date,pitcher_name,result,avg_velocity_ftps,lead_at_release_ft,delivery_s,analysis_method,runner_sprint_speed_ftps,runner_secondary_lead_sbx_ft
+2025-04-19,"Gilbert, Logan",SB,18.75,29.9,0.912,full,26.1,26.73
+2025-04-29,"Crochet, Garrett",CS,18.025,30.9,0.9154,full,26.1,26.73
+2025-04-18,"Woo, Bryan",SB,9.388,28.0,1.5338,full,26.1,26.73
+2025-03-28,"Suárez, Albert",CS,8.973,22.1,1.1367,full,26.1,26.73
+2025-04-29,"Crochet, Garrett",SB,8.868,24.3,1.3194,full,26.1,26.73
+2025-05-04,"Clase, Emmanuel",SB,8.142,24.7,1.6336,full,26.1,26.73
+2025-05-03,"Williams, Gavin",PK,,,,full,26.1,26.73

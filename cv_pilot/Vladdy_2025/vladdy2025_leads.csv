@@ -1,0 +1,9 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-04-16,91317944-ec65-3cca-8dce-f83e4ec08b6b,675911,"Strider, Spencer",669221,"Murphy, Sean","Arcia, Orlando",2B,CS,-0.449,11.5,10.9,22.4
+2025-06-04,565559e5-b074-3cf2-a0b0-bf47ff181d6f,605447,"Romano, Jordan",665561,"Marchán, Rafael","Turner, Trea",2B,SB,0.193,10.8,13.9,24.7
+2025-06-11,7391d322-a1bd-3997-b32f-a85acc7e4df6,669461,"Liberatore, Matthew",650968,"Pozo, Yohel","Gorman, Nolan",2B,SB,0.198,12.3,12.9,25.2
+2025-06-18,615a5fa5-f8a4-308e-b1b2-384598d7226e,593958,"Rodriguez, Eduardo",645444,"Herrera, Jose","Marte, Ketel",2B,CS,-0.451,11.7,4.2,15.8
+2025-06-27,08ca2f2e-07dd-36df-9646-423fecc50ee8,678394,"Bello, Brayan",657136,"Wong, Connor","Hamilton, David",2B,SB,0.198,12.1,14.4,26.5
+2025-07-07,04152a7f-4532-3bcd-80c6-832553c08556,680732,"Burke, Sean",691019,"Teel, Kyle","Meidroth, Chase",2B,SB,0.199,12.2,10.8,23.0
+2025-09-02,48792f2e-9133-35d4-bf43-47bffdbf7861,691172,"Zulueta, Yosver",624431,"Trevino, Jose","Hayes, Ke'Bryan",3B,SB,0.198,19.3,13.7,33.0
+2025-09-21,6f46c564-be95-3225-9e84-13a6a10e283b,680742,"Bowlan, Jonathan",695600,"Jensen, Carter","Witt Jr., Bobby",2B,CS,-0.45,13.3,10.7,24.0

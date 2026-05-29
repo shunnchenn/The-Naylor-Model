@@ -1,0 +1,8 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-03-28,d685c07b-35a4-3476-8d70-fbc787dda775,544150,"Suárez, Albert",668939,"Rutschman, Adley","Holliday, Jackson",2B,CS,-0.452,12.0,10.2,22.1
+2025-04-18,5af14a65-872a-3ac1-9806-2b9ee2affc38,693433,"Woo, Bryan",663728,"Raleigh, Cal","Mastrobuoni, Miles",2B,SB,0.2,13.6,14.4,28.0
+2025-04-19,a0d706da-8e65-3127-bc05-880cb22afa1b,669302,"Gilbert, Logan",663728,"Raleigh, Cal",,2B,SB,0.197,12.9,17.1,29.9
+2025-04-29,7b3f5733-f6ba-3252-8303-3cd32bc20dfc,676979,"Crochet, Garrett",665966,"Narváez, Carlos","Campbell, Kristian",2B,SB,0.198,12.6,11.7,24.3
+2025-04-29,79ad29db-36c3-37d8-985e-31c118be6ad5,676979,"Crochet, Garrett",665966,"Narváez, Carlos","Bregman, Alex",3B,CS,-0.45,14.4,16.5,30.9
+2025-05-03,b650582d-c2fa-3b23-896a-ea6aadfa1a49,668909,"Williams, Gavin",595978,"Hedges, Austin","Santana, Carlos",2B,PK,-0.447,,,
+2025-05-04,7e0bedb8-97e5-303a-aa3d-17ab31a8e661,661403,"Clase, Emmanuel",666310,"Naylor, Bo","Rocchio, Brayan",2B,SB,0.199,11.4,13.3,24.7

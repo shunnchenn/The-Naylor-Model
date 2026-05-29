@@ -1,0 +1,8 @@
+game_pk,play_id,is_naylor,clip_prefix,date,pitcher_name,result
+778549,d685c07b-35a4-3476-8d70-fbc787dda775,0,bichette,2025-03-28,"Suárez, Albert",CS
+778273,5af14a65-872a-3ac1-9806-2b9ee2affc38,0,bichette,2025-04-18,"Woo, Bryan",SB
+778258,a0d706da-8e65-3127-bc05-880cb22afa1b,0,bichette,2025-04-19,"Gilbert, Logan",SB
+778127,7b3f5733-f6ba-3252-8303-3cd32bc20dfc,0,bichette,2025-04-29,"Crochet, Garrett",SB
+778127,79ad29db-36c3-37d8-985e-31c118be6ad5,0,bichette,2025-04-29,"Crochet, Garrett",CS
+778064,b650582d-c2fa-3b23-896a-ea6aadfa1a49,0,bichette,2025-05-03,"Williams, Gavin",PK
+778056,7e0bedb8-97e5-303a-aa3d-17ab31a8e661,0,bichette,2025-05-04,"Clase, Emmanuel",SB
