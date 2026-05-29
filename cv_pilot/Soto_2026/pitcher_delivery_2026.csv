@@ -1,0 +1,3 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2026-05-16,666808,"Doval, Camilo",R,Stolen Base 3B,"Wells, Austin",soto_fc82ce63_doval_R.mp4,fc82ce63-4261-3e26-8723-79d8f571c082,59.746,1.466,True,0.774,full,
+2026-05-21,690925,"Beeter, Clayton",R,Stolen Base 2B,"Ruiz, Keibert",soto_77f18201_beeter_R.mp4,77f18201-ba97-3ad7-a108-a673e579a259,59.675,1.1437,True,0.926,full,

@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Per-attempt steal model for Josh Naylor — does the CV delivery-window velocity metric
-add discrimination over the lead/timing features alone?
+Pooled per-attempt steal model (Josh Naylor + Juan Soto) — does the CV delivery-window
+velocity metric add discrimination over the lead/timing features alone?
 
-Pools every Statcast-tracked Naylor attempt we have CV deliveries for:
-    2024 (3) + 2025 (23) + 2026 (10, 9 usable) = ~36 attempts.
+Pools every Statcast-tracked attempt we have CV deliveries for, across both runners:
+    Naylor 2024 (3) + 2025 (23) + 2026 (9 usable)
+    Soto   2025 (28 usable) + 2026 (2)            = ~65 attempts.
+
+NOTE on the headline shrinking vs Naylor-alone: Soto went 30/0 (no tracked CS), so adding
+his attempts injects 28 more POSITIVES and zero new negatives. With still only 3 CS in the
+whole pool, the SB-success classification AUC is dominated by the all-SB majority and the
++VELOCITY−BASE delta dilutes (~+0.07 Naylor-only -> ~+0.005 pooled). The univariate SB-vs-CS
+separation and the continuous run_value regression are the more stable reads at this mix.
 
 Two targets:
   (1) y_success  = 1 if SB else 0           -> logistic, leave-one-out CV AUC
@@ -33,6 +40,8 @@ SOURCES = [
     os.path.join(ROOT, "Naylor_2024", "delivery_velocity_2024.csv"),
     os.path.join(ROOT, "Naylor_2025", "delivery_velocity_2025.csv"),
     os.path.join(ROOT, "Naylor_2026", "delivery_velocity_2026.csv"),
+    os.path.join(ROOT, "Soto_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Soto_2026", "delivery_velocity_2026.csv"),
 ]
 
 try:
@@ -124,7 +133,7 @@ def main():
     n_sb = sum(r["y_success"] for r in rows)
     n_cs = n - n_sb
     print("=" * 78)
-    print("NAYLOR PER-ATTEMPT STEAL MODEL — does CV velocity add over lead/timing?")
+    print("POOLED PER-ATTEMPT STEAL MODEL (Naylor + Soto) — does CV velocity add over lead/timing?")
     print("=" * 78)
     by_yr = {}
     for r in rows:

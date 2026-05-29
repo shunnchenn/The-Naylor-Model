@@ -171,7 +171,7 @@ def main():
                 trows.append({
                     "game_pk": pk if pk is not None else "",
                     "play_id": r["play_id"],
-                    "is_naylor": 1,
+                    "is_naylor": 1 if args.runner_name.lower() == "naylor" else 0,
                     "clip_prefix": args.runner_name,
                     "date": r["date"],
                     "pitcher_name": r["pitcher_name"],

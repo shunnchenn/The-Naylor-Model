@@ -1,0 +1,33 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-04-04,684320,"Rodríguez, Yariel",R,Stolen Base 2B,"Kirk, Alejandro",soto_0acc3b9e_rodriguez_R.mp4,0acc3b9e-1939-3c54-b112-45131062824e,59.709,1.6074,True,0.87,full,
+2025-04-19,669461,"Liberatore, Matthew",L,Stolen Base 2B,"Pozo, Yohel",soto_3e34f93d_liberatore_L.mp4,3e34f93d-48da-31fc-a4ac-7a4a2d6c08f7,59.714,1.0923,True,0.738,full,
+2025-05-13,656605,"Keller, Mitch",R,Stolen Base 2B,"Davis, Henry",soto_47d9c409_keller_R.mp4,47d9c409-14a2-3f22-8df3-5a217e2440e1,59.829,1.0534,True,0.949,full,
+2025-05-17,657376,"Schmidt, Clarke",R,Stolen Base 3B,"Escarra, J.C.",soto_26fcb909_schmidt_R.mp4,26fcb909-e43c-39bd-853c-bbce7137fc48,59.72,0.9033,True,0.4,full,
+2025-05-19,458677,"Wilson, Justin",L,Stolen Base 2B,"Narváez, Carlos",soto_0eba4e88_wilson_L.mp4,0eba4e88-5603-31a4-adeb-d63c9f34b438,59.712,1.2833,True,0.41,full,
+2025-05-25,689017,"Knack, Landon",R,Stolen Base 2B,"Smith, Will",soto_4dd51939_knack_R.mp4,4dd51939-3744-311c-aadd-d378e7c5fb3c,59.653,1.4688,True,0.935,full,
+2025-06-24,675911,"Strider, Spencer",R,Stolen Base 2B,"Baldwin, Drake",soto_78b116fc_strider_R.mp4,78b116fc-11d5-3d85-bcf9-2bcc869ee595,59.794,1.1656,True,0.363,full,
+2025-07-02,642547,"Peralta, Freddy",R,Stolen Base 2B,"Contreras, William",soto_c789508a_peralta_R.mp4,c789508a-fdab-312a-be62-f832f668c1f3,59.655,1.3405,True,0.978,full,
+2025-07-10,608372,"Sugano, Tomoyuki",R,Stolen Base 2B,"Jackson, Alex",soto_7297e0f4_sugano_R.mp4,7297e0f4-dc74-3412-ab4e-c58907dae9ba,59.707,0.8458,True,0.689,full,
+2025-07-19,607259,"Martinez, Nick",R,Stolen Base 2B,"Stephenson, Tyler",soto_d648c578_martinez_R.mp4,d648c578-b60a-3b3d-9e1a-cf0403d43740,59.766,1.5473,True,0.583,full,
+2025-07-22,641401,"Brogdon, Connor",R,Stolen Base 2B,"O'Hoppe, Logan",soto_187d0a40_brogdon_R.mp4,187d0a40-a5b4-3b7d-91c9-c5c5b05831f6,59.771,1.5099,True,0.652,full,
+2025-07-26,592662,"Ray, Robbie",L,Stolen Base 2B,"Knizner, Andrew",soto_741be583_ray_L.mp4,741be583-9059-3e92-9f81-d819eedfba86,59.817,1.2594,True,0.787,full,
+2025-08-01,676130,"Buttó, José",R,Stolen Base 2B,"Bailey, Patrick",soto_662eef7f_butto_R.mp4,662eef7f-8d04-3915-a04c-137532e0912a,59.805,1.5948,True,0.808,full,
+2025-08-05,671106,"Allen, Logan",L,Stolen Base 2B,"Naylor, Bo",soto_c539b405_allen_L.mp4,c539b405-f712-33b7-aef3-b9466bb8da1d,59.756,0.9944,True,0.564,full,
+2025-08-10,682990,"Priester, Quinn",R,Stolen Base 2B,"Jansen, Danny",soto_90c8e4b0_priester_R.mp4,90c8e4b0-b3e0-3dc5-a740-a9c567edba2a,59.692,1.1669,True,0.959,full,
+2025-08-14,693821,"Elder, Bryce",R,Stolen Base 2B,"Baldwin, Drake",soto_df06ba28_elder_R.mp4,df06ba28-581e-3eb6-b40a-73646bb38fe3,59.771,1.113,True,0.953,full,
+2025-08-17,663804,"Kowar, Jackson",R,Stolen Base 2B,"Raleigh, Cal",soto_66a73642_kowar_R.mp4,66a73642-ab9b-43f5-a133-c5efdf20a2bb,59.801,1.0798,True,0.67,full,
+2025-08-30,665795,"Cabrera, Edward",R,Stolen Base 2B,"Ramírez, Agustín",soto_cad333e6_cabrera_R.mp4,cad333e6-770d-3f33-8ed8-2edd73fcc5a5,59.698,1.0983,True,0.957,full,
+2025-08-30,678692,"Henriquez, Ronny",R,Stolen Base 2B,"Ramírez, Agustín",soto_3da02488_henriquez_R.mp4,3da02488-865f-3644-8b6f-d2750084a1a1,59.784,1.6016,True,0.952,full,
+2025-08-31,645261,"Alcantara, Sandy",R,Stolen Base 3B,"Ramírez, Agustín",soto_48f7f0cf_alcantara_R.mp4,48f7f0cf-6ab2-307c-9f78-8022bbb8170e,59.819,1.1293,True,0.828,full,
+2025-08-31,645261,"Alcantara, Sandy",,Stolen Base 2B,"Ramírez, Agustín",,12c024bd-a3c4-4b65-998f-6b69e5aae56f,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-09-02,687830,"Gipson-Long, Sawyer",R,Stolen Base 2B,"Dingler, Dillon",soto_0c6dc21e_gipsonlong_R.mp4,0c6dc21e-9a56-3240-8d29-35577d8c9791,59.801,1.1061,True,0.926,full,
+2025-09-05,671096,"Abbott, Andrew",L,Stolen Base 3B,"Stephenson, Tyler",soto_ff5e352f_abbott_L.mp4,ff5e352f-7ea6-3065-ba9f-9437ab5e8535,59.651,1.2963,True,0.947,full,
+2025-09-06,605130,"Barlow, Scott",R,Stolen Base 2B,"Trevino, Jose",soto_a756565a_barlow_R.mp4,a756565a-7617-31cf-8728-7f0ccc6abe8e,59.801,1.6444,True,0.926,full,
+2025-09-09,621383,"Banks, Tanner",L,Stolen Base 3B,"Realmuto, J.T.",soto_f6ea875c_banks_L.mp4,f6ea875c-b135-3e2f-b93f-eeb1c85b92b9,59.69,1.4822,True,0.988,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-09-10,650911,"Sánchez, Cristopher",L,Stolen Base 2B,"Realmuto, J.T.",soto_aa6cf32c_sanchez_L.mp4,aa6cf32c-3be2-3963-a6a3-a977caf8edd6,59.594,1.1638,True,0.898,full,
+2025-09-18,676760,"Marinaccio, Ron",R,Stolen Base 2B,"Fermin, Freddy",soto_1e431cc0_marinaccio_R.mp4,1e431cc0-8c53-39a9-8a19-531eaf8213af,59.785,1.0524,True,0.676,full,
+2025-09-19,671131,"Rutledge, Jackson",R,Stolen Base 2B,"Alfaro, Jorge",soto_082a0ddb_rutledge_R.mp4,082a0ddb-519d-36ca-ad97-887740105e58,59.676,0.9919,True,0.984,full,
+2025-09-21,663623,"Irvin, Jake",,Stolen Base 3B,"Alfaro, Jorge",,86266702-bf3c-453d-b347-7eb1c9e87d19,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-09-23,690990,"Horton, Cade",R,Stolen Base 2B,"Kelly, Carson",soto_f55e4130_horton_R.mp4,f55e4130-f795-300f-9086-135f851a3aa9,59.619,0.0872,False,0.97,full,un-measurable; no same-pitcher fallback available
+2025-09-26,645261,"Alcantara, Sandy",R,Stolen Base 2B,"Ramírez, Agustín",soto_f4a5478d_alcantara_R.mp4,f4a5478d-a308-374a-8dfc-53021c91c30c,59.772,1.287,True,0.967,full,
+2025-09-26,645261,"Alcantara, Sandy",R,Stolen Base 2B,"Ramírez, Agustín",soto_87d4d83b_alcantara_R.mp4,87d4d83b-08dd-326f-a867-cbd523bdc7ba,59.697,0.8717,True,0.971,full,

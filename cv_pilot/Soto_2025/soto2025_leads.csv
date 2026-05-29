@@ -1,0 +1,33 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-04-04,0acc3b9e-1939-3c54-b112-45131062824e,684320,"Rodríguez, Yariel",672386,"Kirk, Alejandro","Giménez, Andrés",2B,SB,0.199,14.7,10.6,25.3
+2025-04-19,3e34f93d-48da-31fc-a4ac-7a4a2d6c08f7,669461,"Liberatore, Matthew",650968,"Pozo, Yohel","Saggese, Thomas",2B,SB,0.198,11.6,14.1,25.7
+2025-05-13,47d9c409-14a2-3f22-8df3-5a217e2440e1,656605,"Keller, Mitch",680779,"Davis, Henry","Frazier, Adam",2B,SB,0.2,17.8,14.0,31.8
+2025-05-17,26fcb909-e43c-39bd-853c-bbce7137fc48,657376,"Schmidt, Clarke",641555,"Escarra, J.C.",,3B,SB,0.198,14.6,26.3,41.0
+2025-05-19,0eba4e88-5603-31a4-adeb-d63c9f34b438,458677,"Wilson, Justin",665966,"Narváez, Carlos",,2B,SB,0.197,12.5,13.6,26.1
+2025-05-25,4dd51939-3744-311c-aadd-d378e7c5fb3c,689017,"Knack, Landon",669257,"Smith, Will",,2B,SB,0.198,14.7,18.1,32.8
+2025-06-24,78b116fc-11d5-3d85-bcf9-2bcc869ee595,675911,"Strider, Spencer",686948,"Baldwin, Drake",,2B,SB,0.198,16.8,13.2,29.9
+2025-07-02,c789508a-fdab-312a-be62-f832f668c1f3,642547,"Peralta, Freddy",661388,"Contreras, William","Turang, Brice",2B,SB,0.2,14.4,16.4,30.9
+2025-07-10,7297e0f4-dc74-3412-ab4e-c58907dae9ba,608372,"Sugano, Tomoyuki",656577,"Jackson, Alex","Westburg, Jordan",2B,SB,0.2,14.6,12.6,27.2
+2025-07-19,d648c578-b60a-3b3d-9e1a-cf0403d43740,607259,"Martinez, Nick",663886,"Stephenson, Tyler","McLain, Matt",2B,SB,0.2,14.5,14.8,29.3
+2025-07-22,187d0a40-a5b4-3b7d-91c9-c5c5b05831f6,641401,"Brogdon, Connor",681351,"O'Hoppe, Logan","Rengifo, Luis",2B,SB,0.197,12.4,14.0,26.5
+2025-07-26,741be583-9059-3e92-9f81-d819eedfba86,592662,"Ray, Robbie",668800,"Knizner, Andrew","Schmitt, Casey",2B,SB,0.198,13.5,14.8,28.4
+2025-08-01,662eef7f-8d04-3915-a04c-137532e0912a,676130,"Buttó, José",672275,"Bailey, Patrick","Adames, Willy",2B,SB,0.202,13.6,24.0,37.6
+2025-08-05,c539b405-f712-33b7-aef3-b9466bb8da1d,671106,"Allen, Logan",666310,"Naylor, Bo",,2B,SB,0.201,13.7,8.6,22.4
+2025-08-10,90c8e4b0-b3e0-3dc5-a740-a9c567edba2a,682990,"Priester, Quinn",643376,"Jansen, Danny",,2B,SB,0.199,14.1,11.1,25.3
+2025-08-14,df06ba28-581e-3eb6-b40a-73646bb38fe3,693821,"Elder, Bryce",686948,"Baldwin, Drake","Albies, Ozzie",2B,SB,0.197,13.5,11.5,25.0
+2025-08-17,66a73642-ab9b-43f5-a133-c5efdf20a2bb,663804,"Kowar, Jackson",663728,"Raleigh, Cal",,2B,SB,0.199,,,
+2025-08-30,cad333e6-770d-3f33-8ed8-2edd73fcc5a5,665795,"Cabrera, Edward",682663,"Ramírez, Agustín",,2B,SB,0.189,14.7,13.6,28.3
+2025-08-30,3da02488-865f-3644-8b6f-d2750084a1a1,678692,"Henriquez, Ronny",682663,"Ramírez, Agustín","Edwards, Xavier",2B,SB,0.194,16.0,10.8,26.8
+2025-08-31,48f7f0cf-6ab2-307c-9f78-8022bbb8170e,645261,"Alcantara, Sandy",682663,"Ramírez, Agustín",,3B,SB,0.198,17.8,16.9,34.6
+2025-08-31,12c024bd-a3c4-4b65-998f-6b69e5aae56f,645261,"Alcantara, Sandy",682663,"Ramírez, Agustín","Hicks, Liam",2B,FB,0.193,,,
+2025-09-02,0c6dc21e-9a56-3240-8d29-35577d8c9791,687830,"Gipson-Long, Sawyer",693307,"Dingler, Dillon","Torres, Gleyber",2B,SB,0.197,15.4,15.6,31.1
+2025-09-05,ff5e352f-7ea6-3065-ba9f-9437ab5e8535,671096,"Abbott, Andrew",663886,"Stephenson, Tyler","Hayes, Ke'Bryan",3B,SB,0.199,17.3,16.8,34.1
+2025-09-06,a756565a-7617-31cf-8728-7f0ccc6abe8e,605130,"Barlow, Scott",624431,"Trevino, Jose","De La Cruz, Elly",2B,SB,0.196,13.7,11.5,25.1
+2025-09-09,f6ea875c-b135-3e2f-b93f-eeb1c85b92b9,621383,"Banks, Tanner",592663,"Realmuto, J.T.","Kemp, Otto",3B,SB,0.198,19.1,10.5,29.6
+2025-09-10,aa6cf32c-3be2-3963-a6a3-a977caf8edd6,650911,"Sánchez, Cristopher",592663,"Realmuto, J.T.",,2B,SB,0.199,11.6,13.7,25.3
+2025-09-18,1e431cc0-8c53-39a9-8a19-531eaf8213af,676760,"Marinaccio, Ron",666023,"Fermin, Freddy","Cronenworth, Jake",2B,SB,0.199,15.8,14.4,30.2
+2025-09-19,082a0ddb-519d-36ca-ad97-887740105e58,671131,"Rutledge, Jackson",595751,"Alfaro, Jorge","García Jr., Luis",2B,SB,0.199,12.9,14.2,27.1
+2025-09-21,86266702-bf3c-453d-b347-7eb1c9e87d19,663623,"Irvin, Jake",595751,"Alfaro, Jorge","Nuñez, Nasim",3B,BK,0.2,,,
+2025-09-23,f55e4130-f795-300f-9086-135f851a3aa9,690990,"Horton, Cade",608348,"Kelly, Carson",,2B,SB,0.204,14.0,17.5,31.6
+2025-09-26,f4a5478d-a308-374a-8dfc-53021c91c30c,645261,"Alcantara, Sandy",682663,"Ramírez, Agustín","Lopez, Otto",2B,SB,0.193,14.9,8.8,23.7
+2025-09-26,87d4d83b-08dd-326f-a867-cbd523bdc7ba,645261,"Alcantara, Sandy",682663,"Ramírez, Agustín","Lopez, Otto",2B,SB,0.193,14.2,9.2,23.4

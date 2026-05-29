@@ -10,6 +10,8 @@ Sources (all under cv_pilot/):
   - pitcher_delivery_sb.csv               20-pitcher steal-condition pool (raw times)
   - Naylor_2025/pitcher_delivery_2025.csv per-attempt (usable, NOT reused)
   - Naylor_2026/pitcher_delivery_2026.csv per-attempt (usable)
+  - Soto_2025/pitcher_delivery_2025.csv   per-attempt (usable, NOT reused)
+  - Soto_2026/pitcher_delivery_2026.csv   per-attempt (usable)
   - Naylor_2024  leads + /tmp detector rows (3 attempts)
 
 We pool independent measurements per pitcher_id and take the MEDIAN. Rows flagged
@@ -43,9 +45,11 @@ if os.path.exists(pool):
             if t.strip():
                 add(pid, t)
 
-# 2) Naylor 2025 + 2026 per-attempt delivery tables (skip reused)
+# 2) Naylor + Soto per-attempt delivery tables (skip reused)
 for rel in ("Naylor_2025/pitcher_delivery_2025.csv",
-            "Naylor_2026/pitcher_delivery_2026.csv"):
+            "Naylor_2026/pitcher_delivery_2026.csv",
+            "Soto_2025/pitcher_delivery_2025.csv",
+            "Soto_2026/pitcher_delivery_2026.csv"):
     p = os.path.join(HERE, rel)
     if not os.path.exists(p):
         continue
