@@ -290,17 +290,33 @@ def find_set_and_first_move(me):
 
 
 def leg_lift_frame(kpts, p_throws, set_end, peak):
-    """Cross-check: frame where lead-ankle starts rising (image y decreases)."""
+    """PRIMARY first-move signal: lead foot leaves the ground.
+
+    Per the project definition, "first movement" = the moment the lead foot
+    leaves the ground (RHP→left ankle, LHP→right).  We find where the lead
+    ankle's image-y first rises (decreases in pixels) clearly above its
+    planted baseline, and sub-frame interpolate the threshold crossing.
+    Returns a sub-frame float index, or None if the ankle is too occluded.
+    """
     a = lead_ankle(p_throws)
     y = kpts[:, a, 1].copy()
     c = kpts[:, a, 2]
     y[c < KPT_CONF_MIN] = np.nan
+    if np.isfinite(y).sum() < 5:
+        return None
     y = pd.Series(y).interpolate().bfill().ffill().values
-    base = np.nanmean(y[max(0, set_end - 4):set_end + 1])
-    diag_lo, diag_hi = set_end, max(set_end + 1, peak)
-    for i in range(diag_lo, diag_hi):
-        if base - y[i] > 0.03 * abs(base):   # ankle risen ~3% of its height
-            return float(i)
+
+    lo = max(0, set_end - 8)
+    base = float(np.nanmedian(y[lo:set_end + 1]))        # planted ankle height
+    noise = float(np.nanstd(y[lo:set_end + 1]))
+    rise = base - y                                      # grows as foot lifts
+    thresh = max(0.02 * abs(base), 3.0 * noise, 6.0)     # px the foot must rise
+
+    hi = max(set_end + 1, peak + 1)
+    for i in range(max(1, set_end), hi):
+        # require a sustained lift (not a 1-frame blip)
+        if rise[i] > thresh and np.all(rise[i:min(i + 3, len(rise))] > thresh * 0.6):
+            return interp_crossing(i - 1, rise[i - 1], rise[i], thresh)
     return None
 
 
@@ -335,8 +351,14 @@ def find_release(kpts, p_throws, first_move_idx, diag_ref):
     speed = smooth(speed, 3)
 
     # reach: wrist distance from shoulder-hip body centroid
-    bx = np.nanmean([kpts[:, sho, 0], kpts[:, hip, 0]], axis=0)
-    by = np.nanmean([kpts[:, sho, 1], kpts[:, hip, 1]], axis=0)
+    # (frames where both shoulder & hip are missing yield NaN; interpolate fills them —
+    #  suppress the benign "Mean of empty slice" warning for those all-NaN columns)
+    with np.errstate(invalid="ignore"):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            bx = np.nanmean([kpts[:, sho, 0], kpts[:, hip, 0]], axis=0)
+            by = np.nanmean([kpts[:, sho, 1], kpts[:, hip, 1]], axis=0)
     bx = pd.Series(bx).interpolate().bfill().ffill().values
     by = pd.Series(by).interpolate().bfill().ffill().values
     reach = np.hypot(wx - bx, wy - by) / max(diag_ref, 1.0)
@@ -446,15 +468,18 @@ def process_clip(path: Path, p_throws: str, model, bbox_hint=None, make_qa=True)
     me = motion_energy_series(kpts, diag)
     peak = int(np.nanargmax(me))
 
-    set_i, fm, floor, std = find_set_and_first_move(me)
-    # cross-checks — take the earliest consistent first-move cue
-    cands = [fm]
+    set_i, motion_onset, floor, std = find_set_and_first_move(me)
+    # FIRST MOVEMENT = lead foot leaves the ground (project definition).
+    # Priority: leg-lift (primary) -> hand-break -> generic motion onset.
+    # The raw motion-energy onset is noise-sensitive, so it is only a fallback.
     ll = leg_lift_frame(kpts, p_throws, set_i, peak)
     hb = hand_break_frame(kpts, set_i, peak)
-    for c in (ll, hb):
-        if c is not None and c >= set_i:
-            cands.append(c)
-    fm = float(min(cands))
+    if ll is not None:
+        fm, fm_cue = float(ll), "leg_lift"
+    elif hb is not None:
+        fm, fm_cue = float(hb), "hand_break"
+    else:
+        fm, fm_cue = float(motion_onset), "motion_onset"
 
     rel, rel_conf = find_release(kpts, p_throws, fm, diag)
 
@@ -465,7 +490,9 @@ def process_clip(path: Path, p_throws: str, model, bbox_hint=None, make_qa=True)
         "release_frame": round(rel, 2),
         "delivery_s": round(delivery_s, 4),
         "release_kpt_conf": round(rel_conf, 3),
-        "first_move_cue_n": len(cands),
+        "first_move_cue": fm_cue,
+        "leg_lift_frame": round(ll, 2) if ll is not None else None,
+        "hand_break_frame": round(hb, 2) if hb is not None else None,
     })
 
     # confidence flags
@@ -540,20 +567,24 @@ def main():
             row = process_clip(path, p_throws, model, hint, make_qa=not args.no_qa)
         except Exception as e:
             row = {"clip_id": path.name, "status": f"ERR:{e}"}
-        if "pitcher_name" in m:
-            row["pitcher_name"] = m["pitcher_name"]
-        if "pitcher_id" in m:
-            row["pitcher_id"] = m["pitcher_id"]
+        # carry relational metadata (join keys to the Naylor model) from meta
+        for col in ("pitcher_name", "pitcher_id", "catcher_name", "catcher_id",
+                    "batter_name", "play_id", "game_pk", "at_bat_number",
+                    "pitch_number"):
+            if col in m and pd.notna(m[col]):
+                row[col] = m[col]
         print(f"        -> {row.get('status')}  "
               f"delivery_s={row.get('delivery_s')}  usable={row.get('usable')}")
         rows.append(row)
 
     df = pd.DataFrame(rows)
-    cols = ["clip_id", "pitcher_name", "pitcher_id", "p_throws", "fps", "n_frames",
-            "analysis_frames", "scene_cut_at", "set_frame", "first_move_frame",
-            "release_frame", "delivery_s", "release_kpt_conf", "first_move_cue_n",
-            "in_band", "release_pre_cut", "usable", "confidence", "qa_video",
-            "pitcher_track_id", "status"]
+    cols = ["clip_id", "pitcher_name", "pitcher_id", "catcher_name", "catcher_id",
+            "play_id", "game_pk", "at_bat_number", "pitch_number",
+            "p_throws", "fps", "n_frames", "analysis_frames", "scene_cut_at",
+            "set_frame", "first_move_frame", "release_frame", "delivery_s",
+            "first_move_cue", "leg_lift_frame", "hand_break_frame",
+            "release_kpt_conf", "in_band", "release_pre_cut", "usable",
+            "confidence", "qa_video", "pitcher_track_id", "status"]
     df = df.reindex(columns=[c for c in cols if c in df.columns])
     df.to_csv(RESULTS_CSV, index=False)
     print(f"\n[write] {RESULTS_CSV}  ({len(df)} clips)")

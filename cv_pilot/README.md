@@ -26,10 +26,42 @@ pip install -r cv_pilot/requirements.txt   # ultralytics, opencv, numpy, pandas
 
 YOLOv8-pose weights download automatically on first run.
 
+## Acquiring clips from Savant (`fetch_clips.py`)
+
+Instead of hand-dropping clips and hand-filling metadata, `fetch_clips.py` discovers
+pitch clips on Baseball Savant and downloads them with **full relational metadata**, so
+every clip joins straight back to the Naylor Model on
+`game_pk + at_bat_number + pitch_number + pitcher_id + catcher_id`.
+
+The bridge: `gf?game_pk=<PK>` returns every pitch with its `play_id` (Film Room GUID)
+plus pitcher/catcher/batter, `p_throws`, `ab_number`, `pitch_number`, `des`, …  A
+`play_id` then resolves to the downloadable mp4 via `sporty-videos?playId=<GUID>`.
+
+```bash
+# Whole games (all pitches), download the clips:
+python3 cv_pilot/fetch_clips.py --game-pks 746161 746158 746150 --download
+
+# Only specific pitches (e.g. the model's SB attempts):
+#   attempts.csv columns: game_pk,at_bat_number,pitch_number
+python3 cv_pilot/fetch_clips.py --attempts attempts.csv --download
+
+# Reverse-resolve known play_ids by scanning a team's home games:
+python3 cv_pilot/fetch_clips.py --resolve GUID1,GUID2 \
+        --season 2024 --home-team 119 --opp 135,120,113 --download
+
+# Manifest only (no download) — just resolve metadata:
+python3 cv_pilot/fetch_clips.py --game-pks 746161
+```
+
+Writes `clips_manifest.csv` (one row per resolved pitch + `mp4_url` + `clip_id`) and
+`clips_meta.csv` (the detector-facing subset). Add `--sb-only` with `--game-pks` to keep
+only pitches whose description mentions a steal.
+
 ## Workflow
 
-1. **Drop clips** (~4–6 pitchers × 3–4 clips; mix LHP/RHP and windup/slide-step) into
-   `cv_pilot/clips/` and list them in `cv_pilot/clips_meta.csv`.
+1. **Get clips** — either hand-drop mp4s into `cv_pilot/clips/` and fill
+   `cv_pilot/clips_meta.csv`, or use `fetch_clips.py` (above) to do both automatically
+   from `game_pk`s / attempts / play_ids.
 2. **Run the detector** → `pilot_results.csv` + annotated QA videos in `qa/`:
    ```bash
    python3 cv_pilot/extract_delivery.py
@@ -56,10 +88,12 @@ A NO-GO with quantified error is a valid result — the model simply keeps the c
 ## Files
 
 ```
+fetch_clips.py        Savant clip discovery + download (relational metadata)
 extract_delivery.py   detector (core)
 label_tool.py         manual frame labeler (ground truth)
 evaluate.py           accuracy / repeatability / coverage + verdict
-clips_meta.csv        per-clip pitcher + handedness metadata
+clips_manifest.csv    every resolved pitch (join keys + mp4_url + clip_id)
+clips_meta.csv        per-clip pitcher/catcher + handedness metadata
 clips/   qa/          video in/out  (gitignored — never committed)
 labels_manual.csv     committed ground-truth labels
 pilot_results.csv     committed auto results

@@ -1,10 +1,4 @@
-clip_id,pitcher_name,p_throws,pitcher_id,bbox_hint
-# Fill one row per clip you drop in clips/.  Example rows below — delete them.
-# clip_id      = exact mp4 filename in clips/
-# pitcher_name = used for per-pitcher repeatability grouping
-# p_throws     = R or L  (sets throwing wrist + lead leg)
-# pitcher_id   = optional MLBAM id
-# bbox_hint    = optional "x0 y0 x1 y1" pitcher box in an early frame (if auto-select misses)
-0001_glasnow_R.mp4,Tyler Glasnow,R,607192,
-0002_glasnow_R.mp4,Tyler Glasnow,R,607192,
-0003_skubal_L.mp4,Tarik Skubal,L,669373,
+clip_id,pitcher_name,pitcher_id,p_throws,catcher_name,catcher_id,batter_name,play_id,game_pk,at_bat_number,pitch_number
+8c62e264_pagan_R.mp4,Emilio Pagán,641941,R,Tyler Stephenson,663886,Teoscar Hernández,8c62e264-07d2-4ed6-a9e7-25e53392d226,746150,10,1
+d9c74db4_barnes_R.mp4,Matt Barnes,598264,R,Riley Adams,656180,Freddie Freeman,d9c74db4-42a3-4cda-a2c8-8a86b3a669e4,746158,49,2
+d7686082_waldron_R.mp4,Matt Waldron,663362,R,Kyle Higashioka,543309,Will Smith,d7686082-3711-4fd7-b971-cb743eb9a1ee,746161,7,7
