@@ -23,6 +23,13 @@ venv/
 ## v5 pickle cache (large pitch-by-pitch data, regenerable)
 .cache/
 
+## CV model weights (downloaded on first run, large, regenerable)
+*.pt
+
+## CV pilot video in/out (large binaries)
+cv_pilot/clips/
+cv_pilot/qa/
+
 ## OS / editor noise
 *~
 *.swp

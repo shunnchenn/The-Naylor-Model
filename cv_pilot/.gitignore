@@ -1,0 +1,15 @@
+# Large binaries — never commit video
+clips/
+qa/
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# YOLO weights (downloaded on first run)
+*.pt
+
+# Python noise
+__pycache__/
+*.pyc
+.DS_Store

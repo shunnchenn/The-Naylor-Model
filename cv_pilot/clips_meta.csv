@@ -1,0 +1,10 @@
+clip_id,pitcher_name,p_throws,pitcher_id,bbox_hint
+# Fill one row per clip you drop in clips/.  Example rows below — delete them.
+# clip_id      = exact mp4 filename in clips/
+# pitcher_name = used for per-pitcher repeatability grouping
+# p_throws     = R or L  (sets throwing wrist + lead leg)
+# pitcher_id   = optional MLBAM id
+# bbox_hint    = optional "x0 y0 x1 y1" pitcher box in an early frame (if auto-select misses)
+0001_glasnow_R.mp4,Tyler Glasnow,R,607192,
+0002_glasnow_R.mp4,Tyler Glasnow,R,607192,
+0003_skubal_L.mp4,Tarik Skubal,L,669373,

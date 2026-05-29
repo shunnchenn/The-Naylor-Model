@@ -1,0 +1,6 @@
+# CV pilot — pitch delivery detection
+# Install:  pip install -r cv_pilot/requirements.txt
+ultralytics>=8.1.0      # YOLOv8-pose (multi-person, 17 COCO keypoints)
+opencv-python>=4.8.0    # video IO, scene-cut histograms, QA overlay
+numpy>=1.24
+pandas>=2.0
