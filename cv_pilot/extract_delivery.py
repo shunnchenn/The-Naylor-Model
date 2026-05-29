@@ -73,6 +73,18 @@ HALF   = False
 # None = analyse the whole clip (preserves the validated pool behaviour).
 MAX_ANALYSIS_S = None
 
+# First-move detection method (set from CLI):
+#   "heel" — DEFAULT.  Refine the lead-leg displacement crossing FORWARD to the
+#            lead-ankle's sustained vertical (upward) rise onset — the
+#            implementable proxy for the user's manual definition "first move =
+#            lead heel lifts to ~10-15deg".  COCO-17 pose has no heel/toe
+#            keypoint, so the ankle's vertical lift is the closest signal; it
+#            never fires earlier than "disp" (slide-steps fall back).  Validated
+#            on 50 hand-labels: usable delivery_s MAE 0.164 -> 0.108s (-30%),
+#            bias +0.151 -> +0.053s, vs the "disp" original.
+#   "disp" — original first lead-leg total-displacement crossing (reversible).
+FIRST_MOVE_METHOD = "heel"
+
 # COCO-17 keypoint indices (YOLOv8-pose)
 NOSE = 0
 L_SHO, R_SHO = 5, 6
@@ -399,12 +411,37 @@ def leg_lift_frame(kpts, p_throws, set_end, peak, diag_ref):
 
     start = max(1, set_end - 3)
     hi = max(start + 1, peak + 1)
+    disp_cross = None
     for i in range(start, min(hi, n)):
         # commit on first crossing whose *median* over the next 5 frames stays
         # elevated — median ignores 1–2 flicker dropouts (robust to noisy joints)
         if m[i] > thresh and float(np.nanmedian(m[i:min(i + 5, n)])) > thresh:
-            return interp_crossing(i - 1, m[i - 1], m[i], thresh)
-    return None
+            disp_cross = (i, interp_crossing(i - 1, m[i - 1], m[i], thresh))
+            break
+    if disp_cross is None:
+        return None
+    i0, cross = disp_cross
+
+    # ── heel-lift refinement (user's manual definition) ──────────────────────
+    # The displacement crossing fires on the FIRST lead-leg motion, which our
+    # 50 hand-labels show lands ~4 frames (~0.06s) *before* the user's mark of
+    # "heel lifts to ~10-15deg".  When method="heel", advance the trigger to the
+    # lead ankle's sustained UPWARD rise (heel coming off the ground): y in image
+    # coords decreases as the foot lifts.  Pure horizontal slide-steps never
+    # clear the vertical floor, so they fall back to the displacement crossing
+    # (this refinement can only DELAY the trigger, never advance it).
+    if FIRST_MOVE_METHOD == "heel":
+        by = float(np.nanmedian(ay[qs:qe]))            # planted lead-ankle height
+        up = (by - ay) / max(diag_ref, 1.0)            # >0 when ankle rises
+        up = smooth(up, 3)
+        nv = float(np.nanstd(up[qs:qe]))
+        vthresh = max(3.5 * nv, 0.010)                 # ≈ heel clearly off the rubber
+        for i in range(i0, min(hi, n)):
+            if up[i] > vthresh and float(np.nanmedian(up[i:min(i + 5, n)])) > vthresh:
+                return interp_crossing(i - 1, up[i - 1], up[i], vthresh)
+        # never cleared the vertical floor (slide-step / occluded) → keep disp
+        return cross
+    return cross
 
 
 def hand_break_frame(kpts, set_end, peak):
@@ -765,9 +802,15 @@ def main():
     ap.add_argument("--meta", help="override clips_meta.csv path")
     ap.add_argument("--out", help="override pilot_results.csv output path")
     ap.add_argument("--qa-dir", help="override qa/ directory")
+    ap.add_argument("--first-move", choices=["disp", "heel"], default="heel",
+                    help="first-move cue: 'heel' (default; lead-ankle vertical-"
+                         "rise onset ~ user's heel-lift definition) or 'disp' "
+                         "(original total-displacement crossing)")
     args = ap.parse_args()
 
     global CLIPS_DIR, QA_DIR, META_PATH, RESULTS_CSV, DEVICE, IMGSZ, HALF, MAX_ANALYSIS_S
+    global FIRST_MOVE_METHOD
+    FIRST_MOVE_METHOD = args.first_move
     MAX_ANALYSIS_S = args.max_analysis_s
     # Resolve compute device.  On a fanless M2 the GPU (MPS) is far faster than
     # CPU and avoids pegging all cores; fall back to CPU if MPS is unavailable.

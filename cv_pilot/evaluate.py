@@ -121,6 +121,27 @@ def main():
                 f"{fmt(r.get('manual_delivery_s'),3)} |")
         lines.append("")
 
+    # ── Delivery-time accuracy (the production metric) ──────────────────────
+    # release_frame MAE above is corrupted by multi-segment ABSOLUTE indexing
+    # (the detector may lock onto a later replay/segment, so its frame index is
+    # offset from the manually labelled first-broadcast view).  delivery_s is
+    # segment-invariant, so the honest accuracy number is the delivery_s error —
+    # and only on the `usable` clips the pipeline actually feeds downstream.
+    lines.append("## Delivery-time accuracy (delivery_s, the production metric)")
+    lines.append("")
+    if not merged.empty and "delivery_s" in merged and "manual_delivery_s" in merged:
+        dd = merged.dropna(subset=["delivery_s", "manual_delivery_s"]).copy()
+        dd["ae"] = (dd["delivery_s"] - dd["manual_delivery_s"]).abs()
+        u = dd[dd.get("usable", False) == True] if "usable" in dd else dd
+        for tag, sub in [("ALL labelled+detected", dd), ("usable only", u)]:
+            if len(sub):
+                bias = float((sub["delivery_s"] - sub["manual_delivery_s"]).mean())
+                lines.append(
+                    f"- {tag}: n={len(sub)}, **MAE {sub['ae'].mean():.3f}s** "
+                    f"(median {sub['ae'].median():.3f}s), bias {bias:+.3f}s, "
+                    f"|err|>0.30s on {int((sub['ae']>0.30).sum())}")
+        lines.append("")
+
     # ── Repeatability (within-pitcher std) ──────────────────────────────────
     lines.append("## Repeatability (within-pitcher delivery std)")
     lines.append("")
