@@ -1,0 +1,30 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-03-30,6a4935ba-0708-3129-881c-d50b582acbce,605135,"Bassitt, Chris",623168,"Heineman, Tyler","Giménez, Andrés",2B,SB,0.198,12.7,9.8,22.5
+2025-03-31,6ce80996-6c06-3cb0-a296-10963d297879,656794,"Newcomb, Sean",657136,"Wong, Connor","Campbell, Kristian",2B,CS,-0.451,12.7,11.0,23.7
+2025-04-17,4f418372-7d3b-3a78-9c69-df1b0e0ec681,596001,"Junis, Jakob",595978,"Hedges, Austin","Schneemann, Daniel",2B,CS,-0.45,12.6,9.4,22.0
+2025-04-24,854e25e9-6e4e-3f5e-b1a7-db4365288321,669371,"Henry, Cole",660688,"Ruiz, Keibert","Abrams, CJ",2B,SB,0.198,12.8,8.1,21.0
+2025-05-07,a427582d-735a-38d0-8acd-93cc490ddc97,680573,"Woods Richardson, Simeon",680777,"Jeffers, Ryan","Clemens, Kody",2B,CS,-0.451,12.4,10.2,22.6
+2025-05-16,bd68803b-a4d0-3991-8e49-9b9969ff67e4,640448,"Finnegan, Kyle",660688,"Ruiz, Keibert","Abrams, CJ",2B,CS,-0.452,11.1,10.3,21.5
+2025-05-24,989d4b7a-c05c-3276-b2d6-26adb0bba3d1,690928,"Dobbins, Hunter",665966,"Narváez, Carlos",,2B,SB,0.201,11.3,7.1,18.4
+2025-05-27,386a0d1f-36ba-37d1-bd44-e858dbc9a29e,669467,"Pallante, Andre",671056,"Herrera, Iván","Gorman, Nolan",2B,SB,0.197,12.1,7.3,19.4
+2025-05-30,13a471d0-5650-3fe0-98ea-5c05e575ea2f,694363,"Shuster, Jared",700337,"Quero, Edgar","Meidroth, Chase",2B,SB,0.198,13.5,11.8,25.3
+2025-06-10,ecd52c4f-6a1a-34b3-95fa-04e3ef72098a,676428,"Hurter, Brant",693307,"Dingler, Dillon","Báez, Javier",2B,SB,0.199,12.6,10.1,22.7
+2025-06-11,26647807-7731-3b05-ad05-25dc3d0efe39,689225,"Brieske, Beau",693307,"Dingler, Dillon","Sweeney, Trey",2B,SB,0.2,11.5,13.5,25.0
+2025-06-17,575182e6-5680-3249-95ca-6d89d6797c7e,687330,"Kelly, Kevin",643376,"Jansen, Danny","Caminero, Junior",3B,CS,-0.451,20.3,8.1,28.3
+2025-06-20,309307de-6ead-3a8a-9d65-2b2bbba78189,608331,"Fried, Max",669224,"Wells, Austin","LeMahieu, DJ",2B,SB,0.2,13.3,17.7,30.9
+2025-06-22,19c11703-b2d6-3d17-b38a-02bd6dbc6cbc,701542,"Warren, Will",669224,"Wells, Austin","Peraza, Oswald",3B,PK,-0.448,,,
+2025-06-28,e7d5a7b5-002f-3b85-b534-2c42fdd5b304,641793,"Littell, Zack",642136,"Thaiss, Matt","Walls, Taylor",2B,SB,0.199,11.1,9.8,20.9
+2025-06-29,07773176-0086-0013-000c-f08cd117d70a,671737,"Bradley, Taj",643376,"Jansen, Danny",,2B,CS,-0.451,,,
+2025-07-10,67270ad0-c43c-34f2-8a91-a2ba980bf121,656849,"Peterson, David",620443,"Torrens, Luis","Alonso, Pete",2B,PK,-0.446,,,
+2025-07-25,4985d40a-40a7-327d-9701-5abecf8d77ff,607536,"Freeland, Kyle",696100,"Goodman, Hunter","Toglia, Michael",2B,PK,-0.449,,,
+2025-07-29,a65eb744-1861-3eb2-af72-149ee4cfc2e2,641778,"Lauer, Eric",623168,"Heineman, Tyler","Schneider, Davis",2B,SB,0.198,12.6,12.5,25.1
+2025-08-01,53e45164-1542-3fef-b7b3-300ff4eb3922,690990,"Horton, Cade",608348,"Kelly, Carson","Swanson, Dansby",2B,SB,0.204,12.7,10.0,22.8
+2025-08-06,4a21ae02-ee9f-378f-a040-fbb33627665e,605447,"Romano, Jordan",665561,"Marchán, Rafael","Sosa, Edmundo",2B,CS,-0.457,12.2,11.1,23.3
+2025-08-22,3528aa40-3623-3fbe-bfbd-429ac359c685,595345,"Okert, Steven",673237,"Diaz, Yainer",,3B,SB,0.198,16.0,19.3,35.3
+2025-08-29,b3444865-c780-3843-b02a-1a7dfc2e90aa,592662,"Ray, Robbie",672275,"Bailey, Patrick","Adames, Willy",2B,SB,0.199,12.2,12.9,25.1
+2025-08-31,5ebe7bb3-73f0-3f06-9f7f-b8be00d4f5e7,434378,"Verlander, Justin",672275,"Bailey, Patrick","Koss, Christian",2B,SB,0.2,10.5,12.7,23.2
+2025-09-02,2b478fc6-e428-3c3a-9952-697fa2f07d1f,506433,"Darvish, Yu",666023,"Fermin, Freddy","Cronenworth, Jake",2B,CS,-0.452,12.4,10.9,23.4
+2025-09-05,a1e1c884-47c3-3c5d-8461-1742b6a95dd6,676508,"Casparius, Ben",687221,"Rushing, Dalton",,3B,SB,0.199,15.9,12.7,28.7
+2025-09-11,0ce23685-1d99-3614-99d7-9bd83a50729a,670059,"Holderman, Colin",663698,"Bart, Joey","Gonzales, Nick",2B,SB,0.198,12.0,7.5,19.5
+2025-09-12,841d1908-6108-32f4-99e2-4607a4995eac,621366,"Borucki, Ryan",672386,"Kirk, Alejandro",,2B,SB,0.199,10.7,11.4,22.1
+2025-09-13,b7bdf28b-719b-370c-8a18-ffee295c2a34,680755,"Fisher, Braydon",672386,"Kirk, Alejandro","Giménez, Andrés",2B,CS,-0.451,11.1,10.8,21.9

@@ -1,0 +1,30 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-03-30,605135,"Bassitt, Chris",R,Stolen Base 2B,"Heineman, Tyler",holliday_6a4935ba_bassitt_R.mp4,6a4935ba-0708-3129-881c-d50b582acbce,59.743,1.5025,True,0.959,full,
+2025-03-31,656794,"Newcomb, Sean",L,Caught Stealing 2B,"Wong, Connor",holliday_6ce80996_newcomb_L.mp4,6ce80996-6c06-3cb0-a296-10963d297879,59.699,1.6408,True,0.342,full,
+2025-04-17,596001,"Junis, Jakob",R,Caught Stealing 2B,"Hedges, Austin",holliday_4f418372_junis_R.mp4,4f418372-7d3b-3a78-9c69-df1b0e0ec681,59.782,1.1978,True,0.92,full,
+2025-04-24,669371,"Henry, Cole",R,Stolen Base 2B,"Ruiz, Keibert",holliday_854e25e9_henry_R.mp4,854e25e9-6e4e-3f5e-b1a7-db4365288321,59.663,1.1504,True,0.93,full,
+2025-05-07,680573,"Woods Richardson, Simeon",R,Caught Stealing 2B,"Jeffers, Ryan",holliday_a427582d_richardson_R.mp4,a427582d-735a-38d0-8acd-93cc490ddc97,59.685,1.0563,True,0.746,full,
+2025-05-16,640448,"Finnegan, Kyle",R,Caught Stealing 2B,"Ruiz, Keibert",holliday_bd68803b_finnegan_R.mp4,bd68803b-a4d0-3991-8e49-9b9969ff67e4,59.727,1.4949,True,0.915,full,
+2025-05-24,690928,"Dobbins, Hunter",R,Stolen Base 2B,"Narváez, Carlos",holliday_989d4b7a_dobbins_R.mp4,989d4b7a-c05c-3276-b2d6-26adb0bba3d1,59.694,0.882,True,0.482,full,
+2025-05-27,669467,"Pallante, Andre",R,Stolen Base 2B,"Herrera, Iván",holliday_386a0d1f_pallante_R.mp4,386a0d1f-36ba-37d1-bd44-e858dbc9a29e,59.799,0.5238,False,0.78,full,un-measurable; no same-pitcher fallback available
+2025-05-30,694363,"Shuster, Jared",L,Stolen Base 2B,"Quero, Edgar",holliday_13a471d0_shuster_L.mp4,13a471d0-5650-3fe0-98ea-5c05e575ea2f,59.67,1.2733,True,0.852,full,
+2025-06-10,676428,"Hurter, Brant",L,Stolen Base 2B,"Dingler, Dillon",holliday_ecd52c4f_hurter_L.mp4,ecd52c4f-6a1a-34b3-95fa-04e3ef72098a,59.736,1.1452,True,0.395,full,
+2025-06-11,689225,"Brieske, Beau",R,Stolen Base 2B,"Dingler, Dillon",holliday_26647807_brieske_R.mp4,26647807-7731-3b05-ad05-25dc3d0efe39,59.783,0.3847,False,0.299,full,un-measurable; no same-pitcher fallback available
+2025-06-17,687330,"Kelly, Kevin",R,Caught Stealing 3B,"Jansen, Danny",holliday_575182e6_kelly_R.mp4,575182e6-5680-3249-95ca-6d89d6797c7e,59.789,0.7822,False,0.976,full,un-measurable; no same-pitcher fallback available
+2025-06-20,608331,"Fried, Max",L,Stolen Base 2B,"Wells, Austin",holliday_309307de_fried_L.mp4,309307de-6ead-3a8a-9d65-2b2bbba78189,59.707,1.5052,False,0.103,full,un-measurable; no same-pitcher fallback available
+2025-06-22,701542,"Warren, Will",,Stolen Base 3B,"Wells, Austin",,19c11703-b2d6-3d17-b38a-02bd6dbc6cbc,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-06-28,641793,"Littell, Zack",R,Stolen Base 2B,"Thaiss, Matt",holliday_e7d5a7b5_littell_R.mp4,e7d5a7b5-002f-3b85-b534-2c42fdd5b304,59.712,1.6395,True,0.642,full,
+2025-06-29,671737,"Bradley, Taj",,Caught Stealing 2B,"Jansen, Danny",,07773176-0086-0013-000c-f08cd117d70a,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-07-10,656849,"Peterson, David",,Stolen Base 2B,"Torrens, Luis",,67270ad0-c43c-34f2-8a91-a2ba980bf121,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-07-25,607536,"Freeland, Kyle",,Stolen Base 2B,"Goodman, Hunter",,4985d40a-40a7-327d-9701-5abecf8d77ff,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-07-29,641778,"Lauer, Eric",L,Stolen Base 2B,"Heineman, Tyler",holliday_a65eb744_lauer_L.mp4,a65eb744-1861-3eb2-af72-149ee4cfc2e2,59.727,1.2981,True,0.38,full,
+2025-08-01,690990,"Horton, Cade",R,Stolen Base 2B,"Kelly, Carson",holliday_53e45164_horton_R.mp4,53e45164-1542-3fef-b7b3-300ff4eb3922,59.703,0.5652,False,0.969,full,un-measurable; no same-pitcher fallback available
+2025-08-06,605447,"Romano, Jordan",R,Caught Stealing 2B,"Marchán, Rafael",holliday_4a21ae02_romano_R.mp4,4a21ae02-ee9f-378f-a040-fbb33627665e,59.774,1.5854,True,0.561,full,
+2025-08-22,595345,"Okert, Steven",L,Stolen Base 3B,"Diaz, Yainer",holliday_3528aa40_okert_L.mp4,3528aa40-3623-3fbe-bfbd-429ac359c685,59.747,1.3662,True,0.584,full,
+2025-08-29,592662,"Ray, Robbie",L,Stolen Base 2B,"Bailey, Patrick",holliday_b3444865_ray_L.mp4,b3444865-c780-3843-b02a-1a7dfc2e90aa,59.826,1.2248,True,0.941,full,
+2025-08-31,434378,"Verlander, Justin",R,Stolen Base 2B,"Bailey, Patrick",holliday_5ebe7bb3_verlander_R.mp4,5ebe7bb3-73f0-3f06-9f7f-b8be00d4f5e7,59.673,1.067,True,0.354,full,
+2025-09-02,506433,"Darvish, Yu",R,Caught Stealing 2B,"Fermin, Freddy",holliday_2b478fc6_darvish_R.mp4,2b478fc6-e428-3c3a-9952-697fa2f07d1f,59.742,1.5502,True,0.87,full,
+2025-09-05,676508,"Casparius, Ben",R,Stolen Base 3B,"Rushing, Dalton",holliday_a1e1c884_casparius_R.mp4,a1e1c884-47c3-3c5d-8461-1742b6a95dd6,59.749,0.6627,False,0.951,full,un-measurable; no same-pitcher fallback available
+2025-09-11,670059,"Holderman, Colin",R,Stolen Base 2B,"Bart, Joey",holliday_0ce23685_holderman_R.mp4,0ce23685-1d99-3614-99d7-9bd83a50729a,59.752,1.6445,True,0.97,full,
+2025-09-12,621366,"Borucki, Ryan",L,Stolen Base 2B,"Kirk, Alejandro",holliday_841d1908_borucki_L.mp4,841d1908-6108-32f4-99e2-4607a4995eac,59.703,1.1914,True,0.924,full,
+2025-09-13,680755,"Fisher, Braydon",R,Caught Stealing 2B,"Kirk, Alejandro",holliday_b7bdf28b_fisher_R.mp4,b7bdf28b-719b-370c-8a18-ffee295c2a34,59.665,1.3283,True,0.593,full,

@@ -1,0 +1,21 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-03-27,404b9563-0fd8-32b1-ade7-6de0c9f7b297,554430,"Wheeler, Zack",592663,"Realmuto, J.T.","Turner, Trea",2B,CS,-0.45,12.2,9.3,21.5
+2025-04-20,69c28c70-f08e-3697-9999-441380116cbd,678020,"Halvorsen, Seth",690924,"Fulford, Braxton","Schunk, Aaron",2B,SB,0.197,13.3,10.3,23.7
+2025-05-03,8e3be5df-7eee-374d-abd8-4efc58aa9a5a,666157,"Lodolo, Nick",663886,"Stephenson, Tyler",,3B,SB,0.2,15.9,11.0,26.9
+2025-05-06,a2d9c3f3-878f-381b-a3ed-99af21e8cce8,682847,"Ortiz, Luis",666310,"Naylor, Bo","Schneemann, Daniel",2B,SB,0.199,12.7,7.7,20.4
+2025-05-16,49c3056a-fcc4-3040-a5d5-1066677fc1ee,700249,"Povich, Cade",668939,"Rutschman, Adley","Holliday, Jackson",2B,CS,-0.449,13.3,10.1,23.4
+2025-06-08,17af7e6a-8d89-3486-8923-ad36fa7d5090,656641,"Latz, Jacob",641680,"Heim, Jonah","Semien, Marcus",2B,CS,-0.452,12.7,10.0,22.7
+2025-06-18,a06136e7-8578-37b8-ad47-7f14d429e7f7,608566,"Márquez, Germán",690924,"Fulford, Braxton","Ritter, Ryan",2B,CS,-0.453,12.4,8.3,20.7
+2025-06-19,49a1debb-307d-38f8-a168-82faf7c4454a,801403,"Dollander, Chase",696100,"Goodman, Hunter","Ritter, Ryan",2B,CS,-0.454,12.7,9.5,22.3
+2025-06-22,4c66ffc1-6eeb-3d21-85d6-ca0b11119b89,607455,"Banda, Anthony",687221,"Rushing, Dalton","Betts, Mookie",2B,CS,-0.453,14.4,13.4,27.8
+2025-06-23,023853e1-125b-3cbc-bdf7-0ff25b5a29d9,593974,"Peralta, Wandy",553869,"Díaz, Elias",,3B,SB,0.199,15.8,15.6,31.4
+2025-06-24,777f50ea-dbfd-3e5d-8cc9-c2b67364362b,670970,"Morejon, Adrian",455117,"Maldonado, Martín","Iglesias, Jose",2B,SB,0.196,13.4,13.0,26.4
+2025-06-29,2d13f0a1-e619-3a90-9b84-4e0a7d6fa6c8,445276,"Jansen, Kenley",681351,"O'Hoppe, Logan",,2B,SB,0.194,16.8,12.2,29.0
+2025-07-12,0af6700f-dc2c-3750-a5f2-b5e1fe4d635c,681982,"Anderson, Grant",661388,"Contreras, William","Turang, Brice",2B,SB,0.2,13.1,5.0,18.1
+2025-08-09,af36d6d8-be95-3239-aef0-7be2ef21201e,657424,"Gage, Matt",668800,"Knizner, Andrew","Adames, Willy",2B,CS,-0.451,14.6,5.5,20.1
+2025-08-09,7f066664-e8f5-3be3-88ad-a1901ff61b43,687931,"Whisenhunt, Carson",668800,"Knizner, Andrew","Adames, Willy",2B,SB,0.197,14.7,8.6,23.3
+2025-08-10,908c8b84-c31c-30bb-a842-42b80d9c2e11,434378,"Verlander, Justin",672275,"Bailey, Patrick","Adames, Willy",2B,SB,0.2,12.9,8.6,21.5
+2025-08-16,b3a84692-c1df-30da-9051-a66b2dc14b22,605447,"Romano, Jordan",592663,"Realmuto, J.T.","Turner, Trea",2B,SB,0.194,13.8,10.1,23.9
+2025-08-25,369c6823-baad-342a-a99d-6e2ffcf13b93,693645,"Schlittler, Cam",700250,"Rice, Ben","Goldschmidt, Paul",2B,PK,-0.451,,,
+2025-09-02,8d52526e-4761-385e-a49f-87d7fc8294a8,800049,"Mazur, Adam",689414,"Hicks, Liam","Lopez, Otto",2B,SB,0.2,12.5,1.5,14.0
+2025-09-21,d59afac9-0d76-32d6-840e-2b70469d0db3,605280,"Holmes, Clay",620443,"Torrens, Luis","Baty, Brett",3B,SB,0.2,18.9,17.4,36.3

@@ -1,0 +1,12 @@
+clip_id,pitcher_name,pitcher_id,p_throws,catcher_name,catcher_id,batter_name,play_id,game_pk,at_bat_number,pitch_number,is_naylor
+gurriel_32ae90e6_blalock_R.mp4,Bradley Blalock,687134,R,Hunter Goodman,696100,Adrian Del Castillo,32ae90e6-8025-36e2-9f20-9daa2a264d9e,776742,23,3,0
+gurriel_663f6452_melton_R.mp4,Troy Melton,675512,R,Dillon Dingler,693307,Tristin English,663f6452-0b3c-3c91-9169-fe3285bfb56d,776973,12,6,0
+gurriel_8b0e6fb5_bellozo_R.mp4,Valente Bellozo,678368,R,Liam Hicks,689414,Jake McCarthy,8b0e6fb5-4580-3f53-b66f-5f7deafda6ee,777318,62,2,0
+gurriel_47ea8e44_eisert_L.mp4,Brandon Eisert,685126,L,Edgar Quero,700337,Randal Grichuk,47ea8e44-0a0a-333c-8f0d-2f1144bdad0b,777383,60,1,0
+gurriel_c78d0407_gomber_L.mp4,Austin Gomber,596295,L,Hunter Goodman,696100,Josh Naylor,c78d0407-c886-3693-be98-3a8216b10d2e,777430,5,5,0
+gurriel_a6cd1b8b_bergert_R.mp4,Ryan Bergert,686701,R,Martín Maldonado,455117,Pavin Smith,a6cd1b8b-e95d-3594-b18b-66c196495f88,777515,29,2,0
+gurriel_a8239d9b_thornton_R.mp4,Trent Thornton,663423,R,Cal Raleigh,663728,Pavin Smith,a8239d9b-dc0b-375a-a015-3d7e5c55822a,777559,54,4,0
+gurriel_f0389d17_sale_L.mp4,Chris Sale,519242,L,Sean Murphy,669221,Eugenio Suárez,f0389d17-bc80-3e5f-bf2f-04e1bfe7981f,777654,19,1,0
+gurriel_aa7e34a4_wentz_L.mp4,Joey Wentz,666214,L,Joey Bart,663698,Pavin Smith,aa7e34a4-7b00-3cee-a39a-4c234996965c,777744,40,3,0
+gurriel_4ad6c2ba_liberatore_L.mp4,Matthew Liberatore,669461,L,Yohel Pozo,650968,Josh Naylor,4ad6c2ba-9c56-336a-bca7-84cfa662a49a,777786,41,3,0
+gurriel_45fd77b2_daniel_R.mp4,Davis Daniel,669721,R,Drake Baldwin,686948,Tim Tawa,45fd77b2-77c1-3ed3-ba55-c69f9bba5037,778147,70,3,0

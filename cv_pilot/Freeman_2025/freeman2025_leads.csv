@@ -1,0 +1,7 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-04-15,72f47769-5390-39bb-b8c6-8bcf285fee72,656234,"Bird, Jake",607732,"Stallings, Jacob","Tovar, Ezequiel",2B,CS,-0.45,11.6,9.4,21.0
+2025-05-11,6cde1b53-6180-4aa2-81ca-7c77f5cef960,620454,"Castillo, José",645444,"Herrera, Jose","Tawa, Tim",2B,BK,0.195,,,
+2025-07-05,32478843-afcb-381c-89ac-ebdcd461388e,664285,"Valdez, Framber",673237,"Diaz, Yainer","Altuve, Jose",2B,SB,0.197,10.9,14.5,25.4
+2025-07-23,8a0b1cbb-445d-3b8f-9108-06d49bedf34f,543056,"Coulombe, Danny",680777,"Jeffers, Ryan",,2B,SB,0.196,11.1,14.5,25.6
+2025-08-12,a2020197-aa89-3cc4-8ec0-9d18a7d27977,472610,"García, Luis",681351,"O'Hoppe, Logan",,2B,SB,0.197,12.0,15.3,27.3
+2025-08-18,f45ca13b-17fa-3f71-8240-77c954925b96,677955,"Hill, Jaden",696100,"Goodman, Hunter","Tovar, Ezequiel",2B,SB,0.2,12.0,13.2,25.2

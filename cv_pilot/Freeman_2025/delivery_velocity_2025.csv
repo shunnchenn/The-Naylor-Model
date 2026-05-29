@@ -1,0 +1,7 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-04-15,"Bird, Jake",656234,R,2B,CS,-0.45,11.6,21.0,9.4,0.9547,0.96,True,full,72f47769-5390-39bb-b8c6-8bcf285fee72,9.846
+2025-05-11,"Castillo, José",620454,,2B,BK,0.195,,,,,,False,full,6cde1b53-6180-4aa2-81ca-7c77f5cef960,
+2025-07-05,"Valdez, Framber",664285,L,2B,SB,0.197,10.9,25.4,14.5,1.3586,0.427,True,full,32478843-afcb-381c-89ac-ebdcd461388e,10.673
+2025-07-23,"Coulombe, Danny",543056,L,2B,SB,0.196,11.1,25.6,14.5,1.2733,0.897,True,full,8a0b1cbb-445d-3b8f-9108-06d49bedf34f,11.388
+2025-08-12,"García, Luis",472610,R,2B,SB,0.197,12.0,27.3,15.3,1.0152,0.756,True,full,a2020197-aa89-3cc4-8ec0-9d18a7d27977,15.071
+2025-08-18,"Hill, Jaden",677955,R,2B,SB,0.2,12.0,25.2,13.2,0.8668,0.664,True,full,f45ca13b-17fa-3f71-8240-77c954925b96,15.228

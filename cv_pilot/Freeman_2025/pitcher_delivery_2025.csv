@@ -1,0 +1,7 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-04-15,656234,"Bird, Jake",R,Caught Stealing 2B,"Stallings, Jacob",freeman_72f47769_bird_R.mp4,72f47769-5390-39bb-b8c6-8bcf285fee72,59.736,0.9547,True,0.96,full,
+2025-05-11,620454,"Castillo, José",,Stolen Base 2B,"Herrera, Jose",,6cde1b53-6180-4aa2-81ca-7c77f5cef960,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-07-05,664285,"Valdez, Framber",L,Stolen Base 2B,"Diaz, Yainer",freeman_32478843_valdez_L.mp4,32478843-afcb-381c-89ac-ebdcd461388e,59.666,1.3586,True,0.427,full,
+2025-07-23,543056,"Coulombe, Danny",L,Stolen Base 2B,"Jeffers, Ryan",freeman_8a0b1cbb_coulombe_L.mp4,8a0b1cbb-445d-3b8f-9108-06d49bedf34f,59.758,1.2733,True,0.897,full,
+2025-08-12,472610,"García, Luis",R,Stolen Base 2B,"O'Hoppe, Logan",freeman_a2020197_garcia_R.mp4,a2020197-aa89-3cc4-8ec0-9d18a7d27977,59.722,1.0152,True,0.756,full,
+2025-08-18,677955,"Hill, Jaden",R,Stolen Base 2B,"Goodman, Hunter",freeman_f45ca13b_hill_R.mp4,f45ca13b-17fa-3f71-8240-77c954925b96,59.788,0.8668,True,0.664,full,

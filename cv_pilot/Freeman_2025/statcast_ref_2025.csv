@@ -1,0 +1,2 @@
+player,season,sprint_speed_ftps,hp_to_1b_s,competitive_runs,n_tracked_attempts,n_sb,n_cs,sb_success_pct,steal_run_value,primary_lead_ft,secondary_lead_ft,sec_minus_prim_lead_ft,primary_lead_sbx_ft,secondary_lead_sbx_ft,source_note
+Freddie Freeman,2025,25.6,4.69,228,6,4,1,80.0,0.535,11.52,24.9,13.38,11.5,25.88,SB anchors from per-attempt basestealing-running-game (year-correct); sprint from sprint_speed leaderboard; leaderboard CSV year-param is broken

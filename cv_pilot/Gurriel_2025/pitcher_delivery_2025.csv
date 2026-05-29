@@ -1,0 +1,14 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-04-27,669721,"Daniel, Davis",R,Stolen Base 2B,"Baldwin, Drake",gurriel_45fd77b2_daniel_R.mp4,45fd77b2-77c1-3ed3-ba55-c69f9bba5037,59.708,1.2945,True,0.881,full,
+2025-05-24,669461,"Liberatore, Matthew",L,Stolen Base 2B,"Pozo, Yohel",gurriel_4ad6c2ba_liberatore_L.mp4,4ad6c2ba-9c56-336a-bca7-84cfa662a49a,59.759,1.4845,True,0.926,full,
+2025-05-27,666214,"Wentz, Joey",L,Stolen Base 3B,"Bart, Joey",gurriel_aa7e34a4_wentz_L.mp4,aa7e34a4-7b00-3cee-a39a-4c234996965c,59.786,1.3247,True,0.722,full,
+2025-06-03,660853,"De Los Santos, Enyel",,Stolen Base 2B,"Baldwin, Drake",,682c2ba6-508e-37d9-90eb-f110e515761a,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-06-04,519242,"Sale, Chris",L,Caught Stealing 2B,"Murphy, Sean",gurriel_f0389d17_sale_L.mp4,f0389d17-bc80-3e5f-bf2f-04e1bfe7981f,59.836,1.6114,True,0.71,full,
+2025-06-10,663423,"Thornton, Trent",R,Stolen Base 2B,"Raleigh, Cal",gurriel_a8239d9b_thornton_R.mp4,a8239d9b-dc0b-375a-a015-3d7e5c55822a,59.784,1.6447,True,0.72,full,
+2025-06-14,686701,"Bergert, Ryan",R,Stolen Base 2B,"Maldonado, Martín",gurriel_a6cd1b8b_bergert_R.mp4,a6cd1b8b-e95d-3594-b18b-66c196495f88,59.812,1.037,True,0.874,full,
+2025-06-20,596295,"Gomber, Austin",L,Stolen Base 2B,"Goodman, Hunter",gurriel_c78d0407_gomber_L.mp4,c78d0407-c886-3693-be98-3a8216b10d2e,59.728,1.1276,True,0.975,full,
+2025-06-20,669020,"Rolison, Ryan",,Stolen Base 2B,"Goodman, Hunter",,55beb605-45d1-4042-8cfe-27e43739f7b7,,,False,,full,un-measurable; no same-pitcher fallback available
+2025-06-24,685126,"Eisert, Brandon",L,Stolen Base 2B,"Quero, Edgar",gurriel_47ea8e44_eisert_L.mp4,47ea8e44-0a0a-333c-8f0d-2f1144bdad0b,59.75,0.8961,True,0.813,full,
+2025-06-28,678368,"Bellozo, Valente",R,Caught Stealing 2B,"Hicks, Liam",gurriel_8b0e6fb5_bellozo_R.mp4,8b0e6fb5-4580-3f53-b66f-5f7deafda6ee,59.826,0.6341,False,0.893,full,un-measurable; no same-pitcher fallback available
+2025-07-28,675512,"Melton, Troy",R,Caught Stealing 2B,"Dingler, Dillon",gurriel_663f6452_melton_R.mp4,663f6452-0b3c-3c91-9169-fe3285bfb56d,59.828,1.1102,True,0.931,full,
+2025-08-14,687134,"Blalock, Bradley",R,Stolen Base 2B,"Goodman, Hunter",gurriel_32ae90e6_blalock_R.mp4,32ae90e6-8025-36e2-9f20-9daa2a264d9e,59.779,0.913,True,0.651,full,

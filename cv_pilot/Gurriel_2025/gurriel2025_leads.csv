@@ -1,0 +1,14 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-04-27,45fd77b2-77c1-3ed3-ba55-c69f9bba5037,669721,"Daniel, Davis",686948,"Baldwin, Drake","Albies, Ozzie",2B,SB,0.197,14.4,8.7,23.1
+2025-05-24,4ad6c2ba-9c56-336a-bca7-84cfa662a49a,669461,"Liberatore, Matthew",650968,"Pozo, Yohel",,2B,SB,0.198,12.1,9.3,21.4
+2025-05-27,aa7e34a4-7b00-3cee-a39a-4c234996965c,666214,"Wentz, Joey",663698,"Bart, Joey",,3B,SB,0.199,19.4,21.6,41.1
+2025-06-03,682c2ba6-508e-37d9-90eb-f110e515761a,660853,"De Los Santos, Enyel",686948,"Baldwin, Drake","Olson, Matt",2B,BK,0.198,,,
+2025-06-04,f0389d17-bc80-3e5f-bf2f-04e1bfe7981f,519242,"Sale, Chris",669221,"Murphy, Sean","Albies, Ozzie",2B,CS,-0.451,13.4,9.0,22.4
+2025-06-10,a8239d9b-dc0b-375a-a015-3d7e5c55822a,663423,"Thornton, Trent",663728,"Raleigh, Cal",,2B,SB,0.198,16.4,18.5,34.9
+2025-06-14,a6cd1b8b-e95d-3594-b18b-66c196495f88,686701,"Bergert, Ryan",455117,"Maldonado, Martín","Bogaerts, Xander",2B,SB,0.2,13.4,4.8,18.2
+2025-06-20,c78d0407-c886-3693-be98-3a8216b10d2e,596295,"Gomber, Austin",696100,"Goodman, Hunter","Ritter, Ryan",2B,SB,0.199,14.0,9.3,23.4
+2025-06-20,55beb605-45d1-4042-8cfe-27e43739f7b7,669020,"Rolison, Ryan",696100,"Goodman, Hunter","Toglia, Michael",2B,BK,0.2,,,
+2025-06-24,47ea8e44-0a0a-333c-8f0d-2f1144bdad0b,685126,"Eisert, Brandon",700337,"Quero, Edgar","Sosa, Lenyn",2B,SB,0.197,12.5,10.5,23.1
+2025-06-28,8b0e6fb5-4580-3f53-b66f-5f7deafda6ee,678368,"Bellozo, Valente",689414,"Hicks, Liam","Lopez, Otto",2B,CS,-0.451,14.4,4.8,19.1
+2025-07-28,663f6452-0b3c-3c91-9169-fe3285bfb56d,675512,"Melton, Troy",693307,"Dingler, Dillon","Torres, Gleyber",2B,CS,-0.45,12.6,10.3,22.9
+2025-08-14,32ae90e6-8025-36e2-9f20-9daa2a264d9e,687134,"Blalock, Bradley",696100,"Goodman, Hunter","Tovar, Ezequiel",2B,SB,0.199,13.4,16.3,29.7

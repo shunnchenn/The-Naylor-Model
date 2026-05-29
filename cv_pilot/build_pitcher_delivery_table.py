@@ -54,7 +54,11 @@ for rel in ("Naylor_2025/pitcher_delivery_2025.csv",
             "Vladdy_2025/pitcher_delivery_2025.csv",
             "Yandy_2025/pitcher_delivery_2025.csv",
             "Torres_2025/pitcher_delivery_2025.csv",
-            "Bichette_2025/pitcher_delivery_2025.csv"):
+            "Bichette_2025/pitcher_delivery_2025.csv",
+            "Freeman_2025/pitcher_delivery_2025.csv",
+            "Gurriel_2025/pitcher_delivery_2025.csv",
+            "Young_2025/pitcher_delivery_2025.csv",
+            "Holliday_2025/pitcher_delivery_2025.csv"):
     p = os.path.join(HERE, rel)
     if not os.path.exists(p):
         continue

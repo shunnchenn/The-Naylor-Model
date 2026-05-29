@@ -1,0 +1,30 @@
+date,pitcher_name,result,avg_velocity_ftps,lead_at_release_ft,delivery_s,analysis_method,runner_sprint_speed_ftps,runner_secondary_lead_sbx_ft
+2025-08-22,"Okert, Steven",SB,14.127,35.3,1.3662,full,28.6,23.99
+2025-08-31,"Verlander, Justin",SB,11.903,23.2,1.067,full,28.6,23.99
+2025-08-29,"Ray, Robbie",SB,10.532,25.1,1.2248,full,28.6,23.99
+2025-05-07,"Woods Richardson, Simeon",CS,9.656,22.6,1.0563,full,28.6,23.99
+2025-07-29,"Lauer, Eric",SB,9.629,25.1,1.2981,full,28.6,23.99
+2025-09-12,"Borucki, Ryan",SB,9.569,22.1,1.1914,full,28.6,23.99
+2025-05-30,"Shuster, Jared",SB,9.267,25.3,1.2733,full,28.6,23.99
+2025-06-10,"Hurter, Brant",SB,8.819,22.7,1.1452,full,28.6,23.99
+2025-09-13,"Fisher, Braydon",CS,8.131,21.9,1.3283,full,28.6,23.99
+2025-05-24,"Dobbins, Hunter",SB,8.05,18.4,0.882,full,28.6,23.99
+2025-04-17,"Junis, Jakob",CS,7.848,22.0,1.1978,full,28.6,23.99
+2025-04-24,"Henry, Cole",SB,7.041,21.0,1.1504,full,28.6,23.99
+2025-09-02,"Darvish, Yu",CS,7.031,23.4,1.5502,full,28.6,23.99
+2025-08-06,"Romano, Jordan",CS,7.001,23.3,1.5854,full,28.6,23.99
+2025-05-16,"Finnegan, Kyle",CS,6.89,21.5,1.4949,full,28.6,23.99
+2025-03-31,"Newcomb, Sean",CS,6.704,23.7,1.6408,full,28.6,23.99
+2025-03-30,"Bassitt, Chris",SB,6.522,22.5,1.5025,full,28.6,23.99
+2025-06-28,"Littell, Zack",SB,5.977,20.9,1.6395,full,28.6,23.99
+2025-09-11,"Holderman, Colin",SB,4.561,19.5,1.6445,full,28.6,23.99
+2025-05-27,"Pallante, Andre",SB,,19.4,0.5238,full,28.6,23.99
+2025-06-11,"Brieske, Beau",SB,,25.0,0.3847,full,28.6,23.99
+2025-06-17,"Kelly, Kevin",CS,,28.3,0.7822,full,28.6,23.99
+2025-06-20,"Fried, Max",SB,,30.9,1.5052,full,28.6,23.99
+2025-06-22,"Warren, Will",PK,,,,full,28.6,23.99
+2025-06-29,"Bradley, Taj",CS,,,,full,28.6,23.99
+2025-07-10,"Peterson, David",PK,,,,full,28.6,23.99
+2025-07-25,"Freeland, Kyle",PK,,,,full,28.6,23.99
+2025-08-01,"Horton, Cade",SB,,22.8,0.5652,full,28.6,23.99
+2025-09-05,"Casparius, Ben",SB,,28.7,0.6627,full,28.6,23.99

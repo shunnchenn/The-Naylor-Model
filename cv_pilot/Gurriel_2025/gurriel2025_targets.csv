@@ -1,0 +1,14 @@
+game_pk,play_id,is_naylor,clip_prefix,date,pitcher_name,result
+778147,45fd77b2-77c1-3ed3-ba55-c69f9bba5037,0,gurriel,2025-04-27,"Daniel, Davis",SB
+777786,4ad6c2ba-9c56-336a-bca7-84cfa662a49a,0,gurriel,2025-05-24,"Liberatore, Matthew",SB
+777744,aa7e34a4-7b00-3cee-a39a-4c234996965c,0,gurriel,2025-05-27,"Wentz, Joey",SB
+777672,682c2ba6-508e-37d9-90eb-f110e515761a,0,gurriel,2025-06-03,"De Los Santos, Enyel",BK
+777654,f0389d17-bc80-3e5f-bf2f-04e1bfe7981f,0,gurriel,2025-06-04,"Sale, Chris",CS
+777559,a8239d9b-dc0b-375a-a015-3d7e5c55822a,0,gurriel,2025-06-10,"Thornton, Trent",SB
+777515,a6cd1b8b-e95d-3594-b18b-66c196495f88,0,gurriel,2025-06-14,"Bergert, Ryan",SB
+777430,c78d0407-c886-3693-be98-3a8216b10d2e,0,gurriel,2025-06-20,"Gomber, Austin",SB
+777430,55beb605-45d1-4042-8cfe-27e43739f7b7,0,gurriel,2025-06-20,"Rolison, Ryan",BK
+777383,47ea8e44-0a0a-333c-8f0d-2f1144bdad0b,0,gurriel,2025-06-24,"Eisert, Brandon",SB
+777318,8b0e6fb5-4580-3f53-b66f-5f7deafda6ee,0,gurriel,2025-06-28,"Bellozo, Valente",CS
+776973,663f6452-0b3c-3c91-9169-fe3285bfb56d,0,gurriel,2025-07-28,"Melton, Troy",CS
+776742,32ae90e6-8025-36e2-9f20-9daa2a264d9e,0,gurriel,2025-08-14,"Blalock, Bradley",SB

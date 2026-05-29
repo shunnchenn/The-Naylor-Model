@@ -49,6 +49,10 @@ SOURCES = [
     os.path.join(ROOT, "Yandy_2025", "delivery_velocity_2025.csv"),
     os.path.join(ROOT, "Torres_2025", "delivery_velocity_2025.csv"),
     os.path.join(ROOT, "Bichette_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Freeman_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Gurriel_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Young_2025", "delivery_velocity_2025.csv"),
+    os.path.join(ROOT, "Holliday_2025", "delivery_velocity_2025.csv"),
 ]
 
 try:

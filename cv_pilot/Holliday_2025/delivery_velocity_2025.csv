@@ -1,0 +1,30 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-03-30,"Bassitt, Chris",605135,R,2B,SB,0.198,12.7,22.5,9.8,1.5025,0.959,True,full,6a4935ba-0708-3129-881c-d50b582acbce,6.522
+2025-03-31,"Newcomb, Sean",656794,L,2B,CS,-0.451,12.7,23.7,11.0,1.6408,0.342,True,full,6ce80996-6c06-3cb0-a296-10963d297879,6.704
+2025-04-17,"Junis, Jakob",596001,R,2B,CS,-0.45,12.6,22.0,9.4,1.1978,0.92,True,full,4f418372-7d3b-3a78-9c69-df1b0e0ec681,7.848
+2025-04-24,"Henry, Cole",669371,R,2B,SB,0.198,12.8,21.0,8.1,1.1504,0.93,True,full,854e25e9-6e4e-3f5e-b1a7-db4365288321,7.041
+2025-05-07,"Woods Richardson, Simeon",680573,R,2B,CS,-0.451,12.4,22.6,10.2,1.0563,0.746,True,full,a427582d-735a-38d0-8acd-93cc490ddc97,9.656
+2025-05-16,"Finnegan, Kyle",640448,R,2B,CS,-0.452,11.1,21.5,10.3,1.4949,0.915,True,full,bd68803b-a4d0-3991-8e49-9b9969ff67e4,6.89
+2025-05-24,"Dobbins, Hunter",690928,R,2B,SB,0.201,11.3,18.4,7.1,0.882,0.482,True,full,989d4b7a-c05c-3276-b2d6-26adb0bba3d1,8.05
+2025-05-27,"Pallante, Andre",669467,R,2B,SB,0.197,12.1,19.4,7.3,0.5238,0.78,False,full,386a0d1f-36ba-37d1-bd44-e858dbc9a29e,
+2025-05-30,"Shuster, Jared",694363,L,2B,SB,0.198,13.5,25.3,11.8,1.2733,0.852,True,full,13a471d0-5650-3fe0-98ea-5c05e575ea2f,9.267
+2025-06-10,"Hurter, Brant",676428,L,2B,SB,0.199,12.6,22.7,10.1,1.1452,0.395,True,full,ecd52c4f-6a1a-34b3-95fa-04e3ef72098a,8.819
+2025-06-11,"Brieske, Beau",689225,R,2B,SB,0.2,11.5,25.0,13.5,0.3847,0.299,False,full,26647807-7731-3b05-ad05-25dc3d0efe39,
+2025-06-17,"Kelly, Kevin",687330,R,3B,CS,-0.451,20.3,28.3,8.1,0.7822,0.976,False,full,575182e6-5680-3249-95ca-6d89d6797c7e,
+2025-06-20,"Fried, Max",608331,L,2B,SB,0.2,13.3,30.9,17.7,1.5052,0.103,False,full,309307de-6ead-3a8a-9d65-2b2bbba78189,
+2025-06-22,"Warren, Will",701542,,3B,PK,-0.448,,,,,,False,full,19c11703-b2d6-3d17-b38a-02bd6dbc6cbc,
+2025-06-28,"Littell, Zack",641793,R,2B,SB,0.199,11.1,20.9,9.8,1.6395,0.642,True,full,e7d5a7b5-002f-3b85-b534-2c42fdd5b304,5.977
+2025-06-29,"Bradley, Taj",671737,,2B,CS,-0.451,,,,,,False,full,07773176-0086-0013-000c-f08cd117d70a,
+2025-07-10,"Peterson, David",656849,,2B,PK,-0.446,,,,,,False,full,67270ad0-c43c-34f2-8a91-a2ba980bf121,
+2025-07-25,"Freeland, Kyle",607536,,2B,PK,-0.449,,,,,,False,full,4985d40a-40a7-327d-9701-5abecf8d77ff,
+2025-07-29,"Lauer, Eric",641778,L,2B,SB,0.198,12.6,25.1,12.5,1.2981,0.38,True,full,a65eb744-1861-3eb2-af72-149ee4cfc2e2,9.629
+2025-08-01,"Horton, Cade",690990,R,2B,SB,0.204,12.7,22.8,10.0,0.5652,0.969,False,full,53e45164-1542-3fef-b7b3-300ff4eb3922,
+2025-08-06,"Romano, Jordan",605447,R,2B,CS,-0.457,12.2,23.3,11.1,1.5854,0.561,True,full,4a21ae02-ee9f-378f-a040-fbb33627665e,7.001
+2025-08-22,"Okert, Steven",595345,L,3B,SB,0.198,16.0,35.3,19.3,1.3662,0.584,True,full,3528aa40-3623-3fbe-bfbd-429ac359c685,14.127
+2025-08-29,"Ray, Robbie",592662,L,2B,SB,0.199,12.2,25.1,12.9,1.2248,0.941,True,full,b3444865-c780-3843-b02a-1a7dfc2e90aa,10.532
+2025-08-31,"Verlander, Justin",434378,R,2B,SB,0.2,10.5,23.2,12.7,1.067,0.354,True,full,5ebe7bb3-73f0-3f06-9f7f-b8be00d4f5e7,11.903
+2025-09-02,"Darvish, Yu",506433,R,2B,CS,-0.452,12.4,23.4,10.9,1.5502,0.87,True,full,2b478fc6-e428-3c3a-9952-697fa2f07d1f,7.031
+2025-09-05,"Casparius, Ben",676508,R,3B,SB,0.199,15.9,28.7,12.7,0.6627,0.951,False,full,a1e1c884-47c3-3c5d-8461-1742b6a95dd6,
+2025-09-11,"Holderman, Colin",670059,R,2B,SB,0.198,12.0,19.5,7.5,1.6445,0.97,True,full,0ce23685-1d99-3614-99d7-9bd83a50729a,4.561
+2025-09-12,"Borucki, Ryan",621366,L,2B,SB,0.199,10.7,22.1,11.4,1.1914,0.924,True,full,841d1908-6108-32f4-99e2-4607a4995eac,9.569
+2025-09-13,"Fisher, Braydon",680755,R,2B,CS,-0.451,11.1,21.9,10.8,1.3283,0.593,True,full,b7bdf28b-719b-370c-8a18-ffee295c2a34,8.131

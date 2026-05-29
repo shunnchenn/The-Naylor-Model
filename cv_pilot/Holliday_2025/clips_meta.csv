@@ -1,0 +1,27 @@
+clip_id,pitcher_name,pitcher_id,p_throws,catcher_name,catcher_id,batter_name,play_id,game_pk,at_bat_number,pitch_number,is_naylor
+holliday_b7bdf28b_fisher_R.mp4,Braydon Fisher,680755,R,Alejandro Kirk,672386,Dylan Beavers,b7bdf28b-719b-370c-8a18-ffee295c2a34,776343,69,4,0
+holliday_841d1908_borucki_L.mp4,Ryan Borucki,621366,L,Alejandro Kirk,672386,Jeremiah Jackson,841d1908-6108-32f4-99e2-4607a4995eac,776353,42,4,0
+holliday_0ce23685_holderman_R.mp4,Colin Holderman,670059,R,Joey Bart,663698,Jeremiah Jackson,0ce23685-1d99-3614-99d7-9bd83a50729a,776372,57,2,0
+holliday_a1e1c884_casparius_R.mp4,Ben Casparius,676508,R,Dalton Rushing,687221,Ryan Mountcastle,a1e1c884-47c3-3c5d-8461-1742b6a95dd6,776454,42,1,0
+holliday_2b478fc6_darvish_R.mp4,Yu Darvish,506433,R,Freddy Fermin,666023,Jeremiah Jackson,2b478fc6-e428-3c3a-9952-697fa2f07d1f,776480,32,2,0
+holliday_5ebe7bb3_verlander_R.mp4,Justin Verlander,434378,R,Patrick Bailey,672275,Jeremiah Jackson,5ebe7bb3-73f0-3f06-9f7f-b8be00d4f5e7,776507,2,3,0
+holliday_b3444865_ray_L.mp4,Robbie Ray,592662,L,Patrick Bailey,672275,Gunnar Henderson,b3444865-c780-3843-b02a-1a7dfc2e90aa,776533,3,5,0
+holliday_3528aa40_okert_L.mp4,Steven Okert,595345,L,Yainer Diaz,673237,Gunnar Henderson,3528aa40-3623-3fbe-bfbd-429ac359c685,776643,58,1,0
+holliday_4a21ae02_romano_R.mp4,Jordan Romano,605447,R,Rafael Marchán,665561,Jordan Westburg,4a21ae02-ee9f-378f-a040-fbb33627665e,776851,56,3,0
+holliday_53e45164_horton_R.mp4,Cade Horton,690990,R,Carson Kelly,608348,Gunnar Henderson,53e45164-1542-3fef-b7b3-300ff4eb3922,776915,3,3,0
+holliday_a65eb744_lauer_L.mp4,Eric Lauer,641778,L,Tyler Heineman,623168,Tyler O'Neill,a65eb744-1861-3eb2-af72-149ee4cfc2e2,776962,42,4,0
+holliday_07773176_bradley_R.mp4,Taj Bradley,671737,R,Danny Jansen,643376,Gunnar Henderson,07773176-0086-0013-000c-f08cd117d70a,777317,8,1,0
+holliday_e7d5a7b5_littell_R.mp4,Zack Littell,641793,R,Matt Thaiss,642136,Ryan O'Hearn,e7d5a7b5-002f-3b85-b534-2c42fdd5b304,777330,12,4,0
+holliday_309307de_fried_L.mp4,Max Fried,608331,L,Austin Wells,669224,Ramón Laureano,309307de-6ead-3a8a-9d65-2b2bbba78189,777438,43,6,0
+holliday_575182e6_kelly_R.mp4,Kevin Kelly,687330,R,Danny Jansen,643376,Jordan Westburg,575182e6-5680-3249-95ca-6d89d6797c7e,777477,72,2,0
+holliday_26647807_brieske_R.mp4,Beau Brieske,689225,R,Dillon Dingler,693307,Adley Rutschman,26647807-7731-3b05-ad05-25dc3d0efe39,777562,68,3,0
+holliday_ecd52c4f_hurter_L.mp4,Brant Hurter,676428,L,Dillon Dingler,693307,Gunnar Henderson,ecd52c4f-6a1a-34b3-95fa-04e3ef72098a,777573,25,5,0
+holliday_13a471d0_shuster_L.mp4,Jared Shuster,694363,L,Edgar Quero,700337,Gunnar Henderson,13a471d0-5650-3fe0-98ea-5c05e575ea2f,777720,6,1,0
+holliday_386a0d1f_pallante_R.mp4,Andre Pallante,669467,R,Iván Herrera,671056,Ramón Urías,386a0d1f-36ba-37d1-bd44-e858dbc9a29e,777754,27,5,0
+holliday_989d4b7a_dobbins_R.mp4,Hunter Dobbins,690928,R,Carlos Narváez,665966,Gunnar Henderson,989d4b7a-c05c-3276-b2d6-26adb0bba3d1,777809,21,7,0
+holliday_bd68803b_finnegan_R.mp4,Kyle Finnegan,640448,R,Keibert Ruiz,660688,Cedric Mullins,bd68803b-a4d0-3991-8e49-9b9969ff67e4,777907,82,6,0
+holliday_a427582d_richardson_R.mp4,Simeon Woods Richardson,680573,R,Ryan Jeffers,680777,Ramón Laureano,a427582d-735a-38d0-8acd-93cc490ddc97,778011,10,1,0
+holliday_854e25e9_henry_R.mp4,Cole Henry,669371,R,Keibert Ruiz,660688,Cedric Mullins,854e25e9-6e4e-3f5e-b1a7-db4365288321,778193,55,6,0
+holliday_4f418372_junis_R.mp4,Jakob Junis,596001,R,Austin Hedges,595978,Ramón Urías,4f418372-7d3b-3a78-9c69-df1b0e0ec681,778292,52,5,0
+holliday_6ce80996_newcomb_L.mp4,Sean Newcomb,656794,L,Connor Wong,657136,Jordan Westburg,6ce80996-6c06-3cb0-a296-10963d297879,778512,21,3,0
+holliday_6a4935ba_bassitt_R.mp4,Chris Bassitt,605135,R,Tyler Heineman,623168,Jorge Mateo,6a4935ba-0708-3129-881c-d50b582acbce,778525,15,4,0

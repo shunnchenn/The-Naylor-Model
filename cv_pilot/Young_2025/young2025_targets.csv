@@ -1,0 +1,23 @@
+game_pk,play_id,is_naylor,clip_prefix,date,pitcher_name,result
+778555,404b9563-0fd8-32b1-ade7-6de0c9f7b297,0,young,2025-03-27,"Wheeler, Zack",CS
+778235,69c28c70-f08e-3697-9999-441380116cbd,0,young,2025-04-20,"Halvorsen, Seth",SB
+778266,69c28c70-f08e-3697-9999-441380116cbd,0,young,2025-04-20,"Halvorsen, Seth",SB
+778077,8e3be5df-7eee-374d-abd8-4efc58aa9a5a,0,young,2025-05-03,"Lodolo, Nick",SB
+778026,a2d9c3f3-878f-381b-a3ed-99af21e8cce8,0,young,2025-05-06,"Ortiz, Luis",SB
+778046,a2d9c3f3-878f-381b-a3ed-99af21e8cce8,0,young,2025-05-06,"Ortiz, Luis",SB
+777907,49c3056a-fcc4-3040-a5d5-1066677fc1ee,0,young,2025-05-16,"Povich, Cade",CS
+777596,17af7e6a-8d89-3486-8923-ad36fa7d5090,0,young,2025-06-08,"Latz, Jacob",CS
+777461,a06136e7-8578-37b8-ad47-7f14d429e7f7,0,young,2025-06-18,"Márquez, Germán",CS
+777445,49a1debb-307d-38f8-a168-82faf7c4454a,0,young,2025-06-19,"Dollander, Chase",CS
+777398,4c66ffc1-6eeb-3d21-85d6-ca0b11119b89,0,young,2025-06-22,"Banda, Anthony",CS
+777382,023853e1-125b-3cbc-bdf7-0ff25b5a29d9,0,young,2025-06-23,"Peralta, Wandy",SB
+777372,777f50ea-dbfd-3e5d-8cc9-c2b67364362b,0,young,2025-06-24,"Morejon, Adrian",SB
+777305,2d13f0a1-e619-3a90-9b84-4e0a7d6fa6c8,0,young,2025-06-29,"Jansen, Kenley",SB
+777135,0af6700f-dc2c-3750-a5f2-b5e1fe4d635c,0,young,2025-07-12,"Anderson, Grant",SB
+776802,af36d6d8-be95-3239-aef0-7be2ef21201e,0,young,2025-08-09,"Gage, Matt",CS
+776802,7f066664-e8f5-3be3-88ad-a1901ff61b43,0,young,2025-08-09,"Whisenhunt, Carson",SB
+776793,908c8b84-c31c-30bb-a842-42b80d9c2e11,0,young,2025-08-10,"Verlander, Justin",SB
+776725,b3a84692-c1df-30da-9051-a66b2dc14b22,0,young,2025-08-16,"Romano, Jordan",SB
+776597,369c6823-baad-342a-a99d-6e2ffcf13b93,0,young,2025-08-25,"Schlittler, Cam",PK
+776482,8d52526e-4761-385e-a49f-87d7fc8294a8,0,young,2025-09-02,"Mazur, Adam",SB
+776237,d59afac9-0d76-32d6-840e-2b70469d0db3,0,young,2025-09-21,"Holmes, Clay",SB
