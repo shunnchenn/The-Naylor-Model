@@ -1,0 +1,4 @@
+date,pitcher_name,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,avg_velocity_ftps
+2024-03-28,"Muller, Kyle",L,2B,CS,-0.45,10.0,19.7,9.8,1.1869,0.816,True,full,8.257
+2024-04-26,"Sale, Chris",L,2B,SB,0.199,9.9,21.9,12.0,0.8498,0.68,True,full,14.121
+2024-09-02,"Hernández, Carlos",R,3B,SB,0.199,15.4,36.8,21.4,0.8817,0.807,True,full,24.271

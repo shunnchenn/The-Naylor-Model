@@ -1,0 +1,24 @@
+date,pitcher_name,pitcher_id,p_throws,base,result,run_value,lead_at_firstmove_ft,lead_at_release_ft,gain_to_release_ft,delivery_s,release_conf,usable,analysis_method,play_id,avg_velocity_ftps
+2025-03-30,"Morgan, Eli",669212,R,3B,SB,0.196,16.2,38.7,22.5,1.6148,0.911,True,full,649a7314-376a-3589-8d5b-fd21989c18a1,13.934
+2025-04-03,"Ottavino, Adam",493603,R,3B,SB,0.198,13.7,36.8,23.0,1.56,0.36,True,full,4dde2b60-52ad-3ba5-8c87-0c4a19d8fb80,14.744
+2025-04-06,"López, Jorge",605347,R,2B,SB,0.198,13.1,31.7,18.6,1.2435,0.868,True,capped_6s,09e58c6b-2f97-3f00-b9ce-5836e3517328,14.958
+2025-04-22,"Littell, Zack",641793,R,2B,CS,-0.451,15.2,23.3,8.0,0.9843,0.838,True,capped_6s,af7bfe85-8b5a-3bf3-a1f6-6e160610b7a7,8.128
+2025-05-04,"Kerkering, Orion",689147,R,2B,SB,0.201,12.0,26.0,14.1,0.8372,0.836,True,capped_6s,03ee0445-f24d-3b43-be42-8a626892a14b,16.842
+2025-05-13,"Ray, Robbie",592662,L,2B,SB,0.199,10.6,25.7,15.2,1.595,0.966,True,full,2d002b65-a121-3e62-9ed9-c6905dde61f1,9.53
+2025-05-16,"Palmquist, Carson",687223,L,2B,SB,0.197,10.7,24.8,14.1,1.1923,0.974,True,full,1427709a-73d7-39c9-b8bc-2872c722c400,11.826
+2025-06-19,"Gausman, Kevin",592332,R,2B,SB,0.199,10.7,25.9,15.1,1.0932,,True,reused,04855f81-6b86-3b37-a53a-c5df4362065d,13.813
+2025-07-07,"Núñez, Eduarniel",674384,R,2B,SB,0.196,16.7,30.7,13.9,1.0922,0.919,True,full,7ec7fe77-542b-3f71-ac8b-c843ce42ef00,12.727
+2025-07-26,"Anderson, Tyler",542881,L,2B,SB,0.197,10.2,23.7,13.5,1.2357,0.388,True,full,a3d9bd20-d844-3d66-bd26-f54f5cd60bb8,10.925
+2025-07-27,"Hendricks, Kyle",543294,R,3B,SB,0.198,14.6,33.8,19.2,0.9322,,True,reused,8f12e2af-0a21-3542-8ce5-1bf7860cf0a3,20.596
+2025-07-27,"Hendricks, Kyle",543294,R,2B,SB,0.197,10.5,23.7,13.2,0.9322,0.976,True,full,718944e7-b87d-316c-979a-f178dc79b9cd,14.16
+2025-07-31,"Latz, Jacob",656641,L,2B,SB,0.197,10.9,24.9,13.9,1.1373,0.45,True,full,63c23a57-7815-335a-9b00-8ed20772b4a2,12.222
+2025-08-05,"Martin, Davis",663436,R,3B,SB,0.197,14.7,34.5,19.8,1.1359,0.879,True,full,0dc95fbb-2af0-34b5-aa27-20879e2e0410,17.431
+2025-08-05,"Martin, Davis",663436,R,2B,SB,0.199,11.2,27.8,16.6,1.5351,0.958,True,capped_6s,39a80ca9-c54f-36cc-a967-cc7e01f3ec15,10.814
+2025-08-06,"Eisert, Brandon",685126,L,2B,SB,0.197,9.1,24.5,15.3,1.4469,0.751,True,capped_6s,0a8f1dbd-5c3d-331a-8f84-9b72f9d32d2c,10.574
+2025-08-06,"Eisert, Brandon",685126,L,3B,SB,0.2,13.8,33.6,19.8,1.3248,0.833,True,full,cd6d9f75-b92f-375f-aff8-16a221eeb0d6,14.946
+2025-08-09,"Montgomery, Mason",682254,L,3B,SB,0.198,14.4,39.0,24.7,1.2936,0.921,True,full,8d92f6dc-1ddf-3c42-befc-cd2768dd1b24,19.094
+2025-08-31,"Allard, Kolby",663465,L,2B,SB,0.201,9.5,26.8,17.2,1.2153,0.436,True,full,909662e9-3b7e-32a3-a34e-f57ed7866561,14.153
+2025-09-07,"Wentz, Joey",666214,L,2B,SB,0.196,9.2,24.9,15.7,1.6142,0.989,True,full,53c43962-43b6-3cb2-8662-b8dd655511f3,9.726
+2025-09-08,"Graceffo, Gordon",700669,R,3B,SB,0.199,15.8,30.6,14.7,1.2431,0.855,True,full,9199c642-df8a-30a0-86f2-ce5d0953e14b,11.825
+2025-09-11,"Peralta, Sammy",671111,L,3B,SB,0.198,13.7,38.2,24.5,1.1031,0.839,True,full,ddf98ec9-4e32-3daa-8c92-be4c3cfe670d,22.21
+2025-09-20,"Valdez, Framber",664285,L,2B,SB,0.197,9.8,22.3,12.5,1.2599,0.859,True,full,4ad111f2-dc37-3f4c-862f-2045a73cc313,9.921

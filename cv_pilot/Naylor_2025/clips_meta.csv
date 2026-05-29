@@ -1,0 +1,24 @@
+clip_id,pitcher_name,pitcher_id,p_throws,catcher_name,catcher_id,batter_name,play_id,game_pk,at_bat_number,pitch_number,is_naylor
+NAYLOR_4ad111f2_valdez_L.mp4,Framber Valdez,664285,L,Yainer Diaz,673237,Mitch Garver,4ad111f2-dc37-3f4c-862f-2045a73cc313,776248,12,2,1
+NAYLOR_ddf98ec9_peralta_L.mp4,Sammy Peralta,671111,L,Sebastián Rivero,665861,Jorge Polanco,ddf98ec9-4e32-3daa-8c92-be4c3cfe670d,776362,98,1,1
+NAYLOR_9199c642_graceffo_R.mp4,Gordon Graceffo,700669,R,Jimmy Crooks,699625,Jorge Polanco,9199c642-df8a-30a0-86f2-ce5d0953e14b,776400,44,2,1
+NAYLOR_53c43962_wentz_L.mp4,Joey Wentz,666214,L,Drake Baldwin,686948,Mitch Garver,53c43962-43b6-3cb2-8662-b8dd655511f3,776428,11,1,1
+NAYLOR_909662e9_allard_L.mp4,Kolby Allard,663465,L,Austin Hedges,595978,Jorge Polanco,909662e9-3b7e-32a3-a34e-f57ed7866561,776521,58,3,1
+NAYLOR_8d92f6dc_montgomery_L.mp4,Mason Montgomery,682254,L,Hunter Feduccia,676439,Jorge Polanco,8d92f6dc-1ddf-3c42-befc-cd2768dd1b24,776805,43,1,1
+NAYLOR_0a8f1dbd_eisert_L.mp4,Brandon Eisert,685126,L,Kyle Teel,691019,Jorge Polanco,0a8f1dbd-5c3d-331a-8f84-9b72f9d32d2c,776841,64,3,1
+NAYLOR_cd6d9f75_eisert_L.mp4,Brandon Eisert,685126,L,Kyle Teel,691019,Dominic Canzone,cd6d9f75-b92f-375f-aff8-16a221eeb0d6,776841,65,3,1
+NAYLOR_39a80ca9_martin_R.mp4,Davis Martin,663436,R,Kyle Teel,691019,Eugenio Suárez,39a80ca9-c54f-36cc-a967-cc7e01f3ec15,776857,44,5,1
+NAYLOR_0dc95fbb_martin_R.mp4,Davis Martin,663436,R,Kyle Teel,691019,Jorge Polanco,0dc95fbb-2af0-34b5-aa27-20879e2e0410,776857,45,2,1
+NAYLOR_63c23a57_latz_L.mp4,Jacob Latz,656641,L,Kyle Higashioka,543309,Eugenio Suárez,63c23a57-7815-335a-9b00-8ed20772b4a2,776923,40,3,1
+NAYLOR_718944e7_hendricks_R.mp4,Kyle Hendricks,543294,R,Travis d'Arnaud,518595,Randy Arozarena,718944e7-b87d-316c-979a-f178dc79b9cd,776977,28,2,1
+NAYLOR_8f12e2af_hendricks_R.mp4,Kyle Hendricks,543294,R,Travis d'Arnaud,518595,Ben Williamson,8f12e2af-0a21-3542-8ce5-1bf7860cf0a3,776977,31,3,1
+NAYLOR_a3d9bd20_anderson_L.mp4,Tyler Anderson,542881,L,Logan O'Hoppe,681351,Jorge Polanco,a3d9bd20-d844-3d66-bd26-f54f5cd60bb8,776995,28,2,1
+NAYLOR_7ec7fe77_nunez_R.mp4,Eduarniel Núñez,674384,R,Elias Díaz,553869,Eugenio Suárez,7ec7fe77-542b-3f71-ac8b-c843ce42ef00,777203,78,4,1
+NAYLOR_04855f81_gausman_R.mp4,Kevin Gausman,592332,R,Alejandro Kirk,672386,Eugenio Suárez,04855f81-6b86-3b37-a53a-c5df4362065d,777448,37,3,1
+NAYLOR_1427709a_palmquist_L.mp4,Carson Palmquist,687223,L,Jacob Stallings,607732,Randal Grichuk,1427709a-73d7-39c9-b8bc-2872c722c400,777897,13,1,1
+NAYLOR_2d002b65_ray_L.mp4,Robbie Ray,592662,L,Patrick Bailey,672275,Lourdes Gurriel Jr.,2d002b65-a121-3e62-9ed9-c6905dde61f1,777930,7,3,1
+NAYLOR_03ee0445_kerkering_R.mp4,Orion Kerkering,689147,R,J.T. Realmuto,592663,Lourdes Gurriel Jr.,03ee0445-f24d-3b43-be42-8a626892a14b,778059,43,3,1
+NAYLOR_af7bfe85_littell_R.mp4,Zack Littell,641793,R,Ben Rortvedt,666163,Gabriel Moreno,af7bfe85-8b5a-3bf3-a1f6-6e160610b7a7,778212,46,1,1
+NAYLOR_09e58c6b_lopez_R.mp4,Jorge López,605347,R,Keibert Ruiz,660688,Eugenio Suárez,09e58c6b-2f97-3f00-b9ce-5836e3517328,778429,68,3,1
+NAYLOR_4dde2b60_ottavino_R.mp4,Adam Ottavino,493603,R,J.C. Escarra,641555,Lourdes Gurriel Jr.,4dde2b60-52ad-3ba5-8c87-0c4a19d8fb80,778466,50,3,1
+NAYLOR_649a7314_morgan_R.mp4,Eli Morgan,669212,R,Miguel Amaya,665804,Ryne Nelson,649a7314-376a-3589-8d5b-fd21989c18a1,778515,77,3,1

@@ -1,0 +1,4 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2024-03-28,d21c5fbb-d373-42c1-a6fb-ef1659bad0a4,666205,"Muller, Kyle",669127,"Langeliers, Shea","Gelof, Zack",2B,CS,-0.45,10.0,9.8,19.7
+2024-04-26,977c39d5-93f9-498f-a13e-4bab975e6bbd,519242,"Sale, Chris",518595,"d'Arnaud, Travis","Albies, Ozzie",2B,SB,0.199,9.9,12.0,21.9
+2024-09-02,ea0116d0-504b-4cbf-b8cf-4d02952f412a,672578,"Hernández, Carlos",521692,"Perez, Salvador",,3B,SB,0.199,15.4,21.4,36.8

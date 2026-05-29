@@ -301,9 +301,25 @@ DF_Attempts = DF_Attempts.rename(columns={
 DF_Attempts["two_strike"] = (DF_Attempts["strikes"]==2).astype(int)
 
 # Compute new metrics per attempt (using v5 formulas)
+# --- CV measured per-pitcher delivery upgrade -------------------------------
+# pre_release_velocity = lead_gain / time-to-plate.  Historically this used a
+# single league constant (LEAGUE_PITCHER_TTP = 1.30 s).  We now divide by the
+# CV-MEASURED first-move->release time for the pitcher when we have one
+# (data/DF_PitcherDelivery.csv from cv_pilot), falling back to 1.30 s otherwise.
+# Fully reversible: drop the merge below and the velocity reverts to the constant.
 LEAGUE_PITCHER_TTP = 1.30
-DF_Attempts["pre_release_velocity"] = (
-    DF_Attempts["lead_gain"] / LEAGUE_PITCHER_TTP)
+_ttp = pd.Series(LEAGUE_PITCHER_TTP, index=DF_Attempts.index)
+_pd_path = DATA_DIR / "DF_PitcherDelivery.csv"
+if _pd_path.exists():
+    DF_PitcherDelivery = pd.read_csv(_pd_path)
+    DF_Attempts = DF_Attempts.merge(
+        DF_PitcherDelivery[["pitcher_id", "median_delivery_s"]],
+        on="pitcher_id", how="left")
+    _ttp = DF_Attempts["median_delivery_s"].fillna(LEAGUE_PITCHER_TTP)
+    _n_meas = int(DF_Attempts["median_delivery_s"].notna().sum())
+    print(f"   CV delivery: {_n_meas:,}/{len(DF_Attempts):,} attempts use a measured "
+          f"per-pitcher TTP (else {LEAGUE_PITCHER_TTP:.2f}s constant)")
+DF_Attempts["pre_release_velocity"] = DF_Attempts["lead_gain"] / _ttp
 
 # Get runner profile (sprint, jump_time) into attempts
 season_cols = ["runner_id","season","sprint_speed","speed_capped",

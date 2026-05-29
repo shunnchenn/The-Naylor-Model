@@ -1,0 +1,24 @@
+date,play_id,pitcher_id,pitcher_name,catcher_id,catcher_name,fielder_name,base,result,run_value,lead_at_firstmove_ft,gain_to_release_ft,lead_at_release_ft
+2025-03-30,649a7314-376a-3589-8d5b-fd21989c18a1,669212,"Morgan, Eli",665804,"Amaya, Miguel",,3B,SB,0.196,16.2,22.5,38.7
+2025-04-03,4dde2b60-52ad-3ba5-8c87-0c4a19d8fb80,493603,"Ottavino, Adam",641555,"Escarra, J.C.",,3B,SB,0.198,13.7,23.0,36.8
+2025-04-06,09e58c6b-2f97-3f00-b9ce-5836e3517328,605347,"López, Jorge",660688,"Ruiz, Keibert","García Jr., Luis",2B,SB,0.198,13.1,18.6,31.7
+2025-04-22,af7bfe85-8b5a-3bf3-a1f6-6e160610b7a7,641793,"Littell, Zack",666163,"Rortvedt, Ben","Lowe, Brandon",2B,CS,-0.451,15.2,8.0,23.3
+2025-05-04,03ee0445-f24d-3b43-be42-8a626892a14b,689147,"Kerkering, Orion",592663,"Realmuto, J.T.","Sosa, Edmundo",2B,SB,0.201,12.0,14.1,26.0
+2025-05-13,2d002b65-a121-3e62-9ed9-c6905dde61f1,592662,"Ray, Robbie",672275,"Bailey, Patrick",,2B,SB,0.199,10.6,15.2,25.7
+2025-05-16,1427709a-73d7-39c9-b8bc-2872c722c400,687223,"Palmquist, Carson",607732,"Stallings, Jacob",,2B,SB,0.197,10.7,14.1,24.8
+2025-06-19,04855f81-6b86-3b37-a53a-c5df4362065d,592332,"Gausman, Kevin",672386,"Kirk, Alejandro",,2B,SB,0.199,10.7,15.1,25.9
+2025-07-07,7ec7fe77-542b-3f71-ac8b-c843ce42ef00,674384,"Núñez, Eduarniel",553869,"Díaz, Elias",,2B,SB,0.196,16.7,13.9,30.7
+2025-07-26,a3d9bd20-d844-3d66-bd26-f54f5cd60bb8,542881,"Anderson, Tyler",681351,"O'Hoppe, Logan","Rengifo, Luis",2B,SB,0.197,10.2,13.5,23.7
+2025-07-27,8f12e2af-0a21-3542-8ce5-1bf7860cf0a3,543294,"Hendricks, Kyle",518595,"d'Arnaud, Travis",,3B,SB,0.198,14.6,19.2,33.8
+2025-07-27,718944e7-b87d-316c-979a-f178dc79b9cd,543294,"Hendricks, Kyle",518595,"d'Arnaud, Travis","Rengifo, Luis",2B,SB,0.197,10.5,13.2,23.7
+2025-07-31,63c23a57-7815-335a-9b00-8ed20772b4a2,656641,"Latz, Jacob",543309,"Higashioka, Kyle","Semien, Marcus",2B,SB,0.197,10.9,13.9,24.9
+2025-08-05,0dc95fbb-2af0-34b5-aa27-20879e2e0410,663436,"Martin, Davis",691019,"Teel, Kyle",,3B,SB,0.197,14.7,19.8,34.5
+2025-08-05,39a80ca9-c54f-36cc-a967-cc7e01f3ec15,663436,"Martin, Davis",691019,"Teel, Kyle","Rojas, Josh",2B,SB,0.199,11.2,16.6,27.8
+2025-08-06,0a8f1dbd-5c3d-331a-8f84-9b72f9d32d2c,685126,"Eisert, Brandon",691019,"Teel, Kyle","Sosa, Lenyn",2B,SB,0.197,9.1,15.3,24.5
+2025-08-06,cd6d9f75-b92f-375f-aff8-16a221eeb0d6,685126,"Eisert, Brandon",691019,"Teel, Kyle",,3B,SB,0.2,13.8,19.8,33.6
+2025-08-09,8d92f6dc-1ddf-3c42-befc-cd2768dd1b24,682254,"Montgomery, Mason",676439,"Feduccia, Hunter",,3B,SB,0.198,14.4,24.7,39.0
+2025-08-31,909662e9-3b7e-32a3-a34e-f57ed7866561,663465,"Allard, Kolby",595978,"Hedges, Austin",,2B,SB,0.201,9.5,17.2,26.8
+2025-09-07,53c43962-43b6-3cb2-8662-b8dd655511f3,666214,"Wentz, Joey",686948,"Baldwin, Drake",,2B,SB,0.196,9.2,15.7,24.9
+2025-09-08,9199c642-df8a-30a0-86f2-ce5d0953e14b,700669,"Graceffo, Gordon",699625,"Crooks, Jimmy",,3B,SB,0.199,15.8,14.7,30.6
+2025-09-11,ddf98ec9-4e32-3daa-8c92-be4c3cfe670d,671111,"Peralta, Sammy",665861,"Rivero, Sebastián",,3B,SB,0.198,13.7,24.5,38.2
+2025-09-20,4ad111f2-dc37-3f4c-862f-2045a73cc313,664285,"Valdez, Framber",673237,"Diaz, Yainer","Altuve, Jose",2B,SB,0.197,9.8,12.5,22.3

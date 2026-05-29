@@ -1,0 +1,24 @@
+date,pitcher_id,pitcher_name,p_throws,event,catcher_name,clip_id,play_id,fps,delivery_s,usable,release_conf,analysis_method,note
+2025-03-30,669212,"Morgan, Eli",R,Stolen Base 3B,"Amaya, Miguel",NAYLOR_649a7314_morgan_R.mp4,649a7314-376a-3589-8d5b-fd21989c18a1,59.838,1.6148,True,0.911,full,
+2025-04-03,493603,"Ottavino, Adam",R,Stolen Base 3B,"Escarra, J.C.",NAYLOR_4dde2b60_ottavino_R.mp4,4dde2b60-52ad-3ba5-8c87-0c4a19d8fb80,59.764,1.56,True,0.36,full,
+2025-04-06,605347,"López, Jorge",R,Stolen Base 2B,"Ruiz, Keibert",NAYLOR_09e58c6b_lopez_R.mp4,09e58c6b-2f97-3f00-b9ce-5836e3517328,59.723,1.2435,True,0.868,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-04-22,641793,"Littell, Zack",R,Caught Stealing 2B,"Rortvedt, Ben",NAYLOR_af7bfe85_littell_R.mp4,af7bfe85-8b5a-3bf3-a1f6-6e160610b7a7,59.867,0.9843,True,0.838,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-05-04,689147,"Kerkering, Orion",R,Stolen Base 2B,"Realmuto, J.T.",NAYLOR_03ee0445_kerkering_R.mp4,03ee0445-f24d-3b43-be42-8a626892a14b,59.824,0.8372,True,0.836,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-05-13,592662,"Ray, Robbie",L,Stolen Base 2B,"Bailey, Patrick",NAYLOR_2d002b65_ray_L.mp4,2d002b65-a121-3e62-9ed9-c6905dde61f1,59.761,1.595,True,0.966,full,
+2025-05-16,687223,"Palmquist, Carson",L,Stolen Base 2B,"Stallings, Jacob",NAYLOR_1427709a_palmquist_L.mp4,1427709a-73d7-39c9-b8bc-2872c722c400,59.75,1.1923,True,0.974,full,
+2025-06-19,592332,"Gausman, Kevin",R,Stolen Base 2B,"Kirk, Alejandro",NAYLOR_04855f81_gausman_R.mp4,04855f81-6b86-3b37-a53a-c5df4362065d,59.823,1.0932,True,,reused,reused: Gausman pool median (cv_pilot/pitcher_delivery_sb.csv)
+2025-07-07,674384,"Núñez, Eduarniel",R,Stolen Base 2B,"Díaz, Elias",NAYLOR_7ec7fe77_nunez_R.mp4,7ec7fe77-542b-3f71-ac8b-c843ce42ef00,59.765,1.0922,True,0.919,full,
+2025-07-26,542881,"Anderson, Tyler",L,Stolen Base 2B,"O'Hoppe, Logan",NAYLOR_a3d9bd20_anderson_L.mp4,a3d9bd20-d844-3d66-bd26-f54f5cd60bb8,59.728,1.2357,True,0.388,full,
+2025-07-27,543294,"Hendricks, Kyle",R,Stolen Base 3B,"d'Arnaud, Travis",NAYLOR_8f12e2af_hendricks_R.mp4,8f12e2af-0a21-3542-8ce5-1bf7860cf0a3,59.687,0.9322,True,,reused,reused: Hendricks 2025 same-pitcher clip 718944e7
+2025-07-27,543294,"Hendricks, Kyle",R,Stolen Base 2B,"d'Arnaud, Travis",NAYLOR_718944e7_hendricks_R.mp4,718944e7-b87d-316c-979a-f178dc79b9cd,59.785,0.9322,True,0.976,full,
+2025-07-31,656641,"Latz, Jacob",L,Stolen Base 2B,"Higashioka, Kyle",NAYLOR_63c23a57_latz_L.mp4,63c23a57-7815-335a-9b00-8ed20772b4a2,59.764,1.1373,True,0.45,full,
+2025-08-05,663436,"Martin, Davis",R,Stolen Base 3B,"Teel, Kyle",NAYLOR_0dc95fbb_martin_R.mp4,0dc95fbb-2af0-34b5-aa27-20879e2e0410,59.775,1.1359,True,0.879,full,
+2025-08-05,663436,"Martin, Davis",R,Stolen Base 2B,"Teel, Kyle",NAYLOR_39a80ca9_martin_R.mp4,39a80ca9-c54f-36cc-a967-cc7e01f3ec15,59.762,1.5351,True,0.958,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-08-06,685126,"Eisert, Brandon",L,Stolen Base 2B,"Teel, Kyle",NAYLOR_0a8f1dbd_eisert_L.mp4,0a8f1dbd-5c3d-331a-8f84-9b72f9d32d2c,59.701,1.4469,True,0.751,capped_6s,recovered via 6s analysis cap (broadcast follows runner)
+2025-08-06,685126,"Eisert, Brandon",L,Stolen Base 3B,"Teel, Kyle",NAYLOR_cd6d9f75_eisert_L.mp4,cd6d9f75-b92f-375f-aff8-16a221eeb0d6,59.733,1.3248,True,0.833,full,
+2025-08-09,682254,"Montgomery, Mason",L,Stolen Base 3B,"Feduccia, Hunter",NAYLOR_8d92f6dc_montgomery_L.mp4,8d92f6dc-1ddf-3c42-befc-cd2768dd1b24,59.7,1.2936,True,0.921,full,
+2025-08-31,663465,"Allard, Kolby",L,Stolen Base 2B,"Hedges, Austin",NAYLOR_909662e9_allard_L.mp4,909662e9-3b7e-32a3-a34e-f57ed7866561,59.67,1.2153,True,0.436,full,
+2025-09-07,666214,"Wentz, Joey",L,Stolen Base 2B,"Baldwin, Drake",NAYLOR_53c43962_wentz_L.mp4,53c43962-43b6-3cb2-8662-b8dd655511f3,59.8,1.6142,True,0.989,full,
+2025-09-08,700669,"Graceffo, Gordon",R,Stolen Base 3B,"Crooks, Jimmy",NAYLOR_9199c642_graceffo_R.mp4,9199c642-df8a-30a0-86f2-ce5d0953e14b,59.68,1.2431,True,0.855,full,
+2025-09-11,671111,"Peralta, Sammy",L,Stolen Base 3B,"Rivero, Sebastián",NAYLOR_ddf98ec9_peralta_L.mp4,ddf98ec9-4e32-3daa-8c92-be4c3cfe670d,59.771,1.1031,True,0.839,full,
+2025-09-20,664285,"Valdez, Framber",L,Stolen Base 2B,"Diaz, Yainer",NAYLOR_4ad111f2_valdez_L.mp4,4ad111f2-dc37-3f4c-862f-2045a73cc313,59.725,1.2599,True,0.859,full,

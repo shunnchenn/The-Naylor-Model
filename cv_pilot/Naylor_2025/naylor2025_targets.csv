@@ -1,0 +1,24 @@
+game_pk,play_id,is_naylor,clip_prefix,date,pitcher_name,result
+778515,649a7314-376a-3589-8d5b-fd21989c18a1,1,naylor,2025-03-30,"Morgan, Eli",SB
+778466,4dde2b60-52ad-3ba5-8c87-0c4a19d8fb80,1,naylor,2025-04-03,"Ottavino, Adam",SB
+778429,09e58c6b-2f97-3f00-b9ce-5836e3517328,1,naylor,2025-04-06,"López, Jorge",SB
+778212,af7bfe85-8b5a-3bf3-a1f6-6e160610b7a7,1,naylor,2025-04-22,"Littell, Zack",CS
+778059,03ee0445-f24d-3b43-be42-8a626892a14b,1,naylor,2025-05-04,"Kerkering, Orion",SB
+777930,2d002b65-a121-3e62-9ed9-c6905dde61f1,1,naylor,2025-05-13,"Ray, Robbie",SB
+777897,1427709a-73d7-39c9-b8bc-2872c722c400,1,naylor,2025-05-16,"Palmquist, Carson",SB
+777448,04855f81-6b86-3b37-a53a-c5df4362065d,1,naylor,2025-06-19,"Gausman, Kevin",SB
+777203,7ec7fe77-542b-3f71-ac8b-c843ce42ef00,1,naylor,2025-07-07,"Núñez, Eduarniel",SB
+776995,a3d9bd20-d844-3d66-bd26-f54f5cd60bb8,1,naylor,2025-07-26,"Anderson, Tyler",SB
+776977,8f12e2af-0a21-3542-8ce5-1bf7860cf0a3,1,naylor,2025-07-27,"Hendricks, Kyle",SB
+776977,718944e7-b87d-316c-979a-f178dc79b9cd,1,naylor,2025-07-27,"Hendricks, Kyle",SB
+776923,63c23a57-7815-335a-9b00-8ed20772b4a2,1,naylor,2025-07-31,"Latz, Jacob",SB
+776857,0dc95fbb-2af0-34b5-aa27-20879e2e0410,1,naylor,2025-08-05,"Martin, Davis",SB
+776857,39a80ca9-c54f-36cc-a967-cc7e01f3ec15,1,naylor,2025-08-05,"Martin, Davis",SB
+776841,0a8f1dbd-5c3d-331a-8f84-9b72f9d32d2c,1,naylor,2025-08-06,"Eisert, Brandon",SB
+776841,cd6d9f75-b92f-375f-aff8-16a221eeb0d6,1,naylor,2025-08-06,"Eisert, Brandon",SB
+776805,8d92f6dc-1ddf-3c42-befc-cd2768dd1b24,1,naylor,2025-08-09,"Montgomery, Mason",SB
+776521,909662e9-3b7e-32a3-a34e-f57ed7866561,1,naylor,2025-08-31,"Allard, Kolby",SB
+776428,53c43962-43b6-3cb2-8662-b8dd655511f3,1,naylor,2025-09-07,"Wentz, Joey",SB
+776400,9199c642-df8a-30a0-86f2-ce5d0953e14b,1,naylor,2025-09-08,"Graceffo, Gordon",SB
+776362,ddf98ec9-4e32-3daa-8c92-be4c3cfe670d,1,naylor,2025-09-11,"Peralta, Sammy",SB
+776248,4ad111f2-dc37-3f4c-862f-2045a73cc313,1,naylor,2025-09-20,"Valdez, Framber",SB

@@ -29,6 +29,11 @@ venv/
 ## CV pilot video in/out (large binaries)
 cv_pilot/clips/
 cv_pilot/qa/
+## nested per-runner clip/QA dirs (e.g. cv_pilot/Naylor_2025/clips, .../qa, .../qa_recover)
+cv_pilot/**/clips/
+cv_pilot/**/qa/
+cv_pilot/**/qa_recover/
+*.mp4
 
 ## OS / editor noise
 *~
