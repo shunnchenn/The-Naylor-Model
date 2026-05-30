@@ -52,9 +52,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
-HERE = Path(__file__).resolve().parent          # cv_pilot/
-ROOT = HERE.parent                               # repo root
-DISCOVERY = HERE / "discovery"
+HERE = Path(__file__).resolve().parent          # Statcast Analysis Core/
+ROOT = HERE.parent.parent                        # repo root (skip back through cv_pilot/)
+DISCOVERY = HERE.parent / "discovery"            # cv_pilot/discovery
 CACHE = DISCOVERY / "leads_cache"
 DATA = ROOT / "data"
 FIGS = ROOT / "figures"
