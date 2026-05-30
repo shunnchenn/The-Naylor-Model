@@ -107,8 +107,11 @@ def empirical_bayes_posterior(
     posterior_sd = np.sqrt(posterior_var)
     
     # Prob(theta > prior_mean) and SD above prior mean
+    # theta ~ N(posterior_mean, posterior_sd^2)
+    # P(theta > prior_mean) = P(Z > (prior_mean - posterior_mean)/posterior_sd)
+    #                       = norm.sf(-z) = norm.cdf(z)  where z = (post_mean - prior_mean)/post_sd
     z = (posterior_mean - prior_mean) / posterior_sd if posterior_sd > 0 else 0
-    prob_above = norm.sf(z)  # survival function = P(Z > z)
+    prob_above = float(norm.cdf(z))  # P(theta > prior_mean); ~1.0 for elite, ~0.5 at average
     sd_above = z  # = (posterior_mean - prior_mean) / posterior_sd
     
     return {

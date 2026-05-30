@@ -45,7 +45,7 @@ posterior SD).
 - **Sprint speed:** 24.4 ft/s (z = -4.14, 1.9th percentile)
 - **Mean gain to release:** 16.74 ft (z = 3.08)
 - **Posterior SD above league mean:** +5.39
-- **Posterior P(gain > league mean):** 0.000
+- **Posterior P(gain > league mean):** 1.000
 - **Steal record:** 22/23 = 95.7%
 - **Joint rarity (naive independence):** P(as slow) × P(covers as much) ≈ 0.000000 → ~1 in 56,023,124 runner-seasons
 
@@ -64,64 +64,64 @@ probability, surfacing him as the archetype slow-runner thief.
 ## Top-20 slow runners (sub-40th percentile)
 
 **1.**  Agustín Ramírez 2025  
-sprint=26.7 ft/s (pctile=30.4)  | mean_gain=21.31 ft  | SD_above=+7.92  | P(>μ)=0.000  | 13/14=93%
+sprint=26.7 ft/s (pctile=30.4)  | mean_gain=21.31 ft  | SD_above=+7.92  | P(>μ)=1.000  | 13/14=93%
 
 **2.**  Josh Naylor 2025  
-sprint=24.4 ft/s (pctile=1.9)  | mean_gain=16.74 ft  | SD_above=+5.39  | P(>μ)=0.000  | 22/23=96%
+sprint=24.4 ft/s (pctile=1.9)  | mean_gain=16.74 ft  | SD_above=+5.39  | P(>μ)=1.000  | 22/23=96%
 
 **3.**  Juan Soto 2025  
-sprint=25.8 ft/s (pctile=13.5)  | mean_gain=14.18 ft  | SD_above=+3.37  | P(>μ)=0.000  | 30/30=100%
+sprint=25.8 ft/s (pctile=13.5)  | mean_gain=14.18 ft  | SD_above=+3.37  | P(>μ)=1.000  | 30/30=100%
 
 **4.**  Paul Goldschmidt 2024  
-sprint=26.3 ft/s (pctile=21.6)  | mean_gain=16.70 ft  | SD_above=+2.28  | P(>μ)=0.011  | 10/10=100%
+sprint=26.3 ft/s (pctile=21.6)  | mean_gain=16.70 ft  | SD_above=+2.28  | P(>μ)=0.989  | 10/10=100%
 
 **5.**  Cal Raleigh 2025  
-sprint=26.0 ft/s (pctile=16.1)  | mean_gain=14.82 ft  | SD_above=+1.73  | P(>μ)=0.042  | 8/12=67%
+sprint=26.0 ft/s (pctile=16.1)  | mean_gain=14.82 ft  | SD_above=+1.73  | P(>μ)=0.958  | 8/12=67%
 
 **6.**  Miguel Rojas 2023  
-sprint=26.4 ft/s (pctile=25.6)  | mean_gain=13.41 ft  | SD_above=+1.67  | P(>μ)=0.048  | 8/10=80%
+sprint=26.4 ft/s (pctile=25.6)  | mean_gain=13.41 ft  | SD_above=+1.67  | P(>μ)=0.952  | 8/10=80%
 
 **7.**  Gleyber Torres 2023  
-sprint=26.4 ft/s (pctile=26.1)  | mean_gain=15.91 ft  | SD_above=+1.65  | P(>μ)=0.049  | 10/15=67%
+sprint=26.4 ft/s (pctile=26.1)  | mean_gain=15.91 ft  | SD_above=+1.65  | P(>μ)=0.951  | 10/15=67%
 
 **8.**  Kyle Tucker 2025  
-sprint=26.5 ft/s (pctile=26.1)  | mean_gain=13.25 ft  | SD_above=+1.60  | P(>μ)=0.055  | 14/17=82%
+sprint=26.5 ft/s (pctile=26.1)  | mean_gain=13.25 ft  | SD_above=+1.60  | P(>μ)=0.945  | 14/17=82%
 
 **9.**  Jesús Sánchez 2025  
-sprint=27.0 ft/s (pctile=38.1)  | mean_gain=15.53 ft  | SD_above=+1.57  | P(>μ)=0.058  | 10/11=91%
+sprint=27.0 ft/s (pctile=38.1)  | mean_gain=15.53 ft  | SD_above=+1.57  | P(>μ)=0.942  | 10/11=91%
 
 **10.**  Mookie Betts 2024  
-sprint=26.7 ft/s (pctile=30.3)  | mean_gain=12.33 ft  | SD_above=+1.53  | P(>μ)=0.064  | 15/16=94%
+sprint=26.7 ft/s (pctile=30.3)  | mean_gain=12.33 ft  | SD_above=+1.53  | P(>μ)=0.936  | 15/16=94%
 
 **11.**  Juan Soto 2023  
-sprint=26.8 ft/s (pctile=34.5)  | mean_gain=16.12 ft  | SD_above=+1.24  | P(>μ)=0.108  | 6/10=60%
+sprint=26.8 ft/s (pctile=34.5)  | mean_gain=16.12 ft  | SD_above=+1.24  | P(>μ)=0.892  | 6/10=60%
 
 **12.**  Royce Lewis 2025  
-sprint=26.8 ft/s (pctile=32.7)  | mean_gain=12.75 ft  | SD_above=+1.22  | P(>μ)=0.112  | 9/10=90%
+sprint=26.8 ft/s (pctile=32.7)  | mean_gain=12.75 ft  | SD_above=+1.22  | P(>μ)=0.888  | 9/10=90%
 
 **13.**  Adam Frazier 2023  
-sprint=26.5 ft/s (pctile=27.7)  | mean_gain=13.66 ft  | SD_above=+1.20  | P(>μ)=0.115  | 8/12=67%
+sprint=26.5 ft/s (pctile=27.7)  | mean_gain=13.66 ft  | SD_above=+1.20  | P(>μ)=0.885  | 8/12=67%
 
 **14.**  Adam Frazier 2025  
-sprint=26.6 ft/s (pctile=27.9)  | mean_gain=15.02 ft  | SD_above=+1.20  | P(>μ)=0.115  | 8/13=62%
+sprint=26.6 ft/s (pctile=27.9)  | mean_gain=15.02 ft  | SD_above=+1.20  | P(>μ)=0.885  | 8/13=62%
 
 **15.**  Jose Altuve 2023  
-sprint=26.9 ft/s (pctile=36.4)  | mean_gain=12.69 ft  | SD_above=+1.14  | P(>μ)=0.127  | 13/13=100%
+sprint=26.9 ft/s (pctile=36.4)  | mean_gain=12.69 ft  | SD_above=+1.14  | P(>μ)=0.873  | 13/13=100%
 
 **16.**  Manny Machado 2025  
-sprint=25.8 ft/s (pctile=13.1)  | mean_gain=12.88 ft  | SD_above=+1.07  | P(>μ)=0.143  | 9/10=90%
+sprint=25.8 ft/s (pctile=13.1)  | mean_gain=12.88 ft  | SD_above=+1.07  | P(>μ)=0.857  | 9/10=90%
 
 **17.**  Elvis Andrus 2023  
-sprint=26.5 ft/s (pctile=28.7)  | mean_gain=12.51 ft  | SD_above=+0.87  | P(>μ)=0.192  | 10/12=83%
+sprint=26.5 ft/s (pctile=28.7)  | mean_gain=12.51 ft  | SD_above=+0.87  | P(>μ)=0.808  | 10/12=83%
 
 **18.**  Juan Soto 2024  
-sprint=26.8 ft/s (pctile=32.4)  | mean_gain=13.89 ft  | SD_above=+0.77  | P(>μ)=0.220  | 6/10=60%
+sprint=26.8 ft/s (pctile=32.4)  | mean_gain=13.89 ft  | SD_above=+0.77  | P(>μ)=0.780  | 6/10=60%
 
 **19.**  Luis García Jr. 2025  
-sprint=26.5 ft/s (pctile=26.5)  | mean_gain=13.06 ft  | SD_above=+0.71  | P(>μ)=0.240  | 13/17=76%
+sprint=26.5 ft/s (pctile=26.5)  | mean_gain=13.06 ft  | SD_above=+0.71  | P(>μ)=0.760  | 13/17=76%
 
 **20.**  Freddie Freeman 2024  
-sprint=25.8 ft/s (pctile=14.5)  | mean_gain=13.40 ft  | SD_above=+0.53  | P(>μ)=0.299  | 7/9=78%
+sprint=25.8 ft/s (pctile=14.5)  | mean_gain=13.40 ft  | SD_above=+0.53  | P(>μ)=0.701  | 7/9=78%
 
 
 ---
