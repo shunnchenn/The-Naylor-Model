@@ -73,6 +73,19 @@ HALF   = False
 # None = analyse the whole clip (preserves the validated pool behaviour).
 MAX_ANALYSIS_S = None
 
+# Speed note (measured, negative result — do not re-attempt the two-pass idea):
+# inference is ~90 ms/frame on MPS and batching does NOT help (the forward pass
+# saturates 78-96 ms at any batch size), so the only accuracy-safe lever is
+# running FEWER frames.  A two-pass "coarse-localize then densely detect only the
+# window" prototype was A/B'd on 12 labelled clips: it was NOT faster (389.95s ->
+# 396.33s) and MAE was neutral (usable delivery_s 0.147 -> 0.148s).  Reason: the
+# per-segment scan in process_clip already SHORT-CIRCUITS on the first clean,
+# in-band, well-tracked delivery (see the `break` below), so it implicitly stops
+# at the live pitch already — a coarse pre-pass is pure added overhead, and a
+# crude motion-spread localizer also mis-locks onto later replay segments.  If a
+# real speedup is ever needed, the lever is fewer frames via MAX_ANALYSIS_S
+# (window-cap), not a second pass.
+
 # First-move detection method (set from CLI):
 #   "heel" — DEFAULT.  Refine the lead-leg displacement crossing FORWARD to the
 #            lead-ankle's sustained vertical (upward) rise onset — the
