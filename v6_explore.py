@@ -103,7 +103,16 @@ print("=" * 72)
 def cache_load(name):
     p = CACHE_DIR / f"{name}.pkl"
     if p.exists():
-        with open(p, "rb") as f: return pickle.load(f)
+        try:
+            with open(p, "rb") as f: return pickle.load(f)
+        except Exception as e:
+            # A pickle written by an older pandas/numpy can fail to unpickle under
+            # a newer one (e.g. NDArrayBacked datetime64[us], or StringDtype's
+            # changed pickle format).  Treat an unreadable cache as a MISS so the
+            # caller refetches instead of crashing — cheap insurance against
+            # pandas/numpy version bumps.
+            print(f"   [cache] {name}.pkl unreadable ({type(e).__name__}); refetching")
+            return None
     return None
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -372,6 +381,18 @@ for col, fill in [("n_attempts", 0),
 # of whether SB attempts were captured)
 DF_Season["avg_pre_release_velocity"] = DF_Season["avg_pre_release_velocity"] \
     .fillna(DF_Season["lead_gain"] / LEAGUE_PITCHER_TTP)
+
+# ── Diagnostic: did the CV-measured per-pitcher TTP make velocity carry signal
+# independent of lead_gain?  At SEASON level the honest answer is "barely": only
+# ~120 pitchers have a measured delivery, and per-runner-season averaging dilutes
+# their TTP spread, so avg_pre_release_velocity stays near-collinear with
+# lead_gain (velocity ≈ lead_gain / ~constant).  The measured delivery's real
+# payoff is the PER-ATTEMPT model (cv_pilot, LOO-CV AUC 0.752), not this altitude.
+_vd = DF_Season[["avg_pre_release_velocity", "lead_gain"]].dropna()
+if len(_vd) > 2:
+    _corr = float(_vd["avg_pre_release_velocity"].corr(_vd["lead_gain"]))
+    print(f"   [diag] corr(avg_pre_release_velocity, lead_gain) = {_corr:.4f} "
+          f"(season-level; ~1.0 ⇒ velocity ≈ rescaled lead_gain, little new signal)")
 
 def post_rel_season(row):
     sp = row.get("sprint_speed"); jt = row.get("jump_time"); pop = 1.95
