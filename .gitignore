@@ -24,18 +24,18 @@ venv/
 .cache/
 
 ## league-wide raw per-attempt leads cache (regenerable from Savant; ~770 small CSVs)
-cv_pilot/discovery/leads_cache/
+Computer Vision/discovery/leads_cache/
 
 ## CV model weights (downloaded on first run, large, regenerable)
 *.pt
 
 ## CV pilot video in/out (large binaries)
-cv_pilot/clips/
-cv_pilot/qa/
-## nested per-runner clip/QA dirs (e.g. cv_pilot/Naylor_2025/clips, .../qa, .../qa_recover)
-cv_pilot/**/clips/
-cv_pilot/**/qa/
-cv_pilot/**/qa_recover/
+Computer Vision/clips/
+Computer Vision/qa/
+## nested per-runner clip/QA dirs (e.g. Computer Vision/Naylor_2025/clips, .../qa, .../qa_recover)
+Computer Vision/**/clips/
+Computer Vision/**/qa/
+Computer Vision/**/qa_recover/
 *.mp4
 
 ## OS / editor noise

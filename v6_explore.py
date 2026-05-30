@@ -79,9 +79,9 @@ NAYLOR_ID, SOTO_ID = 647304, 665742
 SPEED_CAP        = 28.0
 OUTPUT_DIR       = Path("/Users/shunchen/Desktop/The-Naylor-Model")
 CACHE_DIR        = OUTPUT_DIR / ".cache"
-FIGURES_DIR      = OUTPUT_DIR / "figures"
-DATA_DIR         = OUTPUT_DIR / "data"
-REPORTS_DIR      = OUTPUT_DIR / "reports"
+FIGURES_DIR      = OUTPUT_DIR / "Figures"
+DATA_DIR         = OUTPUT_DIR / "Data Frame"
+REPORTS_DIR      = OUTPUT_DIR / "Reports"
 for _d in (FIGURES_DIR, DATA_DIR, REPORTS_DIR):
     _d.mkdir(exist_ok=True)
 

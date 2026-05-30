@@ -32,7 +32,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pathlib import Path
 
 OUTPUT_DIR = Path("/Users/shunchen/Desktop/The-Naylor-Model")
-OUT_PATH   = OUTPUT_DIR / "reports" / "Variable_Glossary.pdf"
+OUT_PATH   = OUTPUT_DIR / "Reports" / "Variable_Glossary.pdf"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
