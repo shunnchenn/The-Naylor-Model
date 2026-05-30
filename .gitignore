@@ -23,6 +23,9 @@ venv/
 ## v5 pickle cache (large pitch-by-pitch data, regenerable)
 .cache/
 
+## league-wide raw per-attempt leads cache (regenerable from Savant; ~770 small CSVs)
+cv_pilot/discovery/leads_cache/
+
 ## CV model weights (downloaded on first run, large, regenerable)
 *.pt
 
