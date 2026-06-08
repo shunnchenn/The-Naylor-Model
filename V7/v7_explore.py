@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-The Naylor Model · v6  —  cleaner outputs, intuitive metrics
+The Naylor Model · v7  —  cleaner outputs, intuitive metrics
 ============================================================
 Builds on v5.  Reuses the same per-pitch + catcher pop + pitcher running-game
-data (cached on disk).  Focus of v6:
+data (cached on disk).  Focus of v7:
 
   ▸ Rename every output column in PLAIN ENGLISH (Statcast-style).
        coef_z          →  "SB % Boost per Tier"   (logit coefficient)
@@ -29,7 +29,7 @@ data (cached on disk).  Focus of v6:
 
   ▸ Produce a single-page Statcast-style Naylor + Soto profile.
 
-Outputs:  DF_v6_*.csv, Fig_v6_*.png, Naylor_Model_v6_Report.pdf.
+Outputs:  DF_v7_*.csv, Fig_v7_*.png, Naylor_Model_v7_Report.pdf.
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ COLOR = {"pre":"#E0A458","post":"#3D5A80","naylor":"#DC2626","soto":"#1D4ED8",
          "below":"#F59E0B","poor":"#DC2626"}
 
 print("=" * 72)
-print(" THE NAYLOR MODEL  ·  v6  (intuitive outputs)")
+print(" THE NAYLOR MODEL  ·  v7  (intuitive outputs)")
 print("=" * 72)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -237,6 +237,24 @@ DF_Season = DF_Season.rename(columns={
     "r_sec_minus_prim_lead":"lead_gain",
 })
 
+# The upstream merges can emit duplicate runner-season rows.  Inspection shows
+# these dupes share identical SB/CS/sprint_speed but differ slightly in the
+# Statcast running-split times (e.g. accel_0_30 1.77 vs 1.81) — i.e. they are
+# repeated split measurements for the same runner-season, not separate stints.
+# Collapse to ONE row per runner-season by AVERAGING the numeric columns (so we
+# use the best estimate of the split) and keeping the first label for text cols.
+_n_before = len(DF_Season)
+if DF_Season.duplicated(subset=["runner_id","season"]).any():
+    _num_cols = DF_Season.select_dtypes(include="number").columns.difference(["runner_id","season"])
+    _obj_cols = DF_Season.columns.difference(list(_num_cols)+["runner_id","season"])
+    _agg = {c:"mean" for c in _num_cols}
+    _agg.update({c:"first" for c in _obj_cols})
+    DF_Season = (DF_Season.groupby(["runner_id","season"], as_index=False)
+                 .agg(_agg))[DF_Season.columns].reset_index(drop=True)
+    for _c in ["SB","CS","sb_attempts"]:
+        DF_Season[_c] = DF_Season[_c].round().astype(int)
+    print(f"   de-duplicated runner-seasons (averaged splits): {_n_before} → {len(DF_Season)}")
+
 # Shrunk SB% + residual
 k = 5
 mask_q = DF_Season["sb_attempts"]>=MIN_REAL_SB_CS
@@ -253,8 +271,59 @@ DF_Season["pct_speed"] = DF_Season.groupby("season")["sprint_speed"].rank(pct=Tr
 DF_Season["pct_jump"]  = DF_Season.groupby("season")["jump_time"].rank(pct=True, ascending=False)*100
 DF_Season["accel_gap"] = DF_Season["pct_jump"] - DF_Season["pct_speed"]
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  NEW v7 METRIC A — ACCEL-TO-TOP-SPEED GAP
+#  How quickly does a runner reach top speed (not just how fast they are)?
+#  Smaller "runway" to top speed = better.  Because higher top speeds need more
+#  runway, doing it on few feet at high speed is a PREMIUM (rare + valuable).
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-5-ft segment velocity v_d = 5 / (t_d - t_{d-5}) across the 5..90 ft splits.
+_split_d   = [int(c.split("_")[-1]) for c in SPLIT_COLS_5]          # e.g. 5,10,..,90
+_seg_speed = pd.DataFrame(index=DF_Season.index)
+_prev_col, _prev_d = None, 0
+for c, d in zip(SPLIT_COLS_5, _split_d):
+    dt = (DF_Season[c] - (DF_Season[_prev_col] if _prev_col else 0.0))
+    _seg_speed[d] = (d - _prev_d) / dt.replace(0, np.nan)
+    _prev_col, _prev_d = c, d
+
+# distance at which the runner first hits >=97% of their realized top segment speed
+_top_seg = _seg_speed.max(axis=1)
+def _dist_to_top(row, vmax):
+    if not np.isfinite(vmax) or vmax <= 0:
+        return np.nan
+    for d in _split_d:
+        v = row.get(d, np.nan)
+        if np.isfinite(v) and v >= 0.97 * vmax:
+            return float(d)
+    return float(_split_d[-1])
+DF_Season["dist_to_top_speed_ft"] = [
+    _dist_to_top(_seg_speed.loc[i], _top_seg.loc[i]) for i in DF_Season.index
+]
+
+# speed-expected runway (mirror the sb_residual quadratic-fit pattern); negative
+# gap = reaches top speed sooner than a runner of that sprint speed usually does.
+_dmask = mask_q & DF_Season["dist_to_top_speed_ft"].notna() & DF_Season["sprint_speed"].notna()
+if _dmask.sum() >= 10:
+    _dcoef = np.polyfit(DF_Season.loc[_dmask, "sprint_speed"],
+                        DF_Season.loc[_dmask, "dist_to_top_speed_ft"], 2)
+    DF_Season["expected_dist_to_top"] = np.polyval(_dcoef, DF_Season["sprint_speed"])
+else:
+    DF_Season["expected_dist_to_top"] = DF_Season["dist_to_top_speed_ft"].mean()
+DF_Season["accel_topspeed_gap"] = (DF_Season["dist_to_top_speed_ft"]
+                                   - DF_Season["expected_dist_to_top"])
+
+# PREMIUM: reward a small/negative gap MORE when the runner is genuinely fast.
+_z_speed_all = ((DF_Season["sprint_speed"] - DF_Season["sprint_speed"].mean())
+                / (DF_Season["sprint_speed"].std(ddof=0) + 1e-9))
+ACCEL_PREMIUM_LAMBDA = 0.5
+DF_Season["accel_topspeed_premium"] = (
+    -DF_Season["accel_topspeed_gap"] * (1.0 + ACCEL_PREMIUM_LAMBDA * _z_speed_all.clip(lower=0))
+)
+
 print(f"   Runner-seasons: {len(DF_Season):,}  ·  qualified: {mask_q.sum():,}")
 print(f"   League SB% = {league_sb:.3f}")
+print(f"   dist_to_top_speed_ft  median={DF_Season['dist_to_top_speed_ft'].median():.1f} ft "
+      f"(min {DF_Season['dist_to_top_speed_ft'].min():.0f}, max {DF_Season['dist_to_top_speed_ft'].max():.0f})")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. PARSE SB ATTEMPTS FROM `des`
@@ -352,7 +421,7 @@ DF_Attempts["pop_time"] = DF_Attempts.groupby("season")["pop_time"].transform(
     lambda s: s.fillna(s.mean()))
 DF_Attempts["pop_time"] = DF_Attempts["pop_time"].fillna(1.95)
 
-# Per runner-season aggregates (new v6 set)
+# Per runner-season aggregates (new v7 set)
 agg = (DF_Attempts.groupby(["runner_id","season"])
        .agg(n_attempts=("y_attempt","sum"),
             n_success=("y_success","sum"),
@@ -412,13 +481,14 @@ for c in ["pop_time","pickoff_rate","primary_lead","sprint_speed"]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. MODEL B — season-level GBM with v6 features
+# 5. MODEL B — season-level GBM with v7 features
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n[4/10] Model B — season-level GBM …")
 
 V6_FEATURES = [
     "sprint_speed","speed_capped","jump_time","accel_phase","top_speed_phase",
     "total_90","accel_gap","bolts",
+    "dist_to_top_speed_ft","accel_topspeed_gap",
     "primary_lead","secondary_lead","lead_gain",
     "avg_pop_faced","avg_pickoff_rate_faced","weak_arm_share","two_strike_share",
     "avg_pre_release_velocity","avg_post_release_distance",
@@ -452,7 +522,7 @@ for m in [m_full, m_pre, m_post]:
     if m is None: continue
     print(f"   {m['label']:>10}  n={m['n']:>4}  AUC={m['auc']:.4f}")
     auc_rows.append({"epoch":m["label"], "n":m["n"], "auc":round(m["auc"],4)})
-pd.DataFrame(auc_rows).to_csv(DATA_DIR/"DF_v6_ModelB_AUC.csv", index=False)
+pd.DataFrame(auc_rows).to_csv(DATA_DIR/"DF_v7_ModelB_AUC.csv", index=False)
 
 # SHAP / importance
 shap_rows = []
@@ -473,7 +543,7 @@ for m in [m_full, m_pre, m_post]:
         shap_rows.append({"epoch":m["label"], "feature":f,
                           "importance": round(v, 4)})
 DF_Imp = pd.DataFrame(shap_rows)
-DF_Imp.to_csv(DATA_DIR/"DF_v6_Importance.csv", index=False)
+DF_Imp.to_csv(DATA_DIR/"DF_v7_Importance.csv", index=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -484,7 +554,7 @@ print("\n[5/10] Simple GLM with intuitive metric names …")
 simple_feat = ["speed_capped","jump_time","primary_lead","lead_gain",
                "avg_pre_release_velocity","avg_post_release_distance",
                "avg_pop_faced","avg_pickoff_rate_faced","weak_arm_share",
-               "accel_gap","bolts","two_strike_share"]
+               "accel_gap","accel_topspeed_premium","bolts","two_strike_share"]
 simple_feat = [c for c in simple_feat if c in work.columns and work[c].notna().sum()>50]
 
 ws = work.dropna(subset=simple_feat).copy()
@@ -508,6 +578,7 @@ display_name = {
     "avg_pickoff_rate_faced":  "Avg Pitcher Pickoff Rate Faced",
     "weak_arm_share":          "Share vs Weak-Arm Catchers",
     "accel_gap":               "Accel Gap",
+    "accel_topspeed_premium":  "Accel→Top-Speed Premium",
     "bolts":                   "Bolts",
     "two_strike_share":        "Two-Strike Count Share",
 }
@@ -522,6 +593,7 @@ direction = {  # whether HIGHER feature value is GOOD for the runner
     "avg_pickoff_rate_faced":   False, # facing pickoff-heavy pitchers hurts
     "weak_arm_share":           True,
     "accel_gap":                True,
+    "accel_topspeed_premium":   True,  # reach top speed sooner (esp. when fast) = good
     "bolts":                    True,
     "two_strike_share":         False, # uncertain, treat as neutral
 }
@@ -547,7 +619,7 @@ for f, c, mean_, sd_ in zip(simple_feat, coef, sc.mean_, sc.scale_):
 DF_GLM = pd.DataFrame(rows).sort_values("sb_pct_boost_per_tier",
                                          key=lambda s: s.abs(),
                                          ascending=False)
-DF_GLM.to_csv(DATA_DIR/"DF_v6_GLM_PlainEnglish.csv", index=False)
+DF_GLM.to_csv(DATA_DIR/"DF_v7_GLM_PlainEnglish.csv", index=False)
 
 print(f"\n   Baseline P(success) at all-mean inputs ≈ {baseline_p:.3f}")
 print(f"\n   {'Feature':<32}{'Boost (pp)':>12}{'Odds×':>9}  Note")
@@ -558,9 +630,9 @@ for _, r in DF_GLM.iterrows():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. SSSI v6  (same idea, cleaner column names)
+# 7. SSSI v7  (same idea, cleaner column names)
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n[6/10] SSSI v6 (held-out weight search) …")
+print("\n[6/10] SSSI v7 (held-out weight search) …")
 
 def zscore(s): return (s - s.mean())/(s.std(ddof=0)+1e-9)
 
@@ -573,6 +645,7 @@ SSSI["z_jump"]              = -zscore(SSSI["jump_time"])
 SSSI["z_speed_cap"]         = zscore(SSSI["speed_capped"])
 SSSI["z_pre_rel_vel"]       = zscore(SSSI["avg_pre_release_velocity"])
 SSSI["z_post_rel_dist"]     = zscore(SSSI["avg_post_release_distance"])
+SSSI["z_accel_top"]         = zscore(SSSI["accel_topspeed_premium"])  # v7: reach top speed sooner
 
 # 80% train, 20% holdout (incl. anchors)
 all_runners = SSSI["runner_id"].unique()
@@ -586,9 +659,10 @@ def score(w, df):
     return (w[0]*df["z_sb_residual"] + w[1]*df["z_accel_gap"]
             + w[2]*df["z_lead_gain"] + w[3]*df["z_jump"]
             + w[4]*df["z_primary_lead"] + w[5]*df["z_speed_cap"]
-            + w[6]*df["z_pre_rel_vel"] + w[7]*df["z_post_rel_dist"])
+            + w[6]*df["z_pre_rel_vel"] + w[7]*df["z_post_rel_dist"]
+            + w[8]*df["z_accel_top"])
 
-grid = [(a,b,c,d,e,f_,g,h)
+grid = [(a,b,c,d,e,f_,g,h,i)
         for a in [0.10,0.20,0.30,0.35]
         for b in [0.05,0.10,0.15,0.20]
         for c in [0.05,0.10,0.15]
@@ -596,7 +670,8 @@ grid = [(a,b,c,d,e,f_,g,h)
         for e in [0.05,0.10,0.15]
         for f_ in [-0.30,-0.20,-0.10,0.0]
         for g in [0.0,0.05,0.10]
-        for h in [0.0,0.05,0.10]]
+        for h in [0.0,0.05,0.10]
+        for i in [0.0,0.10,0.20]]
 
 best = (-np.inf, None)
 SSSI_train = SSSI[train_mask]
@@ -609,23 +684,24 @@ for w in grid:
     if s > best[0]: best = (s, w)
 
 w_best = best[1]
-SSSI["SSSI_v6"] = score(w_best, SSSI)
-SSSI = SSSI.sort_values("SSSI_v6", ascending=False)
-SSSI["rank_v6"] = SSSI["SSSI_v6"].rank(ascending=False, method="min").astype(int)
-SSSI.to_csv(DATA_DIR/"DF_v6_SSSI.csv", index=False)
+SSSI["SSSI_v7"] = score(w_best, SSSI)
+SSSI = SSSI.sort_values("SSSI_v7", ascending=False)
+SSSI["rank_v7"] = SSSI["SSSI_v7"].rank(ascending=False, method="min").astype(int)
+SSSI.to_csv(DATA_DIR/"DF_v7_SSSI.csv", index=False)
 
 print(f"   Best Naylor+Soto mean z: {best[0]:.3f}")
 print(f"   Weights: sb_res={w_best[0]} gap={w_best[1]} gain={w_best[2]} "
       f"jump={w_best[3]} prim={w_best[4]} speed={w_best[5]} "
-      f"pre={w_best[6]} post={w_best[7]}")
+      f"pre={w_best[6]} post={w_best[7]} accel_top={w_best[8]}")
 
-top_cols = ["rank_v6","player_name","season","era","sprint_speed",
+top_cols = ["rank_v7","player_name","season","era","sprint_speed",
             "jump_time","primary_lead","lead_gain",
+            "dist_to_top_speed_ft","accel_topspeed_premium",
             "avg_pre_release_velocity","avg_post_release_distance",
-            "SB","CS","real_sb_pct","sb_residual","SSSI_v6"]
-print("\n   Top 10 by SSSI_v6:")
+            "SB","CS","real_sb_pct","sb_residual","SSSI_v7"]
+print("\n   Top 10 by SSSI_v7:")
 print(SSSI.head(10)[top_cols].round(3).to_string(index=False))
-print("\n   Naylor + Soto under SSSI_v6:")
+print("\n   Naylor + Soto under SSSI_v7:")
 print(SSSI[SSSI["runner_id"].isin([NAYLOR_ID,SOTO_ID])][top_cols]
         .round(3).to_string(index=False))
 
@@ -650,10 +726,50 @@ def board(col, asc, fname):
     print(f"   {fname:<48}{len(out):>5} rows")
     return out
 
-LB_jump = board("jump_time",                  True,  "DF_v6_LB_JumpTime.csv")
-LB_gain = board("lead_gain",                  False, "DF_v6_LB_LeadGain.csv")
-LB_prv  = board("avg_pre_release_velocity",   False, "DF_v6_LB_PreReleaseVelocity.csv")
-LB_prd  = board("avg_post_release_distance",  False, "DF_v6_LB_PostReleaseDistance.csv")
+LB_jump = board("jump_time",                  True,  "DF_v7_LB_JumpTime.csv")
+LB_gain = board("lead_gain",                  False, "DF_v7_LB_LeadGain.csv")
+LB_prv  = board("avg_pre_release_velocity",   False, "DF_v7_LB_PreReleaseVelocity.csv")
+LB_prd  = board("avg_post_release_distance",  False, "DF_v7_LB_PostReleaseDistance.csv")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  NEW v7 METRIC B — EXPECTED STOLEN-BASE OUTCOME (xSB)   [standalone lens]
+#  xSB = z(net SB above league avg) + z(sprint speed).  Surfaces runners who are
+#  productive AND fast (high ceiling).  Complementary to SSSI (slow-but-skilled).
+#  The DIFFERENCE z(speed) - z(net SB) = "potential gap": positive = fast but
+#  under-stealing (untapped wheels); negative = over-performs speed (Naylor type).
+# ─────────────────────────────────────────────────────────────────────────────
+print("\n[7b/10] Expected SB Outcome (xSB) …")
+xsb = DF_Season[mask_q].copy()
+xsb["net_sb"] = xsb["SB"] - xsb["CS"]
+xsb["z_net_sb"] = xsb.groupby("season")["net_sb"].transform(zscore)
+xsb["z_sprint"] = xsb.groupby("season")["sprint_speed"].transform(zscore)
+xsb["xsb_outcome"]      = xsb["z_net_sb"] + xsb["z_sprint"]
+xsb["sb_potential_gap"] = xsb["z_sprint"] - xsb["z_net_sb"]
+
+def _quadrant(r):
+    fast  = r["z_sprint"] >= 0
+    steal = r["z_net_sb"] >= 0
+    if fast and steal:       return "Realized Burner"
+    if fast and not steal:   return "Untapped Wheels"
+    if steal and not fast:   return "Crafty Technician"
+    return "Stationary"
+xsb["quadrant"] = xsb.apply(_quadrant, axis=1)
+
+xsb = xsb.sort_values("xsb_outcome", ascending=False)
+xsb["rank_xsb"] = xsb["xsb_outcome"].rank(ascending=False, method="min").astype(int)
+xsb_cols = ["rank_xsb","player_name","season","era","sprint_speed","SB","CS",
+            "net_sb","z_net_sb","z_sprint","xsb_outcome","sb_potential_gap","quadrant"]
+xsb[xsb_cols + ["runner_id"]].to_csv(DATA_DIR/"DF_v7_xSB_Outcome.csv", index=False)
+print(f"   DF_v7_xSB_Outcome.csv  {len(xsb):>5} rows")
+print("\n   Top 10 by xSB outcome (fast + productive):")
+print(xsb.head(10)[xsb_cols].round(3).to_string(index=False))
+print("\n   Most untapped potential (high z_sprint, low z_net_sb):")
+print(xsb.sort_values("sb_potential_gap", ascending=False).head(8)[xsb_cols]
+        .round(3).to_string(index=False))
+print("\n   Naylor + Soto under xSB:")
+print(xsb[xsb["runner_id"].isin([NAYLOR_ID, SOTO_ID])][xsb_cols]
+        .round(3).to_string(index=False))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -670,28 +786,39 @@ colors = [COLOR["elite"] if v > 2 else COLOR["above"] if v > 0
 ax.barh(g["feature"], g["sb_pct_boost_per_tier"], color=colors)
 ax.axvline(0, color="black", lw=0.6)
 ax.set_xlabel("SB % Boost per Tier  (pp change in predicted success rate)")
-ax.set_title("v6 Simple GLM — Plain-English Weight Table")
+ax.set_title("v7 Simple GLM — Plain-English Weight Table")
 for i, v in enumerate(g["sb_pct_boost_per_tier"]):
     ax.text(v + (0.15 if v>=0 else -0.15), i, f"{v:+.1f}",
             ha="left" if v>=0 else "right", va="center", fontsize=9)
 fig.tight_layout()
-fig.savefig(FIGURES_DIR/"Fig_v6_GLM_PlainEnglish.png", dpi=160); plt.close(fig)
+fig.savefig(FIGURES_DIR/"Fig_v7_GLM_PlainEnglish.png", dpi=160); plt.close(fig)
 
 # Fig: AUC across versions
-fig, ax = plt.subplots(figsize=(7, 4))
-labels = ["v4\n(season)","v5 Model A\n(per-attempt)","v5 Model B\n(season+new)","v6 Model B"]
+#  NOTE: v4–v6 AUCs were computed BEFORE the v7 de-duplication fix.  Those runs
+#  carried duplicate runner-season rows that leaked across CV folds, inflating
+#  AUC.  v7 averages duplicate split measurements into one row per runner-season,
+#  removing the leak — so the v7 bar is the honest, de-leaked figure and is NOT
+#  directly comparable to the (optimistic) historical bars.
+fig, ax = plt.subplots(figsize=(7.4, 4.4))
+labels = ["v4\n(season)","v5 Model A\n(per-attempt)","v5 Model B\n(season+new)","v6 Model B","v7 Model B\n(de-leaked)"]
 v4_auc = 0.6300
 v5_A = 0.5933
 v5_B = 0.6794
-v6_B = m_full["auc"] if m_full else float("nan")
-aucs = [v4_auc, v5_A, v5_B, v6_B]
-ax.bar(labels, aucs, color=[COLOR["neutral"], COLOR["accent"], COLOR["post"], COLOR["highlight"]])
+v6_B = 0.6620
+v7_B = m_full["auc"] if m_full else float("nan")
+aucs = [v4_auc, v5_A, v5_B, v6_B, v7_B]
+ax.bar(labels, aucs, color=[COLOR["neutral"], COLOR["accent"], COLOR["post"], COLOR["below"], COLOR["highlight"]])
 ax.set_ylabel("CV AUC"); ax.set_ylim(0.5, 0.85)
 ax.set_title("Model AUC across versions")
 for i, v in enumerate(aucs):
     ax.text(i, v+0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=10)
-fig.tight_layout()
-fig.savefig(FIGURES_DIR/"Fig_v6_AUC.png", dpi=160); plt.close(fig)
+ax.text(0.5, -0.30,
+        "v4–v6 bars carried duplicate runner-season rows that leaked across CV folds (optimistic).\n"
+        "v7 averages duplicate split measurements → one row per runner-season, removing the leak.\n"
+        "The v7 bar is the honest de-leaked AUC and is not directly comparable to the historical bars.",
+        transform=ax.transAxes, ha="center", va="top", fontsize=7, color="#555555")
+fig.subplots_adjust(bottom=0.34)
+fig.savefig(FIGURES_DIR/"Fig_v7_AUC.png", dpi=160); plt.close(fig)
 
 # Fig: Pre vs Post importance
 fig, ax = plt.subplots(figsize=(9, 6))
@@ -717,10 +844,10 @@ ax.barh(y_-0.18, imp.get("pre_2023", imp.iloc[:,0]), height=0.36, color=COLOR["p
 ax.barh(y_+0.18, imp.get("post_2023", imp.iloc[:,1]), height=0.36, color=COLOR["post"], label="post-2023")
 ax.set_yticks(y_); ax.set_yticklabels(imp.index)
 ax.set_xlabel("Mean |SHAP| importance")
-ax.set_title("v6 — Feature Importance · Pre vs Post 2023")
+ax.set_title("v7 — Feature Importance · Pre vs Post 2023")
 ax.legend()
 fig.tight_layout()
-fig.savefig(FIGURES_DIR/"Fig_v6_Importance_PrePost.png", dpi=160); plt.close(fig)
+fig.savefig(FIGURES_DIR/"Fig_v7_Importance_PrePost.png", dpi=160); plt.close(fig)
 
 
 # Fig: Naylor + Soto Statcast-style profile
@@ -747,10 +874,61 @@ runner_profile_panel(axes[0], NAYLOR_ID, "Josh Naylor", COLOR["naylor"])
 runner_profile_panel(axes[1], SOTO_ID, "Juan Soto", COLOR["soto"])
 fig.suptitle("Naylor + Soto · Season-by-Season Statcast-style Profile", y=1.02)
 fig.tight_layout()
-fig.savefig(FIGURES_DIR/"Fig_v6_NaylorSoto_Profile.png", dpi=160, bbox_inches="tight")
+fig.savefig(FIGURES_DIR/"Fig_v7_NaylorSoto_Profile.png", dpi=160, bbox_inches="tight")
 plt.close(fig)
 
-print("   4 v6 figures written.")
+# Fig: xSB Outcome quadrant — z(sprint) vs z(net SB)
+QUAD_COLOR = {"Realized Burner": COLOR["elite"], "Untapped Wheels": COLOR["accent"],
+              "Crafty Technician": COLOR["below"], "Stationary": COLOR["avg"]}
+fig, ax = plt.subplots(figsize=(9, 7))
+for q, gq in xsb.groupby("quadrant"):
+    ax.scatter(gq["z_sprint"], gq["z_net_sb"], s=26, alpha=0.55,
+               color=QUAD_COLOR.get(q, COLOR["avg"]), label=q, edgecolor="none")
+ax.axhline(0, color="black", lw=0.7); ax.axvline(0, color="black", lw=0.7)
+# quadrant captions
+ax.text(0.98, 0.98, "Realized Burner\n(fast + steals)", transform=ax.transAxes,
+        ha="right", va="top", fontsize=9, color=COLOR["elite"], fontweight="bold")
+ax.text(0.98, 0.02, "Untapped Wheels\n(fast, under-steals)", transform=ax.transAxes,
+        ha="right", va="bottom", fontsize=9, color=COLOR["accent"], fontweight="bold")
+ax.text(0.02, 0.98, "Crafty Technician\n(steals, slower)", transform=ax.transAxes,
+        ha="left", va="top", fontsize=9, color=COLOR["below"], fontweight="bold")
+ax.text(0.02, 0.02, "Stationary", transform=ax.transAxes,
+        ha="left", va="bottom", fontsize=9, color=COLOR["avg"], fontweight="bold")
+# Annotate a richer set of names so the loaded quadrants read clearly:
+#  • Naylor/Soto anchors (Crafty Technician)
+#  • top Realized Burners (fast + productive — the recognizable stars)
+#  • top Untapped Wheels (fast but under-stealing — the coaching targets)
+def _label(r, color, dx=4, dy=4):
+    ax.scatter(r["z_sprint"], r["z_net_sb"], s=72, color=color,
+               edgecolor="white", linewidth=0.6, zorder=6)
+    ax.annotate(f"{r['player_name'].split()[-1]} {int(r['season'])}",
+                (r["z_sprint"], r["z_net_sb"]), fontsize=7.5, fontweight="bold",
+                color="#222222", xytext=(dx, dy), textcoords="offset points", zorder=7)
+
+# one row per player (their best xSB season) to avoid stacking the same name
+_burners = (xsb[xsb["quadrant"] == "Realized Burner"]
+            .sort_values("xsb_outcome", ascending=False)
+            .drop_duplicates("runner_id").head(8))
+for _, r in _burners.iterrows():
+    _label(r, COLOR["elite"])
+
+_untapped = (xsb[xsb["quadrant"] == "Untapped Wheels"]
+             .sort_values("sb_potential_gap", ascending=False)
+             .drop_duplicates("runner_id").head(6))
+for _, r in _untapped.iterrows():
+    _label(r, COLOR["accent"])
+
+# Naylor/Soto anchors last so they sit on top
+for _, r in xsb[xsb["runner_id"].isin([NAYLOR_ID, SOTO_ID])].iterrows():
+    _label(r, COLOR["naylor"])
+
+ax.set_xlabel("z(Sprint Speed)  →  faster"); ax.set_ylabel("z(Net SB above avg)  →  more productive")
+ax.set_title("Expected SB Outcome (xSB) — Speed vs Production Quadrant")
+ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
+fig.tight_layout()
+fig.savefig(FIGURES_DIR/"Fig_v7_xSB_Quadrant.png", dpi=160); plt.close(fig)
+
+print("   5 v7 figures written.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -787,13 +965,13 @@ def imgpage(pdf, title, img, caption=""):
         ax_c.text(0,1,caption,fontsize=10,color="#444",va="top",wrap=True)
     pdf.savefig(fig); plt.close(fig)
 
-pdf_path = REPORTS_DIR/"Naylor_Model_v6_Report.pdf"
+pdf_path = REPORTS_DIR/"Naylor_Model_v7_Report.pdf"
 with PdfPages(pdf_path) as pdf:
     # Cover
     fig=plt.figure(figsize=(8.5,11)); fig.patch.set_facecolor("white")
     ax=fig.add_axes([0,0,1,1]); ax.axis("off")
     ax.text(0.5,0.78,"The Naylor Model",fontsize=30,fontweight="bold",ha="center")
-    ax.text(0.5,0.71,"v6 · Intuitive Outputs",fontsize=22,ha="center")
+    ax.text(0.5,0.71,"v7 · Intuitive Outputs",fontsize=22,ha="center")
     ax.text(0.5,0.62,
         "Plain-English feature names · Statcast-style glossary\n"
         "GLM table now reads in 'SB % Boost per Tier' instead of coef_z",
@@ -807,41 +985,58 @@ with PdfPages(pdf_path) as pdf:
         f"Attempts identified: {len(DF_Attempts):,}",
         f"Qualified runner-seasons (SB+CS≥{MIN_REAL_SB_CS}): {mask_q.sum():,}",
         "",
-        "## What changed from v5",
-        "• ALL column names now plain English — no more coef_z, OR/SD, pct_in_HL.",
-        "• GLM table shows  'SB % Boost per Tier'  =  pp change in success rate",
-        "  for a 1-SD improvement in the feature.",
-        "• Added  pitcher pickoff-rate-faced  and  weak-arm-catcher share.",
-        "• Dropped  pct_in_HL  (was a Statcast data artifact — see v5 §9).",
+        "## What's new in v7",
+        "• Accel→Top-Speed Premium — how few feet a runner needs to reach top",
+        "  speed, speed-adjusted; small runway at high speed is a premium.",
+        "  Added to the GBM, the GLM weight table, and as a 9th SSSI feature.",
+        "• Expected SB Outcome (xSB) = z(net SB above avg) + z(sprint speed),",
+        "  a standalone speed-vs-production quadrant lens (see §8).",
         "",
-        "## AUC summary",
-        f"• v4 baseline:           0.6300",
-        f"• v5 Model A (per-att):  0.5933",
-        f"• v5 Model B (season):   0.6794",
-        f"• v6 Model B (full):     {m_full['auc']:.4f}",
-        f"• v6 Model B (pre-23):   {m_pre['auc']:.4f}" if m_pre else "",
-        f"• v6 Model B (post-23):  {m_post['auc']:.4f}" if m_post else "",
+        "## Carried over from v6",
+        "• ALL column names plain English — no coef_z, OR/SD, pct_in_HL.",
+        "• GLM table shows  'SB % Boost per Tier'  =  pp change in success rate.",
+        "• Real catcher pop, pitcher pickoff rate, lead variables.",
         "",
-        "## Naylor + Soto rank under SSSI v6",
+        "## AUC summary  (READ THE CAVEAT)",
+        f"• v4 baseline:           0.6300   (leaked dup rows)",
+        f"• v5 Model A (per-att):  0.5933   (leaked dup rows)",
+        f"• v5 Model B (season):   0.6794   (leaked dup rows)",
+        f"• v6 Model B (full):     0.6620   (leaked dup rows)",
+        f"• v7 Model B (full):     {m_full['auc']:.4f}   ← honest, de-leaked",
+        f"• v7 Model B (pre-23):   {m_pre['auc']:.4f}" if m_pre else "",
+        f"• v7 Model B (post-23):  {m_post['auc']:.4f}" if m_post else "",
+        "",
+        "  v4–v6 runs carried duplicate runner-season rows (repeated Statcast",
+        "  split measurements) that leaked across CV folds and inflated AUC.",
+        "  v7 averages those duplicate splits into ONE row per runner-season,",
+        "  removing the leak.  So v7's lower AUC is not a regression — it is the",
+        "  first honest estimate.  The earlier bars are optimistic and are kept",
+        "  only for historical context, NOT as a fair comparison.",
+        "",
+        "## Naylor + Soto rank under SSSI v7",
     ] + [
-        f"  #{int(r['rank_v6']):>3}  {r['player_name']:<22}  {int(r['season'])}  "
-        f"SSSI {r['SSSI_v6']:+.2f}   SB/CS {int(r['SB'])}/{int(r['CS'])}   real_sb_pct {r['real_sb_pct']:.3f}"
+        f"  #{int(r['rank_v7']):>3}  {r['player_name']:<22}  {int(r['season'])}  "
+        f"SSSI {r['SSSI_v7']:+.2f}   SB/CS {int(r['SB'])}/{int(r['CS'])}   real_sb_pct {r['real_sb_pct']:.3f}"
         for _, r in SSSI[SSSI["runner_id"].isin([NAYLOR_ID,SOTO_ID])].iterrows()
     ])
 
-    imgpage(pdf, "§1 · AUC Comparison", FIGURES_DIR/"Fig_v6_AUC.png",
-            "v6 Model B at the season level, with the v6 feature set including "
-            "real catcher pop, pitcher pickoff rate, lead variables.")
+    imgpage(pdf, "§1 · AUC Comparison", FIGURES_DIR/"Fig_v7_AUC.png",
+            "v7 Model B at the season level (real catcher pop, pitcher pickoff "
+            "rate, lead variables).  CAVEAT: the v4–v6 bars were computed before "
+            "the v7 de-duplication fix — duplicate runner-season rows leaked across "
+            "CV folds and inflated those numbers.  v7 averages duplicate splits "
+            "into one row per runner-season, so its bar is the honest de-leaked "
+            "AUC and is not directly comparable to the historical bars.")
     imgpage(pdf, "§2 · GLM Plain-English Weight Chart",
-            FIGURES_DIR/"Fig_v6_GLM_PlainEnglish.png",
+            FIGURES_DIR/"Fig_v7_GLM_PlainEnglish.png",
             "Each bar = predicted percentage-point change in SB success when "
             "the runner improves on that feature by ONE TIER (1 SD).  Positive "
             "and green = the feature HELPS; red/orange = HURTS.")
     imgpage(pdf, "§3 · Feature Importance · Pre vs Post 2023",
-            FIGURES_DIR/"Fig_v6_Importance_PrePost.png",
+            FIGURES_DIR/"Fig_v7_Importance_PrePost.png",
             "How feature importance shifted after the 2023 rule change.")
     imgpage(pdf, "§4 · Naylor + Soto Statcast-style Profile",
-            FIGURES_DIR/"Fig_v6_NaylorSoto_Profile.png",
+            FIGURES_DIR/"Fig_v7_NaylorSoto_Profile.png",
             "Season-by-season values of the key features for the two "
             "archetypal slow-but-effective stealers.")
 
@@ -866,17 +1061,18 @@ with PdfPages(pdf_path) as pdf:
          "odds_mul = exp(coef)",
          "coef     = standardised logistic-regression coefficient",
          "",
-         f"Edit DF_v6_GLM_PlainEnglish.csv to hand-tune.  No retraining needed."])
+         f"Edit DF_v7_GLM_PlainEnglish.csv to hand-tune.  No retraining needed."])
 
     # SSSI page
-    textpage(pdf, "§6 · SSSI v6 Top 15",
+    textpage(pdf, "§6 · SSSI v7 Top 15",
         [f"Weights:  sb_res={w_best[0]}  gap={w_best[1]}  gain={w_best[2]}  "
          f"jump={w_best[3]}  prim={w_best[4]}  speed={w_best[5]}  "
-         f"pre={w_best[6]}  post={w_best[7]}",
+         f"pre={w_best[6]}  post={w_best[7]}  accel_top={w_best[8]}",
          "(80% of runners used for grid search; Naylor + Soto held out.)",
+         "v7 adds the Accel→Top-Speed Premium as a 9th weighted feature.",
          ""] +
-        [f"  #{int(r['rank_v6']):>3}  {r['player_name']:<22}  {int(r['season'])}  "
-         f"SSSI {r['SSSI_v6']:+.2f}  spd {r['sprint_speed']:.1f}  "
+        [f"  #{int(r['rank_v7']):>3}  {r['player_name']:<22}  {int(r['season'])}  "
+         f"SSSI {r['SSSI_v7']:+.2f}  spd {r['sprint_speed']:.1f}  "
          f"jump {r['jump_time']:.2f}  gain {r['lead_gain']:.2f}  "
          f"SB/CS {int(r['SB'])}/{int(r['CS'])}"
          for _, r in SSSI.head(15).iterrows()])
@@ -899,27 +1095,94 @@ with PdfPages(pdf_path) as pdf:
          "  - Stolen-base success has high intrinsic noise — pitch sequence,",
          "    runner read, base-coach decisions, exact location at release.",
          "  - With public data the ceiling is around AUC 0.70 - 0.75.",
-         "  - To push higher would require TrackMan / Hawk-Eye raw outputs."])
+         "  - To push higher would require TrackMan / Hawk-Eye raw outputs.",
+         "",
+         "De-duplication note (v7):",
+         "  - Earlier versions (v4-v6) carried duplicate runner-season rows —",
+         "    repeated Statcast split measurements for the same player-season.",
+         "  - Those dupes leaked across CV folds and INFLATED the reported AUC.",
+         "  - v7 averages duplicate splits into one row per runner-season; the",
+         "    de-leaked AUC (~0.59 full) is lower but honest, not a regression."])
+
+    # §8 — Expected SB Outcome (xSB) — the v7 standalone lens
+    imgpage(pdf, "§8 · Expected SB Outcome (xSB)", FIGURES_DIR/"Fig_v7_xSB_Quadrant.png",
+            "xSB = z(net SB above avg) + z(sprint speed).  A complementary lens to "
+            "SSSI: where SSSI surfaces slow-but-skilled stealers, xSB surfaces the "
+            "fast AND productive (high-ceiling) runners.  The four quadrants split "
+            "runners by speed (x) and production (y).")
+    _xtop = xsb.head(15)
+    _xpot = xsb.sort_values("sb_potential_gap", ascending=False).head(10)
+    textpage(pdf, "§8 · xSB — Leaderboard & Untapped Potential",
+        ["xsb_outcome = z(net SB above avg) + z(sprint speed)",
+         "sb_potential_gap = z(sprint) − z(net SB)   (+ = fast but under-steals)",
+         "",
+         "## Top 15 by xSB (Realized Burners — fast + productive)",
+         ""] +
+        [f"  #{int(r['rank_xsb']):>3}  {r['player_name']:<22} {int(r['season'])}  "
+         f"xSB {r['xsb_outcome']:+.2f}  spd {r['sprint_speed']:.1f}  "
+         f"SB/CS {int(r['SB'])}/{int(r['CS'])}  [{r['quadrant']}]"
+         for _, r in _xtop.iterrows()] +
+        ["",
+         "## Most untapped potential (high speed, under-stealing)",
+         "Coaching targets: the tools are there, the production isn't yet.",
+         ""] +
+        [f"  {r['player_name']:<22} {int(r['season'])}  gap {r['sb_potential_gap']:+.2f}  "
+         f"spd {r['sprint_speed']:.1f}  SB/CS {int(r['SB'])}/{int(r['CS'])}"
+         for _, r in _xpot.iterrows()] +
+        ["",
+         "## Naylor + Soto under xSB (Crafty Technician archetype)",
+         ""] +
+        [f"  {r['player_name']:<22} {int(r['season'])}  xSB {r['xsb_outcome']:+.2f}  "
+         f"gap {r['sb_potential_gap']:+.2f}  [{r['quadrant']}]"
+         for _, r in xsb[xsb["runner_id"].isin([NAYLOR_ID,SOTO_ID])].iterrows()])
 
 print(f"   wrote {pdf_path}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CONSOLIDATE v7 CSV OUTPUTS INTO  "v7 Model.xlsx"  (one sheet per DF_v7_*.csv)
+# ─────────────────────────────────────────────────────────────────────────────
+print("\n[10/10] Consolidating v7 Model.xlsx …")
+_xlsx_path = DATA_DIR / "v7 Model.xlsx"
+_sheet_map = {
+    "DF_v7_SSSI.csv":                 "SSSI v7",
+    "DF_v7_xSB_Outcome.csv":          "xSB Outcome",
+    "DF_v7_GLM_PlainEnglish.csv":     "GLM Weights",
+    "DF_v7_Importance.csv":           "Feature Importance",
+    "DF_v7_ModelB_AUC.csv":           "Model B AUC",
+    "DF_v7_LB_JumpTime.csv":          "LB JumpTime",
+    "DF_v7_LB_LeadGain.csv":          "LB LeadGain",
+    "DF_v7_LB_PreReleaseVelocity.csv":"LB PreRelVel",
+    "DF_v7_LB_PostReleaseDistance.csv":"LB PostRelDist",
+}
+try:
+    with pd.ExcelWriter(_xlsx_path, engine="openpyxl") as _xw:
+        for _csv, _sheet in _sheet_map.items():
+            _p = DATA_DIR / _csv
+            if _p.exists():
+                pd.read_csv(_p).to_excel(_xw, sheet_name=_sheet[:31], index=False)
+    print(f"   wrote {_xlsx_path}")
+except Exception as _e:
+    print(f"   [xlsx] skipped ({type(_e).__name__}: {_e})")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 10. SUMMARY
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "=" * 72)
-print(" v6 EXPLORATORY PIPELINE COMPLETE")
+print(" v7 EXPLORATORY PIPELINE COMPLETE")
 print("=" * 72)
-for p in sorted(DATA_DIR.glob("DF_v6_*.csv")):
+for p in sorted(DATA_DIR.glob("DF_v7_*.csv")):
     print(f"   {p.name:<45} {p.stat().st_size/1024:>7.1f} KB")
-for p in sorted(FIGURES_DIR.glob("Fig_v6_*.png")):
+for p in sorted(FIGURES_DIR.glob("Fig_v7_*.png")):
     print(f"   {p.name:<45} {p.stat().st_size/1024:>7.1f} KB")
-print(f"   Naylor_Model_v6_Report.pdf            "
-      f"{(REPORTS_DIR/'Naylor_Model_v6_Report.pdf').stat().st_size/1024:.1f} KB")
+print(f"   Naylor_Model_v7_Report.pdf            "
+      f"{(REPORTS_DIR/'Naylor_Model_v7_Report.pdf').stat().st_size/1024:.1f} KB")
 print()
-print(f"Headline:")
-print(f"  v4 baseline:       0.6300")
-print(f"  v5 Model B:        0.6794")
-print(f"  v6 Model B (full): {m_full['auc']:.4f}")
-print(f"  v6 Model B (pre):  {m_pre['auc']:.4f}" if m_pre else "")
-print(f"  v6 Model B (post): {m_post['auc']:.4f}" if m_post else "")
+print(f"Headline (v7 is the first DE-LEAKED estimate — v4–v6 leaked dup rows):")
+print(f"  v4 baseline:       0.6300  (leaked)")
+print(f"  v5 Model B:        0.6794  (leaked)")
+print(f"  v6 Model B:        0.6620  (leaked)")
+print(f"  v7 Model B (full): {m_full['auc']:.4f}  <- honest, de-leaked")
+print(f"  v7 Model B (pre):  {m_pre['auc']:.4f}" if m_pre else "")
+print(f"  v7 Model B (post): {m_post['auc']:.4f}" if m_post else "")

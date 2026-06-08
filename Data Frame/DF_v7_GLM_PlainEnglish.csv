@@ -1,0 +1,14 @@
+feature,feature_raw,league_avg,one_tier_step,sb_pct_boost_per_tier,odds_multiplier,tech_coefficient,higher_is_better
+Post-Release Distance,avg_post_release_distance,52.205,2.916,24.76,3.994,1.3847,True
+Jump Time,jump_time,1.768,0.043,17.32,2.345,0.8524,False
+Avg Catcher Pop Faced,avg_pop_faced,1.962,0.036,-12.13,0.61,-0.4945,True
+Accel Gap,accel_gap,-1.405,18.951,9.94,1.57,0.4513,True
+Sprint Speed (capped at 28),speed_capped,27.709,0.553,-6.61,0.761,-0.2727,True
+Avg Pitcher Pickoff Rate Faced,avg_pickoff_rate_faced,0.011,0.01,4.46,1.214,0.1941,False
+Two-Strike Count Share,two_strike_share,0.862,0.208,4.16,1.198,0.1807,False
+Primary Lead,primary_lead,11.81,0.826,-4.02,0.846,-0.1675,True
+Share vs Weak-Arm Catchers,weak_arm_share,0.265,0.315,2.51,1.114,0.108,True
+Lead Gain (jerk),lead_gain,3.73,0.791,2.08,1.093,0.0891,True
+Pre-Release Velocity,avg_pre_release_velocity,2.869,0.609,2.08,1.093,0.0891,True
+Accel→Top-Speed Premium,accel_topspeed_premium,0.453,11.84,1.34,1.059,0.057,True
+Bolts,bolts,14.355,24.845,-0.46,0.981,-0.0195,True

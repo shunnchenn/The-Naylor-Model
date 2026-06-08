@@ -176,6 +176,49 @@ ENTRIES = [
  "source": "computed:  pctile(Jump Time, inverted)  −  pctile(Sprint Speed)",
 },
 
+{"name":   "Accel→Top-Speed Premium  (v7)",
+ "plain":  "How few feet a runner needs to reach top speed — rewarded MORE when "
+           "that top speed is genuinely fast.",
+ "units":  "speed-adjusted index (higher = better)",
+ "avg":    "0",
+ "elite":  "+ 5 or more",
+ "example":"Naylor 2025: reaches near-peak in ~50 ft — sooner than his speed "
+           "predicts (premium +7.7)  ·  Freeman 2024: ~65 ft (negative premium)",
+ "tiers":  [("Premium",       "reaches top speed early FOR a fast runner"),
+            ("Above expected","earlier than speed-peers"),
+            ("As expected",   "~ league runway for that speed"),
+            ("Below expected","needs more runway than peers"),
+            ("Long wind-up",  "slow to reach top speed")],
+ "impact": "Two ingredients: (1) dist_to_top_speed_ft — the distance at which a "
+           "runner first hits 97% of their realized top velocity; (2) a speed-"
+           "expected baseline (quadratic in sprint speed).  The gap = actual − "
+           "expected; reaching top speed sooner than peers is good.  Because "
+           "high top speeds need more runway, a small gap at high speed is rare "
+           "and valuable, so the premium scales up with sprint speed.  Added to "
+           "the GBM, the GLM weight table, and as a 9th SSSI feature in v7.",
+ "source": "computed:  −(dist_to_top − expected_dist) × (1 + 0.5·max(z_speed,0))",
+},
+
+{"name":   "Distance to Top Speed  (dist_to_top_speed_ft, v7)",
+ "plain":  "Runway (in feet) before the runner first reaches 97% of their own "
+           "top sprint velocity.",
+ "units":  "feet (ft)",
+ "avg":    "~65",
+ "elite":  "≤ 55 (reaches near-peak on less runway)",
+ "example":"League runs from ~40 ft (earliest) to 90 ft; most cluster 60–70 ft",
+ "tiers":  [("Very early",  "≤ 50 ft"),
+            ("Early",       "51 – 60 ft"),
+            ("Average",     "61 – 67 ft"),
+            ("Late",        "68 – 75 ft"),
+            ("Very late",   "≥ 76 ft")],
+ "impact": "The raw input behind the Accel→Top-Speed Premium.  Measured as the "
+           "distance at which a runner first hits 97% of their OWN in-run peak "
+           "velocity — most MLB runners are still building speed through the "
+           "home-to-first run, so this clusters in the 60s.  What matters for "
+           "the model is the speed-adjusted RESIDUAL, not the absolute number.",
+ "source": "computed from per-5-ft Statcast running splits (segment velocity)",
+},
+
 {"name":   "Bolts",
  "plain":  "Number of plays in a season where the runner topped 30 ft/s.",
  "units":  "count",
@@ -387,6 +430,50 @@ ENTRIES = [
  "source": "Real SB%  −  Expected SB%",
 },
 
+# ── Expected SB Outcome (v7) ───────────────────────────────────────────────
+{"section": "Expected SB Outcome  (xSB · v7)"},
+
+{"name":   "Expected SB Outcome  (xsb_outcome, v7)",
+ "plain":  "Combined speed-and-production score: are you BOTH fast AND a "
+           "productive base-stealer?",
+ "units":  "sum of two z-scores (≈ −4 to +4)",
+ "avg":    "0",
+ "elite":  "+2.5 or more",
+ "example":"Elly De La Cruz: top of the board (elite speed + huge volume)  ·  "
+           "Naylor: positive on production, negative on speed → modest xSB",
+ "tiers":  [("Realized Burner",  "+2.5 +  (fast AND productive)"),
+            ("Strong",           "+1.0 to +2.5"),
+            ("Average",          "−1.0 to +1.0"),
+            ("Weak",             "−2.5 to −1.0"),
+            ("Stationary",       "≤ −2.5")],
+ "impact": "A COMPLEMENTARY lens to the SSSI.  Where the SSSI surfaces slow-"
+           "but-skilled stealers (the Naylor archetype), xSB surfaces the "
+           "high-ceiling runners who combine raw wheels with real production.  "
+           "It is descriptive, not predictive — kept out of the GBM (z(SB) "
+           "would leak the outcome) and the SSSI.",
+ "source": "z(net SB above league avg)  +  z(sprint speed),  per season",
+},
+
+{"name":   "SB Potential Gap  (sb_potential_gap, v7)",
+ "plain":  "Fast but under-stealing?  The gap flags untapped base-stealing "
+           "potential — coachable upside.",
+ "units":  "difference of two z-scores",
+ "avg":    "0",
+ "elite":  "n/a — read by sign, not magnitude",
+ "example":"Big POSITIVE = elite speed, few steals (unleash them)  ·  "
+           "NEGATIVE = over-performs speed (Naylor / Soto archetype)",
+ "tiers":  [("Untapped Wheels",   "large + : fast, under-steals"),
+            ("Some upside",       "small + "),
+            ("Balanced",          "≈ 0"),
+            ("Over-performs",     "small − "),
+            ("Crafty Technician", "large − : steals despite modest speed")],
+ "impact": "The analytic payoff of xSB.  Positive values are the clearest "
+           "coaching targets in the model — the tools are already there, the "
+           "production isn't yet.  Negative values are the Naylor quadrant: "
+           "production that outruns the radar gun.",
+ "source": "z(sprint speed)  −  z(net SB above league avg),  per season",
+},
+
 # ── Battery context (real per-attempt) ────────────────────────────────────
 {"section": "Battery Context  (real per-attempt)"},
 
@@ -524,22 +611,22 @@ ENTRIES = [
 # ── Compound indices ──────────────────────────────────────────────────────
 {"section": "Composite Scores"},
 
-{"name":   "SSSI v5  (Slow-Steal Skill Index)",
+{"name":   "SSSI v7  (Slow-Steal Skill Index)",
  "plain":  "A weighted composite score that identifies slow-but-effective stealers.",
  "units":  "z-score units (typically −3 to +3)",
  "avg":    "0",
- "elite":  "+2.0 or more",
- "example":"Naylor 2025: +1.99  ·  Soto 2025: +1.26  ·  league mean: 0",
- "tiers":  [("Elite slow-steal", "+2.0 +"),
-            ("Above avg",        "+1.0 to +2.0"),
+ "elite":  "+1.8 or more",
+ "example":"Naylor 2025: +1.85  ·  Soto 2025: +1.18  ·  league mean: 0",
+ "tiers":  [("Elite slow-steal", "+1.8 +"),
+            ("Above avg",        "+1.0 to +1.8"),
             ("Average",          "−0.5 to +1.0"),
             ("Below avg",        "−1.5 to −0.5"),
             ("Poor",             "≤ −1.5")],
- "impact": "Weighted average of eight standardized features (see v5 "
-           "report).  Designed to find the Naylor / Soto archetype: "
-           "elite-performing slow runners.  Weights were tuned on 80% "
-           "of runners with Naylor + Soto HELD OUT to avoid overfitting.",
- "source": "computed in v5/v6 pipeline",
+ "impact": "Weighted average of nine standardized features (v7 adds the "
+           "Accel→Top-Speed Premium).  Designed to find the Naylor / Soto "
+           "archetype: elite-performing slow runners.  Weights were tuned on "
+           "80% of runners with Naylor + Soto HELD OUT to avoid overfitting.",
+ "source": "computed in v7 pipeline",
 },
 
 # ── Coefficient interpretation ────────────────────────────────────────────
@@ -647,7 +734,7 @@ ENTRIES = [
  ]
 },
 
-{"discussion": "The Three Models — A, B, and the GLM",
+{"discussion": "The Three Models — A, B, and C",
  "paragraphs": [
      ("Why Are There Multiple Models?", False,
       "The pipeline produces three separate models for different purposes. They are not "
@@ -675,11 +762,13 @@ ENTRIES = [
       "runner-season. A runner who attempted 25 steals and succeeded 22 times (88%) is a 'yes'; "
       "one who attempted 20 and succeeded 13 (65%) is a 'no.' By smoothing over a full season "
       "of attempts, the noise largely cancels out, and the real signal — is this person actually "
-      "good at stealing — becomes clearer. Model B's AUC is 0.662–0.700 depending on the era. "
-      "This is the model whose performance we report as the headline number."),
+      "good at stealing — becomes clearer. Model B's de-leaked AUC is about 0.59 (full) and "
+      "0.61 (pre-2023). Earlier versions reported 0.66–0.70, but those runs carried duplicate "
+      "runner-season rows that leaked across CV folds; v7 averages them away, so the lower "
+      "number is the honest one. This is the model we report as the headline."),
 
-     ("The GLM: Plain-English Weights", False,
-      "The GLM (Simple Logistic Regression) is not designed to be the best predictor. It is "
+     ("Model C: Plain-English Weights (the GLM)", False,
+      "Model C (Simple Logistic Regression) is not designed to be the best predictor. It is "
       "designed to be the most interpretable. Unlike the GBMs (which learn thousands of "
       "nonlinear interactions between variables), the GLM has one coefficient per feature, and "
       "those coefficients translate directly into the 'SB% Boost per Tier' and 'Odds Multiplier' "
@@ -715,25 +804,25 @@ ENTRIES = [
  ]
 },
 
-{"discussion": "AUC: Why 0.66–0.70 Is Actually Good",
+{"discussion": "AUC: Why ~0.59 (De-Leaked) Is Honest, Not a Regression",
  "paragraphs": [
-     ("What AUC Measures", False,
-      "AUC (Area Under the ROC Curve) measures how well a binary classifier separates the "
-      "'yes' and 'no' outcomes. An AUC of 0.50 means the model is no better than a coin flip. "
-      "An AUC of 1.00 means perfect prediction. The Naylor Model v6 achieves AUC of about "
-      "0.66 on the full 2018–2026 dataset, 0.70 on the pre-2023 era, and 0.68 on the "
-      "post-2023 era."),
+     ("What AUC Measures, and the v7 De-Leaking", False,
+      "AUC (Area Under the ROC Curve) measures how well a classifier separates 'yes' from 'no'. "
+      "0.50 is a coin flip; 1.00 is perfect. v7 Model B scores about 0.59 on the full 2015–2026 "
+      "dataset and 0.61 pre-2023. Earlier versions reported 0.66–0.70, but those runs carried "
+      "duplicate runner-season rows — repeated Statcast split measurements for one player-season — "
+      "that leaked across cross-validation folds and inflated the score. v7 averages those "
+      "duplicates into one row per runner-season. The lower number is not a regression; it is the "
+      "first honest estimate."),
 
      ("Why the Ceiling Is Real, Not a Bug", False,
       "Stolen-base success has a large irreducible noise component. The throw, the catcher's "
       "grip on a given day, whether the pitcher noticed the runner leaning, the umpire's safe/out "
-      "call on a bang-bang play — none of these appear in any public data feed. Academic "
-      "baseball research generally finds prediction ceilings around 0.68–0.72 for SB success "
-      "even with the best features. The Naylor Model is operating at that ceiling. Pushing higher "
-      "would require private TrackMan or Hawkeye delivery-timing data that teams have internally "
-      "but do not publish. The pre-2023 era's higher AUC (0.70) is because the signal is cleaner: "
-      "the 2023 rule changes (larger bases, pickoff limits) structurally shifted the success rate "
-      "league-wide, and the model needed to adapt to a new regime."),
+      "call on a bang-bang play — none of these appear in any public data feed. With public data "
+      "the ceiling sits around 0.70–0.75; pushing higher would require private TrackMan or Hawk-Eye "
+      "delivery-timing data that teams have internally but do not publish. The pre-2023 era scores "
+      "a touch higher because the 2023 rule changes (larger bases, pickoff limits) shifted success "
+      "rates league-wide and the model had to adapt to a new regime."),
  ]
 },
 
@@ -741,7 +830,7 @@ ENTRIES = [
  "paragraphs": [
      ("What Is the SSSI?", False,
       "The Slow-Steal Skill Index (SSSI) is not a model prediction — it is a composite "
-      "scouting score. It weights eight features in a way specifically designed to find "
+      "scouting score. It weights nine features in a way specifically designed to find "
       "runners who outperform their speed: high SB residual, high Accel Gap (first-step "
       "quickness relative to top speed), good lead distance, elite catcher arm exploitation, "
       "and strong pre-release velocity. Each feature is z-scored (converted to standard "
@@ -812,70 +901,132 @@ ENTRIES = [
 # ─────────────────────────────────────────────────────────────────────────────
 TIER_COLOR = ["#10B981", "#3B82F6", "#6B7280", "#F59E0B", "#DC2626"]
 
+# Names / discussion titles dropped for the 80-20 trim (niche or redundant).
+_DROP_METRICS = {
+    "Acceleration Phase", "Top-Speed Phase", "Total 90", "Bolts",
+    "3-2 Count Attempt Share", "Catcher Arm Strength", "Catcher Exchange",
+    "Pitcher Lead Allowed", "Pitcher TTP", "Inning", "Outs", "Balls / Strikes",
+    "Odds Multiplier",
+}
+_DROP_DISCUSSIONS = {"The Naylor Model: Why It Exists",
+                     "The Baseline P(Success): What Does 62% Mean?",
+                     "The SSSI: Designing for the Naylor Archetype"}
+
+def _keep(entry):
+    if "section" in entry:
+        return entry["section"] != "Game Situation"      # whole section is low-value
+    if "discussion" in entry:
+        return entry["discussion"] not in _DROP_DISCUSSIONS
+    nm = entry.get("name", "")
+    return not any(nm.startswith(d) for d in _DROP_METRICS)
+
+
+def _wrap_lines(text, width_chars):
+    out = []
+    for raw in str(text).split("\n"):
+        words, line = raw.split(" "), ""
+        for w in words:
+            t = (line + " " + w).strip()
+            if len(t) > width_chars:
+                out.append(line); line = w
+            else:
+                line = t
+        out.append(line)
+    return [l for l in out if l != ""] or [""]
+
+LINE = 0.0165
+
+def _est_card(e):
+    h = 0.044
+    h += len(_wrap_lines(e["plain"], 112)) * LINE + 0.004
+    h += LINE + 0.003
+    if e.get("tiers"):
+        tl = "Tiers:  " + "   |   ".join(f"{l} {r}" for l, r in e["tiers"])
+        h += len(_wrap_lines(tl, 118)) * 0.0150
+    if e.get("example"):
+        h += len(_wrap_lines("e.g.  " + e["example"], 116)) * 0.0155
+    h += 0.004
+    h += len(_wrap_lines(e["impact"], 114)) * LINE
+    return h + 0.020
+
+def _draw_card(fig, ax, e, y):
+    ax.add_patch(plt.Rectangle((0.05, y - 0.028), 0.90, 0.028,
+                               transform=fig.transFigure, facecolor="#0B2545", edgecolor="none"))
+    ax.text(0.065, y - 0.014, e["name"], transform=fig.transFigure,
+            fontsize=12, fontweight="bold", color="white", va="center")
+    y -= 0.042
+    for ln in _wrap_lines(e["plain"], 112):
+        ax.text(0.06, y, ln, transform=fig.transFigure, fontsize=9.5, color="#222"); y -= LINE
+    y -= 0.004
+    facts = f"Units: {e.get('units','—')}     ·     League avg: {e.get('avg','—')}     ·     Elite: {e.get('elite','—')}"
+    ax.text(0.06, y, facts, transform=fig.transFigure, fontsize=9, color="#0B2545", fontweight="bold")
+    y -= LINE + 0.003
+    if e.get("tiers"):
+        tl = "Tiers:  " + "   |   ".join(f"{l} {r}" for l, r in e["tiers"])
+        for ln in _wrap_lines(tl, 118):
+            ax.text(0.06, y, ln, transform=fig.transFigure, fontsize=8.3, color="#555", family="serif"); y -= 0.0150
+    if e.get("example"):
+        for ln in _wrap_lines("e.g.  " + e["example"], 116):
+            ax.text(0.06, y, ln, transform=fig.transFigure, fontsize=8.8, color="#444", style="italic"); y -= 0.0155
+    y -= 0.004
+    for ln in _wrap_lines(e["impact"], 114):
+        ax.text(0.06, y, ln, transform=fig.transFigure, fontsize=9, color="#333"); y -= LINE
+    return y - 0.020
+
+
 def render(entries, path):
-    PAGE_W, PAGE_H = 8.5, 11
-    LEFT, RIGHT, TOP, BOTTOM = 0.55, 0.55, 0.55, 0.55
+    entries = [e for e in entries if _keep(e)]
+    metrics      = [e for e in entries if "discussion" not in e]
+    discussions  = [e for e in entries if "discussion" in e]
+
+    def _newpage(pdf):
+        fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
+        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
+        ax.text(0.94, 0.965, "The Naylor Model · Variable Glossary · v7",
+                transform=fig.transFigure, ha="right", fontsize=8, color="#999")
+        return fig, ax, 0.935
 
     with PdfPages(path) as pdf:
-
         # ─── Cover page ────────────────────────────────────────────────
-        fig = plt.figure(figsize=(PAGE_W, PAGE_H)); fig.patch.set_facecolor("white")
+        fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
         ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
-        ax.text(0.5, 0.82, "The Naylor Model",
-                ha="center", va="center", fontsize=30, fontweight="bold")
-        ax.text(0.5, 0.74, "Variable Glossary",
-                ha="center", va="center", fontsize=22, color="#1F3A5F")
-        ax.text(0.5, 0.66, "Statcast-style reference  ·  v6",
-                ha="center", va="center", fontsize=13, style="italic",
-                color="#555")
-
-        ax.text(0.5, 0.50,
-                "Every variable in this glossary tells you:\n\n"
-                "• what it actually measures (plain English)\n"
-                "• the units and a typical value\n"
-                "• what's elite and what's poor\n"
+        ax.text(0.5, 0.78, "The Naylor Model", ha="center", va="center", fontsize=30, fontweight="bold")
+        ax.text(0.5, 0.70, "Variable Glossary", ha="center", va="center", fontsize=22, color="#1F3A5F")
+        ax.text(0.5, 0.635, "Statcast-style reference  ·  v7", ha="center", va="center",
+                fontsize=13, style="italic", color="#555")
+        ax.text(0.5, 0.46,
+                "Every metric here earns its place. For each one:\n\n"
+                "• what it measures (plain English)\n"
+                "• units, league average, and what's elite\n"
                 "• a real player example\n"
-                "• why it affects steal success",
-                ha="center", va="center", fontsize=11.5, color="#222",
-                linespacing=1.9)
-
-        ax.text(0.5, 0.22,
-                "No statistical jargon.\n"
-                "Replace 'coef_z' and 'OR/SD' with\n"
-                "'SB % Boost per Tier' and 'Odds Multiplier'.",
-                ha="center", va="center", fontsize=11, color="#444",
-                linespacing=1.6)
-
-        ax.text(0.5, 0.07,
-                "Generated for The Naylor Model · 2026",
+                "• why it moves steal success",
+                ha="center", va="center", fontsize=11.5, color="#222", linespacing=1.9)
+        ax.text(0.5, 0.07, "Generated for The Naylor Model · 2026",
                 ha="center", va="center", fontsize=9, color="#888")
         pdf.savefig(fig); plt.close(fig)
 
-        # ─── Variable pages ────────────────────────────────────────────
-        for entry in entries:
-            if "section" in entry:
-                _render_section_page(pdf, entry["section"])
-            elif "discussion" in entry:
-                _render_discussion_page(pdf, entry)
-            else:
-                _render_variable_page(pdf, entry)
+        # ─── Compact flowing metric cards (2-3 per page) ────────────────
+        fig, ax, y = _newpage(pdf)
+        for e in metrics:
+            if "section" in e:
+                if y - 0.05 < 0.10:
+                    pdf.savefig(fig); plt.close(fig); fig, ax, y = _newpage(pdf)
+                ax.add_patch(plt.Rectangle((0.05, y - 0.030), 0.90, 0.030,
+                                           transform=fig.transFigure, facecolor="#1F3A5F", edgecolor="none"))
+                ax.text(0.065, y - 0.015, e["section"], transform=fig.transFigure,
+                        fontsize=11, fontweight="bold", color="white", va="center")
+                y -= 0.050
+                continue
+            if y - _est_card(e) < 0.055:
+                pdf.savefig(fig); plt.close(fig); fig, ax, y = _newpage(pdf)
+            y = _draw_card(fig, ax, e, y)
+        pdf.savefig(fig); plt.close(fig)
+
+        # ─── Discussion pages (kept few, full narrative) ────────────────
+        for d in discussions:
+            _render_discussion_page(pdf, d)
 
     print(f"Wrote {path}")
-
-
-def _render_section_page(pdf, title):
-    fig = plt.figure(figsize=(8.5, 11)); fig.patch.set_facecolor("white")
-    ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
-
-    # Big section header
-    ax.add_patch(plt.Rectangle((0.06, 0.45), 0.88, 0.12,
-                                transform=fig.transFigure,
-                                facecolor="#0B2545", edgecolor="none"))
-    ax.text(0.5, 0.51, title,
-            transform=fig.transFigure,
-            ha="center", va="center",
-            fontsize=24, fontweight="bold", color="white")
-    pdf.savefig(fig); plt.close(fig)
 
 
 def _render_variable_page(pdf, e):
