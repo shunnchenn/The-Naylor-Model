@@ -436,54 +436,51 @@ def build_equation_figure():
     g["kind"]  = g["feature"].map(GLM_KIND).fillna("context")
     g["label"] = g["feature"].map(GLM_PLAIN).fillna(g["feature"])
 
-    fig = plt.figure(figsize=(12.6, 9.2), dpi=150)
+    # convert each skill's effect to the intuitive unit: extra steals per 20 attempts
+    g["steals"] = g["sb_pct_boost_per_tier"] / 100.0 * SEASON_ATTEMPTS
+
+    fig = plt.figure(figsize=(12.6, 8.6), dpi=150)
     # Stacked layout: full-width text band on top, full-width bar panel below.
-    # (Left margin is generous so the long lever names never collide with anything.)
-    ax  = fig.add_axes([0.345, 0.055, 0.615, 0.595])        # bar panel, full width, lower band
+    ax  = fig.add_axes([0.345, 0.06, 0.615, 0.64])
 
-    fig.text(0.035, 0.972, "The Steal-Success Equation", fontsize=21, fontweight="bold", color="#1f2d3d")
-    fig.text(0.035, 0.937, "How much each skill is worth — the change in steal-success rate from a "
-             "one-standard-deviation (1-SD) improvement.", fontsize=11.5, color="#555", style="italic")
-    fig.text(0.035, 0.888, "Chance of a successful steal   =   baseline (≈ 78%)   +   "
-             "Σ ( weight  ×  how far above average the runner is, in SDs )",
-             fontsize=13, fontweight="bold", color="#1f2d3d")
-    fig.text(0.035, 0.851, "math form:   log-odds(success)  =  β₀ + β₁·z₁ + β₂·z₂ + …",
-             fontsize=10.5, color="#666", family="monospace")
-    fig.text(0.035, 0.822, "β = the bar lengths below;   z = how many SDs above league average a runner is.",
-             fontsize=10, color="#777")
+    fig.text(0.035, 0.965, "What Each Skill Is Worth — in Extra Steals", fontsize=21,
+             fontweight="bold", color="#1f2d3d")
+    fig.text(0.035, 0.918, "Extra stolen bases a typical runner gains over a 20-attempt season from one "
+             "realistic improvement in that skill.", fontsize=11.5, color="#555", style="italic")
+    fig.text(0.035, 0.862, "Read it as:   steal success  =  a baseline chance  +  the boost from each "
+             "skill the runner beats the average at.", fontsize=12.5, fontweight="bold", color="#1f2d3d")
 
-    # Horizontal color key spread across the full width (no left column to collide with).
-    leg_y = 0.760
+    # Horizontal color key.
+    leg_y = 0.788
     guide = [("#3FA66B", "Trainable — a coach can develop this"),
              ("#9AA0A6", "Context — opponent / situation"),
-             ("#D98A3D", "Physical — raw speed, barely moves it")]
+             ("#D98A3D", "Raw speed — barely moves it")]
     xs = [0.035, 0.375, 0.685]
     for (col, txt), x in zip(guide, xs):
-        fig.add_artist(plt.Rectangle((x, leg_y), 0.018, 0.021, transform=fig.transFigure,
+        fig.add_artist(plt.Rectangle((x, leg_y), 0.018, 0.022, transform=fig.transFigure,
                                      facecolor=col, edgecolor="none"))
-        fig.text(x + 0.026, leg_y + 0.002, txt, fontsize=10.5, color="#333")
-    fig.text(0.035, 0.712,
-             "Each bar = the standardized weight β — the points of steal-success rate added by a +1-SD gain "
-             "in that one skill (also shown as net bags over a 20-attempt season).  Bigger bar = bigger "
-             "coaching payoff.", fontsize=10, color="#555")
+        fig.text(x + 0.026, leg_y + 0.003, txt, fontsize=10.5, color="#333")
+    fig.text(0.035, 0.735,
+             "Each bar = extra steals from a one-step gain (about what a focused off-season can add) in that "
+             "one skill.  Longer bar = bigger payoff to coaching.", fontsize=10, color="#555")
 
     colors = [KIND_COLOR[k] for k in g["kind"]]
     yb = list(range(len(g)))
-    ax.barh(yb, g["sb_pct_boost_per_tier"].to_numpy(), color=colors, edgecolor="white", linewidth=0.6)
+    ax.barh(yb, g["steals"].to_numpy(), color=colors, edgecolor="white", linewidth=0.6)
     ax.axvline(0, color="#333", lw=1.0)
     ax.set_yticks(yb); ax.set_yticklabels(g["label"], fontsize=9.5)
     ax.set_ylim(-0.7, len(g) - 0.3)
-    vmax = float(g["sb_pct_boost_per_tier"].max()); vmin = float(g["sb_pct_boost_per_tier"].min())
+    vmax = float(g["steals"].max()); vmin = float(g["steals"].min())
     pad = vmax * 0.03
-    for i, (pp, beta) in enumerate(zip(g["sb_pct_boost_per_tier"], g["tech_coefficient"])):
-        txt = f"{pp:+.0f} pts   (β={beta:+.2f},  {bags_short(pp)})"
-        if pp >= 0:                       # right of the bar tip
-            ax.text(pp + pad, i, txt, va="center", ha="left", fontsize=8.4, color="#222")
-        else:                             # right of the zero line — never crowds the left labels
-            ax.text(pad, i, txt, va="center", ha="left", fontsize=8.4, color="#7a4a16")
-    ax.set_xlabel("Change in steal-success rate for a +1-SD improvement  (percentage points)",
+    for i, n in enumerate(g["steals"]):
+        txt = f"{n:+.0f} steals"
+        if n >= 0:
+            ax.text(n + pad, i, txt, va="center", ha="left", fontsize=8.8, color="#222")
+        else:
+            ax.text(pad, i, txt, va="center", ha="left", fontsize=8.8, color="#7a4a16")
+    ax.set_xlabel("Extra stolen bases per 20 attempts, from a one-step improvement in that skill",
                   fontsize=10.8, fontweight="bold")
-    ax.set_xlim(min(vmin * 1.2, -4), vmax * 1.62)
+    ax.set_xlim(min(vmin * 1.2, -1.2), vmax * 1.5)
     for sp in ("top", "right", "left"): ax.spines[sp].set_visible(False)
     ax.tick_params(left=False); ax.grid(axis="x", alpha=0.15)
     out = FIG_DIR / "Fig_v8_Equation.png"
@@ -532,7 +529,8 @@ VAR_DEFS = {
     "Top Speed": "Sprint speed in feet/second — the structural baseline (Statcast).",
     "Jump (s)": "Seconds to cover the first 30 ft. Lower = quicker first step. Coachable.",
     "First-Step Burst": "Reaches top speed in fewer feet than his speed predicts (premium when fast).",
-    "Steals Above Speed-Expected": "Real success rate minus what sprint speed alone predicts (pct pts).",
+    "Steals Above Speed-Expected": "How far the runner's success rate sits ABOVE the line speed alone predicts. Positive = beats his speed peers.",
+    "Ground Gained": "Feet of ground covered after the pitcher commits (first move → release). The biggest single driver of a steal.",
     "SB / CS": "Stolen bases / times caught stealing.",
     "Slow-Steal Skill": "Overall technique score — skill beyond raw speed. Higher = better.",
     "Untapped Speed": "Fast but under-stealing: z(top speed) − z(net steals). Higher = bigger coaching upside.",
@@ -547,7 +545,8 @@ VAR_DEFS = {
     "Steal Value (xSB)": "z(net steals above avg) + z(top speed) — fast AND productive.",
     "Catcher Pop (faced)": "Average catcher pop time the runner faced (battery context).",
     "AUC": "Area under ROC — predictive accuracy (0.5 = coin flip, 1.0 = perfect).",
-    "Extra steals": "Plain translation of the success-rate change into net bags over a typical 20-attempt season.",
+    "Extra steals": "Extra stolen bases over a typical 20-attempt season.",
+    "Added steals": "Extra stolen bases over a 20-attempt season from one realistic improvement in that skill.",
     "Success rate": "Share of steal attempts that succeed (SB ÷ attempts).",
     "Attempts": "Stolen-base attempts this season (SB + CS).",
     "If unleashed": "Projected extra net steals at a modest, speed-appropriate ~20-attempt volume, kept at the runner's own demonstrated success rate.",
@@ -592,32 +591,26 @@ def build_main():
     r = sub.add_run("Finding base-stealing skill that sprint speed hides  ·  for MLB R&D and coaching staffs")
     r.italic = True; r.font.size = Pt(11); r.font.color.rgb = RGBColor.from_string("666666")
 
-    takeaway(doc, "Some of the best base-stealers in baseball are among its slowest runners. This "
-                  "report measures the skill speed hides, gives you the equation for what that skill "
-                  "is worth, and hands you a 2025 list of exactly who to coach and the steals it adds.")
+    takeaway(doc, "Some of the best base-stealers in baseball are among its slowest. This report measures "
+                  "the skill speed hides, prices each skill in steals, and names who to coach in 2025.")
     body(doc,
-         "The model is named for the clearest living example of one quality — a runner who steals better "
-         "than ~99% of the league despite bottom-of-the-league speed. In 2025 Josh Naylor stole 30 bases "
-         "at 92% while running slower than 98% of MLB: the #1 steal-skill season in our data of 673. But "
-         "this is not a report about one player. It is about the quality he exemplifies — a quick jump, an "
-         "explosive secondary lead, and reading the pitcher early — which shows up all over the league and, "
-         "unlike foot speed, is coachable. The next four pages give you (1) the equation for what each "
-         "skill is worth, (2) the runners who already have it, (3) a 2025 target board of who to develop "
-         "and the projected prize, and (4) the three drills that move the needle most.",
+         "Named for its clearest example: in 2025 Josh Naylor stole 30 bases at 92% while slower than 98% "
+         "of MLB — the top steal-skill season in our 673. But the subject is the quality, not the player: a "
+         "quick jump, an explosive secondary lead, and reading the pitcher early. Unlike foot speed, all "
+         "three are coachable — and found league-wide. Four pages: (1) what each skill is worth, (2) who "
+         "already has it, (3) who to coach in 2025, (4) the drills.",
          size=10, after=8)
 
-    # The 10-second key — pts↔steals made obvious BEFORE any number appears.
-    callout_box(doc, "READING THE NUMBERS  ·  the 10-second key", [
-        ("\"pts\" = steals.",
-         "\"pts\" is the gain in steal-success rate. We never make you do the math — every \"pts\" is also "
-         "printed as steals. Rule of thumb: +5 pts ≈ one extra stolen base (and one fewer caught) per 20 "
-         "tries. So \"+25 pts\" ≈ +5 steals a season."),
+    # The 10-second key — the unit (steals) and colors, before any number appears.
+    callout_box(doc, "READING THE NUMBERS", [
+        ("Everything is in steals.",
+         "Each skill's payoff is the extra stolen bases it adds over a 20-attempt season. The top skill is "
+         "worth about +5 steals."),
         ("Colors rank within a table.",
-         "Green = best of the players shown, red = worst of those shown (can still beat the MLB average), "
-         "gold = the Naylor/Soto archetype. The charts use no red — every runner shown is already elite."),
+         "Green = best shown, red = worst shown (can still beat the MLB average), gold = the Naylor/Soto "
+         "archetype. Charts use no red — everyone shown is already elite."),
         ("What it's for.",
-         "Deciding who to develop and what to drill — not predicting any single steal (stealing is "
-         "high-variance; the model's accuracy is in the Appendix)."),
+         "Who to develop and what to drill — not calling any single steal (model accuracy is in the Appendix)."),
     ])
 
     # 80/20 headline: the three coachable levers, with their steal payoff, up front.
@@ -629,54 +622,49 @@ def build_main():
     gt = gt[gt["kind"] == "train"].sort_values("absb", ascending=False).head(3)
     teaser = []
     for _, row in gt.iterrows():
-        pp = float(row["sb_pct_boost_per_tier"]); n = round(pp / 100 * SEASON_ATTEMPTS)
-        teaser.append((f"≈ +{n} steals / 20 tries", f"{row['lever']}  ({pp:+.0f} pts for a +1-step gain)."))
+        n = round(float(row["sb_pct_boost_per_tier"]) / 100 * SEASON_ATTEMPTS)
+        teaser.append((f"+{n} steals / 20 tries", f"{row['lever']}."))
     callout_box(doc, "The 80/20 — coach these, in order of payoff", teaser, body_shade="F3F8F3",
                 lead_color="2E7D32")
     body(doc, "All three are technique, not body type — which is why a slow runner can lead the league in "
-              "steal skill. Section 1 shows the full equation behind these; Section 4 turns them into drills.",
+              "steal skill. Section 1 prices them in full; Section 4 turns them into drills.",
          size=9.5, after=4)
 
     doc.add_page_break()
 
     # ---- P2: THE EQUATION — what each skill is worth -------------------------
-    H(doc, "1  What Each Skill Is Worth — The Steal-Success Equation")
+    H(doc, "1  What Each Skill Is Worth — in Steals")
     section_intro(doc,
-        what="We fit an interpretable model (a logistic GLM) on Statcast runner-seasons that isolates "
-             "how each skill changes the chance of a successful steal, then converted every weight into "
-             "plain points of success rate for one realistic one-standard-deviation (1-SD) improvement — "
-             "and into concrete steals.",
-        result="Three trainable levers dominate — covering ground after the pitcher commits, a quicker "
+        what="We fit a model on Statcast runner-seasons that isolates how much each skill changes the "
+             "chance of a successful steal, then priced every skill in the only unit that matters to a "
+             "coach: extra stolen bases from one realistic, off-season-sized improvement.",
+        result="Three trainable skills dominate — covering ground after the pitcher commits, a quicker "
                 "jump, and reaching top speed sooner. Raw foot speed barely moves the needle.",
-        variables=["Coachable lever", "League Avg", "One-Step Improvement",
-                   "Success-Rate Change", "Extra steals"])
+        variables=["Coachable lever", "League Avg", "One-Step Improvement", "Added steals"])
     add_fig(doc, eq_fig, width=7.0,
-            caption="Figure 1 — Each bar is the standardized weight β: the change in steal-success rate "
-                    "from a +1-SD improvement in that one skill (also shown as net bags / 20 attempts). "
-                    "Green = trainable, grey = opponent/situation context, orange = raw speed. The "
-                    "equation at top: success odds = baseline + Σ (weight × how many SDs above average "
-                    "the runner is).")
+            caption="Figure 1 — Extra steals over a 20-attempt season from a one-step (a focused off-season's "
+                    "worth) improvement in each skill. Green = trainable, grey = opponent/situation, orange = "
+                    "raw speed. Longer bar = bigger coaching payoff.")
 
     g = glm.copy()
-    g["abs"]   = g["sb_pct_boost_per_tier"].abs()
-    g["arrow"] = np.where(g["sb_pct_boost_per_tier"] >= 0, "↑ raises", "↓ lowers")
-    g["lever"] = g["feature"].map(GLM_PLAIN).fillna(g["feature"])
-    g["bags"]  = g["sb_pct_boost_per_tier"].apply(bags_short)
+    g["abs"]    = g["sb_pct_boost_per_tier"].abs()
+    g["arrow"]  = np.where(g["sb_pct_boost_per_tier"] >= 0, "↑ helps", "↓ hurts")
+    g["lever"]  = g["feature"].map(GLM_PLAIN).fillna(g["feature"])
+    g["steals"] = g["sb_pct_boost_per_tier"] / 100.0 * SEASON_ATTEMPTS
     g = g.sort_values("abs", ascending=False).head(9).copy()
     heat_table(doc, g,
         columns=[("lever", "Coachable lever", "left"),
                  ("league_avg", "League\nAvg", "center"),
-                 ("one_tier_step", "One-Step\n(+1 SD)", "center"),
-                 ("sb_pct_boost_per_tier", "Success Rate\nChange (pts)", "center"),
-                 ("bags", "≈ Extra steals\n(per 20 tries)", "center"),
+                 ("one_tier_step", "One-Step\nImprovement", "center"),
+                 ("steals", "Added steals\n(per 20 tries)", "center"),
                  ("arrow", "Effect", "center")],
-        heat_specs={"sb_pct_boost_per_tier": +1},
+        heat_specs={"steals": +1},
         fmt={"league_avg": lambda v: f"{v:.2f}", "one_tier_step": lambda v: f"{v:.2f}",
-             "sb_pct_boost_per_tier": lambda v: f"{v:+.0f} pts"}, size=9)
+             "steals": lambda v: f"{v:+.0f}"}, size=9)
     cap = doc.add_paragraph(); cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    rr = cap.add_run("Table 1 — The nine biggest levers. \"+17 pts\" means a one-step (1-SD) improvement "
-                     "raises the success rate by 17 percentage points — about 3 extra safe steals over a "
-                     "20-attempt season. Read with Figure 1.")
+    rr = cap.add_run("Table 1 — The nine biggest levers, in steals. \"Added steals\" = the extra stolen "
+                     "bases a runner gains over a 20-attempt season from one realistic improvement in that "
+                     "one skill. Read with Figure 1.")
     rr.italic = True; rr.font.size = Pt(8.5); rr.font.color.rgb = RGBColor.from_string("666666")
 
     doc.add_page_break()
@@ -684,13 +672,24 @@ def build_main():
     # ---- P3: SSSI Excel-style matrix -----------------------------------------
     H(doc, "2  The Runners Who Already Have the Skill  (Slow-Steal Skill)")
     section_intro(doc,
-        what="We combined the skills above — jump, first-step burst, and steals-above-what-speed-predicts "
-             "— into one 'Slow-Steal Skill' score, tuned on 80% of the league with the benchmark names "
-             "(Naylor, Soto) held out, then ranked every runner-season.",
-        result="The leaderboard is full of mid-pack-speed runners grading out elite on skill — proof the "
-                "trait is widespread and findable, not a one-player quirk.",
-        variables=["Player", "Top Speed", "Jump (s)", "First-Step Burst",
+        what="We combined the skills above into one 'Slow-Steal Skill' score, tuned on 80% of the league "
+             "with the benchmarks (Naylor, Soto) held out, then ranked every runner-season. Two columns "
+             "are speed-adjusted — Ground Gained and Steals Above Speed-Expected — explained just below.",
+        result="The leaderboard is full of mid-pack-speed runners grading out elite — proof the trait is "
+                "widespread and findable, not a one-player quirk.",
+        variables=["Player", "Top Speed", "Jump (s)", "Ground Gained",
                    "Steals Above Speed-Expected", "SB / CS", "Slow-Steal Skill"])
+
+    callout_box(doc, "HOW WE STRIP SPEED OUT (so only skill is left)", [
+        ("", "Faster runners cover more ground and steal more — of course. To isolate skill we remove what "
+             "speed alone explains: plot the skill against sprint speed, draw the line speed predicts, and "
+             "keep only how far each runner sits ABOVE that line. \"Ground Gained\" and \"Steals Above "
+             "Speed-Expected\" are that gap above the line — skill with speed stripped out."),
+    ])
+    add_fig(doc, FIG_DIR / "Fig_GroundCovered_Scatter.png", width=5.7,
+            caption="Figure 2 — Ground covered vs sprint speed. The line is what speed alone predicts; "
+                    "skill is the distance above it. Naylor, Soto, and McMahon sit far above the line at "
+                    "the slowest speeds — elite ground without elite wheels.")
     legend_line(doc)
 
     ss = sssi.sort_values("SSSI_v7", ascending=False).head(15).copy()
@@ -699,24 +698,37 @@ def build_main():
         columns=[("rank_v7", "#", "center"), ("player_name", "Player", "left"),
                  ("season", "Year", "center"), ("sprint_speed", "Top Speed\n(ft/s)", "center"),
                  ("jump_time", "Jump (s)\nlower better", "center"),
-                 ("accel_topspeed_premium", "First-Step\nBurst", "center"),
+                 ("avg_post_release_distance", "Ground Gained\n(ft)", "center"),
                  ("sb_residual", "Steals Above\nSpeed-Expected", "center"),
                  ("sbcs", "SB / CS", "center"),
                  ("SSSI_v7", "Slow-Steal\nSkill", "center")],
-        heat_specs={"sb_residual": +1, "accel_topspeed_premium": +1, "SSSI_v7": +1,
+        heat_specs={"sb_residual": +1, "avg_post_release_distance": +1, "SSSI_v7": +1,
                     "jump_time": -1},
         highlight_ids={NAYLOR_ID, SOTO_ID},
         fmt={"season": lambda v: f"{int(v)}", "sprint_speed": lambda v: f"{v:.1f}",
              "jump_time": lambda v: f"{v:.2f}", "SSSI_v7": lambda v: f"{v:+.2f}",
              "sb_residual": lambda v: f"{v*100:+.1f}%",
-             "accel_topspeed_premium": lambda v: f"{v:+.1f}", "rank_v7": lambda v: f"{int(v)}"},
+             "avg_post_release_distance": lambda v: f"{v:.1f}", "rank_v7": lambda v: f"{int(v)}"},
         size=9, header_size=8.5)
     cap = doc.add_paragraph(); cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    rr = cap.add_run("Table 2 — Top 15 by Slow-Steal Skill (2015–2026). The Top Speed column is "
-                     "deliberately uncolored: speed is NOT what earns a spot here. Amber rows flag the "
-                     "benchmark names (Naylor, Soto) — the clearest examples of the trait, not the basis "
-                     "of the score (they were held out while the score was tuned).")
+    rr = cap.add_run("Table 2 — Top 15 by Slow-Steal Skill (2015–2026). Top Speed is uncolored on purpose: "
+                     "speed is not what earns a spot. Amber rows flag the benchmarks (Naylor, Soto) — "
+                     "examples of the trait, held out while the score was tuned, not the basis of it.")
     rr.italic = True; rr.font.size = Pt(8.5); rr.font.color.rgb = RGBColor.from_string("666666")
+
+    doc.add_page_break()
+
+    # ---- P3b: full blueprint leaderboard, by season, with team logos ----------
+    H(doc, "2b  The Full Leaderboard, Season by Season (with teams)")
+    takeaway(doc, "The trait shows up every year and on every kind of team. Ryan McMahon's 2026 (Rockies) "
+                  "is the highest blueprint score in the data — a slow corner infielder out-converting the "
+                  "league's burners.")
+    body(doc, "Blueprint score = the same speed-adjusted steal skill, scored 2023–2026 (higher = more "
+              "skill beyond speed). Logos show each runner's team.", size=9.5, after=4)
+    add_fig(doc, FIG_DIR / "Fig_BCS_Top25_ByYear.png", width=7.4,
+            caption="Figure 3 — Top 25 blueprint scores per season, 2023–2026 (2026 partial). Bars are "
+                    "speed-adjusted steal skill; gold = the slow-but-elite archetype, red = Naylor, green "
+                    "= Soto. Team logos mark each runner's club.")
 
     doc.add_page_break()
 
@@ -730,7 +742,7 @@ def build_main():
                 "(green-light them) and high-volume runners who get caught too often (fix the technique).",
         variables=["Speed (SD)", "Steal Value (xSB)", "Untapped Speed"])
     add_fig(doc, xsb_fig, width=6.6,
-            caption="Figure 2 — Each dot is a runner-season (2023–2026). X-axis = top speed in standard "
+            caption="Figure 4 — Each dot is a runner-season (2023–2026). X-axis = top speed in standard "
                     "deviations (right = faster); Y-axis = steal production (up = more). Green = fast & "
                     "productive; blue (lower-right) = fast but under-stealing (the green-light targets); "
                     "gold = the slow-but-productive archetype (★ Naylor, Soto); grey = neither. No red — "
@@ -740,7 +752,7 @@ def build_main():
     H(doc, "3a  Green-light targets — fast, efficient, under-running (just let them run)", lvl=2)
     section_intro(doc,
         what="We isolated the 2025 runners with top-third speed who already succeed at 80%+ but attempt "
-             "fewer than ~20 steals, and projected the bags they'd add at a modest, speed-appropriate "
+             "fewer than ~20 steals, and projected the extra steals they'd add at a modest, speed-appropriate "
              "volume — kept at their own proven success rate.",
         result="These are low-risk green-light decisions, not mechanics rebuilds: each already converts; "
                 "they simply aren't running.",
@@ -752,7 +764,7 @@ def build_main():
                  ("sprint_speed", "Top Speed\n(ft/s)", "center"), ("sbcs", "SB / CS", "center"),
                  ("real_sb_pct", "Success\nrate", "center"),
                  ("sb_attempts", "Attempts\n(2025)", "center"),
-                 ("proj_extra_net", "If unleashed\n(+ bags)", "center")],
+                 ("proj_extra_net", "If unleashed\n(+ steals)", "center")],
         heat_specs={"real_sb_pct": +1, "proj_extra_net": +1},
         fmt={"sprint_speed": lambda v: f"{v:.1f}", "real_sb_pct": lambda v: f"{v*100:.0f}%",
              "sb_attempts": lambda v: f"{int(v)}", "proj_extra_net": lambda v: f"+{int(v)}",
@@ -773,37 +785,38 @@ def build_main():
                 "says which one.",
         variables=["Player", "Top Speed", "SB / CS", "Success rate", "Weakest lever", "Projected fix"])
     tfr = tf.copy()
-    tfr["fix_txt"] = tfr["fix_pp"].apply(lambda pp: f"+{pp:.0f} pts" if pp >= 0.5 else "—")
+    tfr["fix_txt"] = tfr["fix_pp"].apply(
+        lambda pp: f"+{round(pp/100*SEASON_ATTEMPTS)}" if pp/100*SEASON_ATTEMPTS >= 0.5 else "—")
     heat_table(doc, tfr,
         columns=[("player_name", "Player", "left"), ("sprint_speed", "Top Speed\n(ft/s)", "center"),
                  ("sbcs", "SB / CS", "center"), ("real_sb_pct", "Success\nrate", "center"),
                  ("sb_attempts", "Attempts\n(2025)", "center"),
                  ("weak_lever", "Weakest\nlever", "left"),
-                 ("fix_txt", "Fix → success\ngain", "center")],
+                 ("fix_txt", "Fix →\n+ steals/20", "center")],
         heat_specs={"real_sb_pct": +1, "fix_pp": +1},
         fmt={"sprint_speed": lambda v: f"{v:.1f}", "real_sb_pct": lambda v: f"{v*100:.0f}%",
              "sb_attempts": lambda v: f"{int(v)}"}, size=9)
     cap = doc.add_paragraph(); cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    rr = cap.add_run("Table 4 — 2025 technique-fix board. \"Fix → success gain\" = projected percentage-"
-                     "point gain if the weakest lever is raised to league average (via the Table-1 "
-                     "weights); higher success rate = redder here is worse, greener is better.")
+    rr = cap.add_run("Table 4 — 2025 technique-fix board. \"Fix → + steals/20\" = the extra steals a runner "
+                     "would gain over 20 tries if his weakest skill were raised to league average. Red "
+                     "success rate = caught too often today; that's the opportunity.")
     rr.italic = True; rr.font.size = Pt(8.5); rr.font.color.rgb = RGBColor.from_string("666666")
 
     doc.add_page_break()
 
     # ---- P5: what to coach (tied to the equation) + honest caveats -----------
     H(doc, "4  What To Coach — Three Priorities, and the Caveats")
-    body(doc, "The equation in Section 1 points to three trainable levers. Each is technique, not body "
-              "type — which is why a slow runner can lead the league in steal skill. The payoff below is "
-              "straight off Table 1.", size=10, after=6)
+    body(doc, "Section 1 names three trainable skills. Each is technique, not body type — which is why a "
+              "slow runner can lead the league in steal skill. The payoff below is straight off Table 1.",
+         size=10, after=6)
     for head, txt in [
-        ("Cover more ground once the pitcher commits.  (+25 pts ≈ +5 bags / 20 tries)",
+        ("Cover more ground once the pitcher commits.  (+5 steals / 20 tries)",
          "The single biggest lever. Train the secondary-lead explosion and the read of the pitcher's first "
          "move — distance gained before the throw is worth more than raw foot speed."),
-        ("Sharpen the jump.  (+17 pts ≈ +3 bags / 20 tries)",
+        ("Sharpen the jump.  (+3 steals / 20 tries)",
          "Cutting the time to the first 30 feet is pure technique — stance, weight shift, and first-step "
          "direction, not body type."),
-        ("Reach top speed sooner — first-step burst.  (+10 pts ≈ +2 bags / 20 tries)",
+        ("Reach top speed sooner.  (+2 steals / 20 tries)",
          "Runners who hit top gear in fewer feet steal above their speed peers. Acceleration mechanics, "
          "not a higher top speed, are what convert."),
     ]:
@@ -818,8 +831,8 @@ def build_main():
     for head, txt in [
         ("The target boards are estimates, not forecasts.",
          "\"If unleashed\" holds a runner at his own 2025 success rate and a modest ~20-attempt volume; "
-         "real results depend on health, matchups, and game situation. Treat the bag counts as a "
-         "priority ranking, not a guarantee."),
+         "real results depend on health, matchups, and game situation. Treat the steal projections as a "
+         "priority ranking — not a guarantee."),
         ("Per-lever gains assume the rest stays equal.",
          "A +1-SD improvement is real but ambitious, and the model holds the other skills fixed. Small, "
          "compounding gains across two levers are more realistic than a single full-SD jump."),
@@ -920,7 +933,7 @@ def build_appendix():
         variables=["Coachable lever", "League Avg", "One-Step Improvement", "Success-Rate Change", "Extra steals"])
     add_fig(doc, FIG_DIR / "Fig_v8_Equation.png", 6.8,
             "Figure B1 — log-odds(success) = β₀ + Σ βᵢ·zᵢ. Each bar is the per-1-SD coefficient as a "
-            "percentage-point change in success rate (and net bags / 20 attempts). Green = trainable, "
+            "percentage-point change in success rate. Green = trainable, "
             "grey = context, orange = raw speed.")
     body(doc, "Reading the weights: 'pp' = percentage points of success rate per one-standard-deviation "
               "improvement (one SD = the 'One-Step' column). The odds multiplier is the same effect on the "
