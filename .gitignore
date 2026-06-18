@@ -24,7 +24,8 @@ venv/
 .cache/
 
 ## league-wide raw per-attempt leads cache (regenerable from Savant; ~770 small CSVs)
-Computer Vision/discovery/leads_cache/
+Computer Vision/data/discovery/leads_cache/
+Computer Vision/**/leads_cache/
 
 ## CV model weights (downloaded on first run, large, regenerable)
 *.pt
@@ -45,3 +46,9 @@ Computer Vision/**/qa_recover/
 
 ## v1 legacy (still kept locally as reference, but don't push)
 stolen_base_analysis.py
+
+## CatBoost training logs (regenerable)
+catboost_info/
+
+## MS Office lock/temp files
+~$*

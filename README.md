@@ -1,5 +1,18 @@
 # The Naylor Model
 
+> ### Open this first
+> | If you want to… | Open |
+> |---|---|
+> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v8_Report.docx`](Naylor_Model_v8_Report.docx)** |
+> | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** |
+> | **See the data** | `Naylor_Model_Data.csv` (runners) · `Naylor_Model_Results.csv` (model results) |
+> | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
+>
+> Everything else is plumbing: `scripts/` (code) · `data/` (working files) · `Figures/` · `Reports/`
+> (appendix + archives) · `Computer Vision/` (CV pilot) · `Previous Versions/`.
+
+---
+
 José Caballero led MLB in net stolen bases in 2025 running a quarter-second slower than Chandler Simpson. Shohei Ohtani was the second most productive base-stealer in 2024 despite being 0.14 seconds slower than Elly De La Cruz. Most strikingly, Josh Naylor stole 20 bases above average at 93.8% success while running slower than 97% of the league. Sprint speed is the most intuitive base-stealing metric — it is not the most essential one.
 
 What separates these runners is technique — and technique is coachable precisely because it reflects what a player has learned to do with their body, not what their body is built to do. Sprint speed is structural. Primary lead distance, secondary lead timing, and first-step burst off the pitcher's first move are behavioral patterns that haven't permanently locked in, which means they can be shifted.
@@ -14,14 +27,15 @@ That's why specificity with the biomechanics suite matters. Knowing a runner has
 
 | | |
 |---|---|
-| ⭐ **[Main Report — v8 (DOCX)](Reports/Naylor_Model_v8_Report.docx)** | **Start here.** Applied BLUF report for MLB R&D + coaches — the **steal-success equation** (what each trainable skill is worth per +1 SD, in points *and* extra bags), the SSSI skill matrix, the speed-vs-production quadrant, and a **2025 coaching target board** (green-light vs. technique-fix). Plain-English, self-contained pages, built around the *trait* — a slow runner who steals better than ~99% of MLB — not any one player |
+| ⭐ **[Main Report — v8 (DOCX)](Naylor_Model_v8_Report.docx)** | **Start here.** Applied BLUF report for MLB R&D + coaches — the **steal-success equation** (what each trainable skill is worth per +1 SD, in points *and* extra bags), the SSSI skill matrix, the speed-vs-production quadrant, and a **2025 coaching target board** (green-light vs. technique-fix). Plain-English, self-contained pages, built around the *trait* — a slow runner who steals better than ~99% of MLB — not any one player |
 | 🧾 **[v8 Technical Appendix (DOCX)](Reports/Naylor_Model_v8_Technical_Appendix.docx)** | Full model detail for auditors — Models A/B/C + de-leaked AUC, complete GLM weight table, full SSSI Top 25, xSB leaderboards, and the Blueprint Conversion Score with **team logos** |
 | 📄 **[Comprehensive Report — v7 (DOCX)](Reports/Naylor_Model_v7_Report.docx)** | Prior all-in-one v7 report — Models A/B/C, AUC, GLM, SSSI, xSB **color-coded SD tables**, plus the full Blueprint Conversion Score section (§5.3 archetype profile, per-season Top 25 with **team logos**) |
-| 🧬 **[Blueprint Report](Reports/Naylor_Blueprint_Report.pdf)** | Standalone Blueprint Conversion Score — top (Naylor archetype) to bottom (fast squanderers), 2023–2026 |
+| 📓 **[Master Notebook](Naylor_Model.ipynb)** | End-to-end pipeline in one notebook — data → SSSI → tuned-XGBoost Model B → GLM equation → xSB → report |
+| 🗺️ **[AUC Roadmap](AUC_Roadmap.md)** | How to push the model's AUC higher — the untapped matchup variables, ranked |
 | 📖 **[Variable Glossary](Reports/Variable_Glossary.pdf)** | Plain-English reference, trimmed 80-20 — every metric on a compact card (units, tiers, example, why it matters) + core model discussion (12 pp) |
 | 🖼️ **[Figures](Figures/)** | All charts and visualizations |
-| 📊 **[Data Frame](Data%20Frame/)** | All output CSVs — leaderboards, SSSI rankings, model results |
-| 🧠 **[Computer Vision](Computer%20Vision/)** | Statcast Analysis Core (Blueprint model) + archived CV delivery-time pilot |
+| 📊 **[data/](data/)** | Working CSVs (DF_v7_*, benchmark, tuning) + xlsx workbooks; curated summaries are the two root CSVs |
+| 🧠 **[Computer Vision](Computer%20Vision/)** | All CV analysis — Statcast Analysis Core (Blueprint model) + the CV delivery-time pilot |
 | 🗂️ **[Previous Versions](Previous%20Versions/)** | Archived v3, v4, v5, v6 pipelines and outputs |
 
 ---
@@ -131,66 +145,78 @@ xSB is descriptive, not predictive — it is deliberately kept out of the GBM (z
 
 | Model | Unit | AUC | Purpose |
 |---|---|---|---|
-| **Model B** (season GBM) | Runner-season | 0.589 (full) · 0.608 (pre-23) | Headline predictor |
-| Model A (per-attempt GBM) | Individual attempt | ~0.59 | Strict noise-floor test |
+| **Model A** (per-attempt XGBoost) | Individual attempt | **0.739** | Strongest predictor — does *this* steal succeed |
+| Model B (season XGBoost, Bayesian-tuned) | Runner-season | 0.624 (full) · 0.665 (post-23) | Ranks season-long skill |
 | GLM | Runner-season | — | Interpretable weight table |
 
-> **AUC caveat (v7 de-leaking).** Earlier versions (v4–v6) reported AUCs of ~0.66–0.70, but those
+**v9 — the per-attempt model (AUC 0.739).** Moving from 673 season aggregates to the **~10,400
+individual tracked attempts** (Statcast leads cache, `scripts/model_perattempt.py`) lifts CV AUC to
+**0.739** — into the target range. The driver is the per-pitch **lead distances** (how much ground the
+runner actually covered on that attempt), which is exactly this project's thesis. Leakage-checked: no
+outcome-derived columns; catcher/pitcher tendencies are out-of-fold encoded (and, tellingly, *don't*
+help — the leads carry the signal).
+
+**Why not deep learning?** At ~10k rows and a dozen tabular features, gradient boosting (XGBoost/
+CatBoost) is the right tool — neural nets need far more data and overfit here. Honest ceiling on public
+data is ~0.74–0.78; reaching it further needs richer per-pitch matchup data (pitcher handedness, pitch
+type), see [`AUC_Roadmap.md`](AUC_Roadmap.md).
+
+**v8 model update (season model).** Model B was upgraded from a gradient-boosting classifier to a
+Bayesian-tuned XGBoost; on the same de-leaked data, season CV AUC rose 0.589 → **0.624** overall and
+0.588 → **0.665** post-2023. A six-classifier benchmark and the tuning history live in
+`Naylor_Model_Results.csv`. The SSSI rankings and the steal-success equation are unchanged.
+
+> **AUC caveat (de-leaking).** Earlier versions (v4–v6) reported AUCs of ~0.66–0.70, but those
 > runs carried **duplicate runner-season rows** — repeated Statcast split measurements for the same
-> player-season — that leaked across cross-validation folds and inflated the score. v7 averages those
-> duplicate splits into one row per runner-season, removing the leak. The v7 AUC (0.589 full, 0.608
-> pre-2023) is **lower but honest** — not a regression, just the first de-leaked estimate. The
-> historical bars in `Fig_v7_AUC.png` are kept for context only and are not a fair comparison.
+> player-season — that leaked across cross-validation folds and inflated the score. v7 averaged those
+> duplicate splits into one row per runner-season, removing the leak; v8 keeps that fix and swaps in the
+> tuned XGBoost. The de-leaked AUCs are **lower but honest** — not a regression. The historical bars in
+> `Fig_v7_AUC.png` are kept for context only and are not a fair comparison.
 
 ---
 
 ## How to Run
 
 ```bash
-# Full v7 model pipeline
-python3 v7_explore.py        # full pipeline → "Data Frame"/, Figures/, Reports/ (CSVs, figures, xlsx)
-python3 build_v8_report.py   # ⭐ 4-page BLUF main report + Technical Appendix (reads v7 CSVs, no re-run needed)
-python3 build_v7_report.py   # prior comprehensive v7 report → Reports/Naylor_Model_v7_Report.docx
-python3 write_glossary.py    # regenerate Variable Glossary → Reports/
+# Refresh the headline model artifacts (no network — reads the cached feature CSV)
+python3 scripts/model_xgb.py     # tuned-XGBoost Model B → AUC + importance CSVs, figures, 2 root CSVs
+python3 scripts/build_v8_report.py  # ⭐ main report (root) + Technical Appendix (Reports/) — reads data/
 
-# Blueprint pipeline (Jupyter notebooks — recommended)
-jupyter notebook "Computer Vision/Statcast Analysis Core/Data Pipeline.ipynb"
-jupyter notebook "Computer Vision/Statcast Analysis Core/Blueprint Analysis.ipynb"
+# Compare models / re-tune (no network)
+python3 scripts/benchmark_models.py # 6-classifier AUC bake-off → data/DF_benchmark_AUC.csv
+python3 scripts/tune_xgboost.py     # Optuna Bayesian HPO → data/DF_xgb_tuned_params.csv
 
-# Or run scripts directly (requires network for data pipeline)
-python3 "Computer Vision/Statcast Analysis Core/ground_covered_leaderboard.py"
-python3 "Computer Vision/Statcast Analysis Core/naylor_blueprint.py"
+# Full data pipeline (requires network — pybaseball / Savant / MLB API)
+python3 scripts/v7_explore.py    # SSSI, Model B, GLM, xSB, figures → data/, Figures/
+python3 scripts/build_v7_report.py  # prior comprehensive v7 DOCX → Reports/
+python3 scripts/write_glossary.py   # Variable Glossary → Reports/
+
+# Blueprint + CV pipelines (Jupyter notebooks under Computer Vision/)
+jupyter notebook "Computer Vision/notebooks/Data Pipeline.ipynb"
+jupyter notebook "Computer Vision/notebooks/Blueprint Analysis.ipynb"
 ```
 
 ---
 
 ## Repository Structure
 
+The repo root is intentionally minimal — the report, one notebook, and two curated CSVs:
+
 ```
 The-Naylor-Model/
-├── v7_explore.py              ← full v7 pipeline (SSSI, Model B, GLM, xSB, figures)
-├── build_v8_report.py         ← ⭐ 4-page BLUF main report + Technical Appendix (plain-English, self-contained pages)
-├── build_v7_report.py         ← prior comprehensive v7 DOCX (color-coded tables, logos, BCS section)
-├── write_glossary.py          ← Variable Glossary generator (compact 80-20 cards)
-├── Figures/                   ← all output PNGs (incl. per-season BCS figures + logos/)
-├── Data Frame/                ← Naylor Blueprint.xlsx (4 sheets), v7 Model.xlsx (9 sheets)
-├── Reports/                   ← v8 main report + Technical Appendix (DOCX), v7 report, glossary, PDFs
-├── Computer Vision/
-│   ├── Statcast Analysis Core/
-│   │   ├── Data Pipeline.ipynb        ← discover runners + fetch leads + ground covered
-│   │   ├── Blueprint Analysis.ipynb   ← BCS scoring + figures + DOCX rebuild
-│   │   ├── discover_runners.py        ← Savant sprint/SB universe fetcher
-│   │   ├── fetch_leads.py             ← per-attempt leads fetcher (imported by pipeline)
-│   │   ├── ground_covered_leaderboard.py ← gain-to-release leaderboard (2023–2026)
-│   │   ├── naylor_blueprint.py        ← BCS model + per-season Top/Bot 25 tables
-│   │   └── build_blueprint_report.js  ← Node.js DOCX builder
-│   ├── discovery/             ← runner universe CSVs (2023–2026)
-│   └── discovery/leads_cache/ ← per-attempt leads cache (gitignored, regenerable)
-└── Previous Versions/
-    ├── v3/                    ← naylor_model.py + v3 outputs
-    ├── v4/                    ← v4_explore.py + v4 outputs
-    ├── v5/                    ← v5_explore.py + v5 outputs
-    └── v6/                    ← v6_explore.py + v6 outputs (figures, v6 Model.xlsx)
+├── Naylor_Model.ipynb           ← ⭐ master notebook (data → SSSI → tuned-XGBoost Model B → GLM → xSB → report)
+├── Naylor_Model_v8_Report.docx  ← ⭐ the applied BLUF report (XGBoost-updated)
+├── Naylor_Model_Data.csv        ← runner-season master (features + SSSI rankings)
+├── Naylor_Model_Results.csv     ← model results: GLM weights + AUC by era + benchmark + tuned params
+├── AUC_Roadmap.md               ← how to push AUC higher (matchup-variable roadmap)
+├── README.md
+├── scripts/        ← v7_explore.py, model_xgb.py, build_v8_report.py, build_v7_report.py,
+│                     write_glossary.py, benchmark_models.py, tune_xgboost.py, make_main_notebook.py
+├── Figures/        ← all output PNGs (incl. per-season BCS figures + logos/)
+├── data/           ← working CSVs (DF_v7_*, benchmark, tuning) + Naylor Blueprint.xlsx, v7 Model.xlsx
+├── Reports/        ← v8 Technical Appendix + v7 report, glossary PDFs
+├── Computer Vision/← all CV analysis (notebooks/ code/ data/ archive/) — see its own README
+└── Previous Versions/  ← v3–v6 pipelines and outputs
 ```
 
 ---

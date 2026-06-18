@@ -1,0 +1,114 @@
+========================================================================
+ THE NAYLOR MODEL  ·  v6  (intuitive outputs)
+========================================================================
+
+[1/10] Loading cached data …
+   Pitches w/ runner on 1st: 1,718,862
+   Catcher-seasons:          799
+   Pitchers w/ running-game: 444
+   Runners w/ lead profile:  394
+   Pickoff rates loaded:     440
+   Sprint-speed rows:        6,992
+   Running-splits rows:      6,119
+   MLB SB rows:              11,905
+
+[2/10] Building runner-season frame …
+   Runner-seasons: 6,119  ·  qualified: 1,466
+   League SB% = 0.779
+
+[3/10] Parsing SB attempts from des …
+   Attempts identified: 2,528
+   Attempts joined with battery: 2,528
+     pop_time                  100.0% non-null
+     pickoff_rate               43.0% non-null
+     primary_lead               54.5% non-null
+     sprint_speed               94.5% non-null
+
+[4/10] Model B — season-level GBM …
+   Qualified rows w/ all features: 758
+
+         full  n= 758  AUC=0.6623
+     pre_2023  n= 303  AUC=0.6997
+    post_2023  n= 455  AUC=0.6760
+
+[5/10] Simple GLM with intuitive metric names …
+
+   Baseline P(success) at all-mean inputs ≈ 0.605
+
+   Feature                           Boost (pp)    Odds×  Note
+   Post-Release Distance                 +16.25    2.155  ↑helps
+   Jump Time                              +9.54    1.526  ↓helps
+   Accel Gap                              +7.74    1.402  ↑helps
+   Avg Catcher Pop Faced                  -7.06    0.749  ↑helps
+   Two-Strike Count Share                 +4.37    1.206  ↓helps
+   Primary Lead                           -3.21    0.876  ↑helps
+   Sprint Speed (capped at 28)            -3.02    0.883  ↑helps
+   Share vs Weak-Arm Catchers             +2.63    1.118  ↑helps
+   Bolts                                  +2.61    1.117  ↑helps
+   Avg Pitcher Pickoff Rate Faced         +2.51    1.112  ↓helps
+   Lead Gain (jerk)                       +2.17    1.096  ↑helps
+   Pre-Release Velocity                   +2.17    1.096  ↑helps
+
+[6/10] SSSI v6 (held-out weight search) …
+   Best Naylor+Soto mean z: 2.980
+   Weights: sb_res=0.1 gap=0.05 gain=0.05 jump=0.0 prim=0.05 speed=-0.3 pre=0.0 post=0.0
+
+   Top 10 by SSSI_v6:
+ rank_v6       player_name  season       era  sprint_speed  jump_time  primary_lead  lead_gain  avg_pre_release_velocity  avg_post_release_distance  SB  CS  real_sb_pct  sb_residual  SSSI_v6
+       1       Josh Naylor    2025 post_2023          24.4       1.87         9.808      3.874                     2.980                     41.478  30   2        0.916        0.122    1.902
+       2       Josh Naylor    2026 post_2023          24.5       1.84         9.808      3.874                     2.980                     42.793  12   2        0.836        0.045    1.780
+       3   Freddie Freeman    2024 post_2023          25.8       1.81        12.235      4.332                     3.332                     46.760   9   2        0.806        0.042    1.257
+       4 Christian Vázquez    2021  pre_2023          25.2       1.93        10.673      3.763                     2.894                     42.260   8   4        0.700       -0.074    1.224
+       5         Juan Soto    2025 post_2023          25.8       1.85        12.058      3.112                     2.394                     46.208  38   4        0.891        0.128    1.207
+       6    Kyle Schwarber    2025 post_2023          25.9       1.79        11.027      4.432                     3.409                     46.970  10   2        0.817        0.055    1.172
+       7      Miguel Rojas    2024 post_2023          25.8       1.88        12.167      4.370                     3.362                     44.524   8   2        0.793        0.030    1.145
+       8       Kyle Tucker    2024 post_2023          26.0       1.80        10.725      3.005                     2.312                     46.897  11   0        0.931        0.170    1.133
+       9     Manny Machado    2024 post_2023          25.8       1.86        11.763      3.305                     2.542                     45.951  11   2        0.827        0.064    1.115
+      10     Alec Burleson    2024 post_2023          25.5       1.88        11.441      3.333                     2.564                     45.586   9   4        0.716       -0.052    1.114
+
+   Naylor + Soto under SSSI_v6:
+ rank_v6 player_name  season       era  sprint_speed  jump_time  primary_lead  lead_gain  avg_pre_release_velocity  avg_post_release_distance  SB  CS  real_sb_pct  sb_residual  SSSI_v6
+       1 Josh Naylor    2025 post_2023          24.4       1.87         9.808      3.874                     2.980                     41.478  30   2        0.916        0.122    1.902
+       2 Josh Naylor    2026 post_2023          24.5       1.84         9.808      3.874                     2.980                     42.793  12   2        0.836        0.045    1.780
+       5   Juan Soto    2025 post_2023          25.8       1.85        12.058      3.112                     2.394                     46.208  38   4        0.891        0.128    1.207
+      14 Josh Naylor    2023 post_2023          25.8       1.83         9.808      3.874                     2.980                     44.843  10   3        0.772        0.008    1.016
+      75   Juan Soto    2023 post_2023          26.8       1.80        12.058      3.112                     2.394                     48.340  12   5        0.722       -0.033    0.486
+      84   Juan Soto    2024 post_2023          26.8       1.79        12.058      3.112                     2.394                     49.350   7   4        0.681       -0.075    0.451
+     124   Juan Soto    2019  pre_2023          27.3       1.83        12.058      3.112                     2.394                     49.562  12   1        0.883        0.127    0.286
+     145   Juan Soto    2021  pre_2023          27.0       1.80        12.058      3.112                     2.394                     48.701   9   7        0.614       -0.142    0.227
+
+[7/10] Leaderboards …
+   DF_v6_LB_JumpTime.csv                             180 rows
+   DF_v6_LB_LeadGain.csv                             175 rows
+   DF_v6_LB_PreReleaseVelocity.csv                   175 rows
+   DF_v6_LB_PostReleaseDistance.csv                  180 rows
+
+[8/10] Figures …
+   4 v6 figures written.
+
+[9/10] PDF report …
+   wrote /Users/shunchen/Desktop/The-Naylor-Model/Naylor_Model_v6_Report.pdf
+
+========================================================================
+ v6 EXPLORATORY PIPELINE COMPLETE
+========================================================================
+   DF_v6_GLM_PlainEnglish.csv                        0.9 KB
+   DF_v6_Importance.csv                              1.6 KB
+   DF_v6_LB_JumpTime.csv                            23.3 KB
+   DF_v6_LB_LeadGain.csv                            27.3 KB
+   DF_v6_LB_PostReleaseDistance.csv                 24.7 KB
+   DF_v6_LB_PreReleaseVelocity.csv                  28.5 KB
+   DF_v6_ModelB_AUC.csv                              0.1 KB
+   DF_v6_SSSI.csv                                  430.8 KB
+   Fig_v6_AUC.png                                   39.9 KB
+   Fig_v6_GLM_PlainEnglish.png                      81.5 KB
+   Fig_v6_Importance_PrePost.png                    90.5 KB
+   Fig_v6_NaylorSoto_Profile.png                   158.7 KB
+   Naylor_Model_v6_Report.pdf            319.3 KB
+
+Headline:
+  v4 baseline:       0.6300
+  v5 Model B:        0.6794
+  v6 Model B (full): 0.6623
+  v6 Model B (pre):  0.6997
+  v6 Model B (post): 0.6760
