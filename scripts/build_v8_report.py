@@ -174,6 +174,27 @@ def set_margins(doc, top=0.6, bottom=0.6, left=0.7, right=0.7):
         s.top_margin = Inches(top); s.bottom_margin = Inches(bottom)
         s.left_margin = Inches(left); s.right_margin = Inches(right)
 
+def callout_box(doc, title, items, body_shade="F2F7FB", lead_color=None):
+    """Shaded, titled callout box. items = list of (bold lead, text)."""
+    lead_color = lead_color or NAVY
+    tbl = doc.add_table(rows=2, cols=1); tbl.style = "Table Grid"
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    tc = tbl.rows[0].cells[0]
+    _set_cell_text(tc, title, bold=True, size=10.5, color="FFFFFF"); shade(tc, NAVY)
+    bc = tbl.rows[1].cells[0]; shade(bc, body_shade)
+    bc.paragraphs[0].text = ""
+    first = True
+    for lead, txt in items:
+        p = bc.paragraphs[0] if first else bc.add_paragraph(); first = False
+        p.paragraph_format.space_after = Pt(2)
+        if lead:
+            rb = p.add_run(lead + "  "); rb.bold = True; rb.font.size = Pt(9.5)
+            rb.font.color.rgb = RGBColor.from_string(lead_color)
+        rt = p.add_run(txt); rt.font.size = Pt(9.5)
+    for r in tbl.rows: r.cells[0].width = Inches(7.0)
+    doc.add_paragraph().paragraph_format.space_after = Pt(2)
+    return tbl
+
 # ── plain-English glossary (single source of truth) ───────────────────────────
 GLOSSARY = [
     ("Slow-Steal Skill (SSSI)", "Overall technique score — how good a runner is beyond what raw speed explains. Higher = more skill."),
@@ -585,32 +606,36 @@ def build_main():
          "and the projected prize, and (4) the three drills that move the needle most.",
          size=10, after=8)
 
-    H(doc, "What the metrics mean (everything you need — no other pages required)", lvl=2)
-    add_glossary_table(doc, GLOSSARY)
-    doc.add_paragraph().paragraph_format.space_after = Pt(2)
+    # The 10-second key — pts↔steals made obvious BEFORE any number appears.
+    callout_box(doc, "READING THE NUMBERS  ·  the 10-second key", [
+        ("\"pts\" = steals.",
+         "\"pts\" is the gain in steal-success rate. We never make you do the math — every \"pts\" is also "
+         "printed as steals. Rule of thumb: +5 pts ≈ one extra stolen base (and one fewer caught) per 20 "
+         "tries. So \"+25 pts\" ≈ +5 steals a season."),
+        ("Colors rank within a table.",
+         "Green = best of the players shown, red = worst of those shown (can still beat the MLB average), "
+         "gold = the Naylor/Soto archetype. The charts use no red — every runner shown is already elite."),
+        ("What it's for.",
+         "Deciding who to develop and what to drill — not predicting any single steal (stealing is "
+         "high-variance; the model's accuracy is in the Appendix)."),
+    ])
 
-    H(doc, "How to read this report", lvl=2)
-    legend_line(doc)
-    for head, txt in [
-        ("Colors are a within-table ranking, not a league verdict.",
-         "Green = a strength, red = a weakness, white = middle — but only versus the other players in "
-         "that same table. A red cell can still be an above-average MLB number; it just trails the others "
-         "shown. On the leaderboard figures there is deliberately no red at all: bars are gold for slow "
-         "runners and blue for fast, because every runner shown is already elite."),
-        ("\"Percentage points\" are always translated into steals.",
-         "A percentage point (pp) is a raw change in success rate — going from 78% to 80% is +2 pp. So you "
-         "never have to do the math, every pp is also shown as bags: for a runner who tries ~20 steals a "
-         "season, +5 pp ≈ one extra stolen base and one fewer caught-stealing."),
-        ("What this model is good at.",
-         "It is strong at ranking steal skill and telling you which techniques pay off — that is what the "
-         "equation and the rankings deliver. It is deliberately not a single-pitch oracle: stealing is "
-         "high-variance, so no model calls individual attempts well (the honest, de-leaked predictive "
-         "accuracy is in the Technical Appendix). Use it to decide who to develop and what to drill."),
-    ]:
-        p = doc.add_paragraph(); p.paragraph_format.space_after = Pt(3)
-        rb = p.add_run(head + "  "); rb.bold = True; rb.font.size = Pt(9.5)
-        rb.font.color.rgb = RGBColor.from_string(NAVY)
-        rt = p.add_run(txt); rt.font.size = Pt(9.5)
+    # 80/20 headline: the three coachable levers, with their steal payoff, up front.
+    H(doc, "If you read nothing else: the three levers that move a steal", lvl=2)
+    gt = glm.copy()
+    gt["kind"]  = gt["feature"].map(GLM_KIND).fillna("context")
+    gt["lever"] = gt["feature"].map(GLM_PLAIN).fillna(gt["feature"])
+    gt["absb"]  = gt["sb_pct_boost_per_tier"].abs()
+    gt = gt[gt["kind"] == "train"].sort_values("absb", ascending=False).head(3)
+    teaser = []
+    for _, row in gt.iterrows():
+        pp = float(row["sb_pct_boost_per_tier"]); n = round(pp / 100 * SEASON_ATTEMPTS)
+        teaser.append((f"≈ +{n} steals / 20 tries", f"{row['lever']}  ({pp:+.0f} pts for a +1-step gain)."))
+    callout_box(doc, "The 80/20 — coach these, in order of payoff", teaser, body_shade="F3F8F3",
+                lead_color="2E7D32")
+    body(doc, "All three are technique, not body type — which is why a slow runner can lead the league in "
+              "steal skill. Section 1 shows the full equation behind these; Section 4 turns them into drills.",
+         size=9.5, after=4)
 
     doc.add_page_break()
 
@@ -805,6 +830,14 @@ def build_main():
         p = doc.add_paragraph(style="List Bullet"); p.paragraph_format.space_after = Pt(2)
         rb = p.add_run(head + "  "); rb.bold = True; rb.font.size = Pt(9.5)
         rt = p.add_run(txt); rt.font.size = Pt(9.5)
+
+    # ---- Metric reference (dig-deeper layer, kept at the back) ----------------
+    doc.add_page_break()
+    H(doc, "Metric Reference — flip here anytime")
+    body(doc, "Plain-English definition of every metric used above. You don't need this to read the "
+              "report — each section already defines the variables it uses — but it's here if you want "
+              "to dig into a specific number.", size=9.5, after=4)
+    add_glossary_table(doc, GLOSSARY)
 
     doc.save(str(OUT_MAIN))
     print(f"wrote {OUT_MAIN}  ({OUT_MAIN.stat().st_size/1024:.0f} KB)")
