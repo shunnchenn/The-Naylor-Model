@@ -1,15 +1,16 @@
 # The Naylor Model
 
-> ### Open this first
+> ### Open this first  (V10)
 > | If you want to… | Open |
 > |---|---|
-> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v8_Report.docx`](Naylor_Model_v8_Report.docx)** |
+> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_V10_Report.docx`](Naylor_Model_V10_Report.docx)** |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** |
-> | **See the data** | `Naylor_Model_Data.csv` (runners) · `Naylor_Model_Results.csv` (model results) |
+> | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
+> | **See the outputs** | `Output/Tables/` (Statcast leaderboards) · `Output/Figures/` · `Output/Results/` |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
 >
-> Everything else is plumbing: `scripts/` (code) · `data/` (working files) · `Figures/` · `Reports/`
-> (appendix + archives) · `Computer Vision/` (CV pilot) · `Previous Versions/`.
+> Everything else is plumbing: `Scripts/` (code) · `Reports/` (appendix + glossary) ·
+> `Computer Vision/` (CV pilot) · `Previous Versions/` (v3–v8).
 
 ---
 
@@ -27,42 +28,37 @@ That's why specificity with the biomechanics suite matters. Knowing a runner has
 
 | | |
 |---|---|
-| ⭐ **[Main Report — v8 (DOCX)](Naylor_Model_v8_Report.docx)** | **Start here.** Applied BLUF report for MLB R&D + coaches — the **steal-success equation** (what each trainable skill is worth per +1 SD, in points *and* extra bags), the SSSI skill matrix, the speed-vs-production quadrant, and a **2025 coaching target board** (green-light vs. technique-fix). Plain-English, self-contained pages, built around the *trait* — a slow runner who steals better than ~99% of MLB — not any one player |
-| 🧾 **[v8 Technical Appendix (DOCX)](Reports/Naylor_Model_v8_Technical_Appendix.docx)** | Full model detail for auditors — Models A/B/C + de-leaked AUC, complete GLM weight table, full SSSI Top 25, xSB leaderboards, and the Blueprint Conversion Score with **team logos** |
-| 📄 **[Comprehensive Report — v7 (DOCX)](Reports/Naylor_Model_v7_Report.docx)** | Prior all-in-one v7 report — Models A/B/C, AUC, GLM, SSSI, xSB **color-coded SD tables**, plus the full Blueprint Conversion Score section (§5.3 archetype profile, per-season Top 25 with **team logos**) |
-| 📓 **[Master Notebook](Naylor_Model.ipynb)** | End-to-end pipeline in one notebook — data → SSSI → tuned-XGBoost Model B → GLM equation → xSB → report |
+| ⭐ **[Main Report — V10 (DOCX)](Naylor_Model_V10_Report.docx)** | **Start here.** Applied report for MLB R&D + coaches — what each skill is worth (in steals), Statcast-style leaderboards of who already has it, the speed-vs-production quadrant, and a **2025 coaching target board** (green-light vs. technique-fix). Built around the *trait* — a slow runner who steals better than ~99% of MLB — not any one player |
+| 🧾 **[V10 Technical Appendix (DOCX)](Reports/Naylor_Model_V10_Technical_Appendix.docx)** | Full model detail for auditors — Models A/B/C + de-leaked AUC, complete GLM weight table, full SSSI Top 25, xSB leaderboards, and the Blueprint Conversion Score with **team logos** |
+| 📓 **[Master Notebook](Naylor_Model.ipynb)** | End-to-end pipeline — raw data → SSSI → tuned-XGBoost Model B → GLM → xSB → Statcast tables → report |
+| 🖼️ **[Statcast leaderboards](Output/Tables/)** | Slow-Steal Skill, Blueprint Conversion, Ground Covered — headshot + team logo + heat-colored headline |
 | 🗺️ **[AUC Roadmap](AUC_Roadmap.md)** | How to push the model's AUC higher — the untapped matchup variables, ranked |
-| 📖 **[Variable Glossary](Reports/Variable_Glossary.pdf)** | Plain-English reference, trimmed 80-20 — every metric on a compact card (units, tiers, example, why it matters) + core model discussion (12 pp) |
-| 🖼️ **[Figures](Figures/)** | All charts and visualizations |
-| 📊 **[data/](data/)** | Working CSVs (DF_v7_*, benchmark, tuning) + xlsx workbooks; curated summaries are the two root CSVs |
+| 📖 **[Variable Glossary](Reports/Variable_Glossary.pdf)** | Plain-English reference — every metric on a compact card (units, tiers, example, why it matters) |
 | 🧠 **[Computer Vision](Computer%20Vision/)** | All CV analysis — Statcast Analysis Core (Blueprint model) + the CV delivery-time pilot |
-| 🗂️ **[Previous Versions](Previous%20Versions/)** | Archived v3, v4, v5, v6 pipelines and outputs |
+| 🗂️ **[Previous Versions](Previous%20Versions/)** | Archived v3–v8 pipelines, reports, and figures |
 
 ---
 
 ## Key Results
 
-### The Steal-Success Equation — What Each Trainable Skill Is Worth (per +1 SD)
-Every lever's coefficient (β), its points of success-rate change for a one-standard-deviation gain, and the plain-English translation into **extra bags over a 20-attempt season**. Bars are color-keyed: green = trainable, gray = opponent/context, orange = raw speed (barely moves the needle).
-![Steal-Success Equation](Figures/Fig_v8_Equation.png)
+### What Each Skill Is Worth — in Steals
+Each lever's payoff as extra steals over a 20-attempt season, from one off-season-sized (+1 SD) gain. Green = trainable, grey = opponent/context, orange = raw speed (barely moves the needle).
+![Steal-Success Equation](Output/Figures/Fig_Equation.png)
+
+### Slow-Steal Skill — Who Already Has It
+![Slow-Steal Skill](Output/Tables/Slow_Steal_Skill.png)
+
+### Blueprint Conversion Score — The Full Skill Index
+![Blueprint Conversion](Output/Tables/Blueprint_Conversion.png)
+
+### Ground Covered Beyond Speed-Expected
+![Ground Covered](Output/Tables/Ground_Covered.png)
 
 ### Expected SB Outcome (xSB) — Speed vs Production Quadrant
-![xSB Quadrant](Figures/Fig_v8_xSB_Quadrant.png)
-
-### Blueprint Conversion Score — Top 25 Per Season (2023–2026)
-![BCS Top 25 by Year](Figures/Fig_v8_BCS_ByYear.png)
-
-### Ground Covered Beyond Speed-Expected — Top 25 Per Season (2023–2026)
-![Ground Covered by Year](Figures/Fig_v8_GroundCovered_ByYear.png)
-
-### Feature Importance — Pre vs Post 2023
-![Feature Importance](Figures/Fig_v7_Importance_PrePost.png)
+![xSB Quadrant](Output/Figures/Fig_xSB_Quadrant.png)
 
 ### Model Accuracy (AUC)
-![AUC](Figures/Fig_v7_AUC.png)
-
-### GLM Weight Table — What Actually Moves the Needle
-![GLM](Figures/Fig_v7_GLM_PlainEnglish.png)
+![AUC](Output/Figures/Fig_AUC.png)
 
 ---
 
@@ -92,7 +88,7 @@ A logistic model turns the metrics above into one readable equation:
 
 > **chance of a successful steal = baseline (≈ 78%) + Σ ( weight × how far above average the runner is, in SDs )**
 
-Each lever's weight (β) is reported as the **points of success-rate change for a +1-SD gain**, then translated into **net bags over a typical 20-attempt season** so the units never leave plain English (`+5 pp ≈ one extra steal and one fewer caught`). Three *trainable* levers dominate — ground covered after the pitcher commits (**+25 pts ≈ +5 bags**), a quicker jump (**+17 pts ≈ +3 bags**), and reaching top speed in fewer feet (**+10 pts ≈ +2 bags**) — while raw top speed barely moves the needle. See `Figures/Fig_v8_Equation.png`.
+Each lever's weight is reported directly in **extra steals over a 20-attempt season** from one off-season-sized (+1 SD) gain. Three *trainable* levers dominate — ground covered after the pitcher commits (**+5 steals**), a quicker jump (**+3**), and reaching top speed in fewer feet (**+2**) — while raw top speed barely moves the needle. See `Output/Figures/Fig_Equation.png`.
 
 ### 2025 Coaching Target Board (v8 — applied)
 
@@ -100,7 +96,7 @@ The equation is turned into next steps via two honest, separated tracks — so a
 
 | Track | Who | The move |
 |---|---|---|
-| **Green-light** | Fast, efficient runners (≥ 80% success) who don't run enough | Just let them run — projected extra bags at their own rate |
+| **Green-light** | Fast, efficient runners (≥ 80% success) who don't run enough | Just let them run — projected extra steals at their own rate |
 | **Technique-fix** | High-volume runners caught too often (< 70% success) | Drill the *one* weakest trainable lever — projected success-rate gain |
 
 The boards are priority rankings, not forecasts: *if unleashed* holds a runner at his own 2025 success rate and a modest ~20-attempt volume.
@@ -146,77 +142,54 @@ xSB is descriptive, not predictive — it is deliberately kept out of the GBM (z
 | Model | Unit | AUC | Purpose |
 |---|---|---|---|
 | **Model A** (per-attempt XGBoost) | Individual attempt | **0.739** | Strongest predictor — does *this* steal succeed |
-| Model B (season XGBoost, Bayesian-tuned) | Runner-season | 0.624 (full) · 0.665 (post-23) | Ranks season-long skill |
-| GLM | Runner-season | — | Interpretable weight table |
+| Model B (season XGBoost, Bayesian-tuned) | Runner-season | 0.624 | Ranks season-long skill |
 
-**v9 — the per-attempt model (AUC 0.739).** Moving from 673 season aggregates to the **~10,400
-individual tracked attempts** (Statcast leads cache, `scripts/model_perattempt.py`) lifts CV AUC to
-**0.739** — into the target range. The driver is the per-pitch **lead distances** (how much ground the
-runner actually covered on that attempt), which is exactly this project's thesis. Leakage-checked: no
-outcome-derived columns; catcher/pitcher tendencies are out-of-fold encoded (and, tellingly, *don't*
-help — the leads carry the signal).
+**Model A — the headline.** Moving from 673 runner-seasons to **~11,169 individual tracked attempts** lifts CV AUC to **0.739**. The driver is per-pitch lead distances — ground covered before and after the pitcher commits — exactly this report's thesis. Catcher/pitcher tendencies are out-of-fold encoded but, tellingly, *don't* help (leads alone carry the signal). See `Scripts/model_perattempt.py` and Technical Appendix §A2 for full methodology.
 
-**Why not deep learning?** At ~10k rows and a dozen tabular features, gradient boosting (XGBoost/
-CatBoost) is the right tool — neural nets need far more data and overfit here. Honest ceiling on public
-data is ~0.74–0.78; reaching it further needs richer per-pitch matchup data (pitcher handedness, pitch
-type), see [`AUC_Roadmap.md`](AUC_Roadmap.md).
+**Why not deep learning?** At ~11k rows and a dozen tabular features, gradient boosting wins — neural nets need far more data and overfit here. Honest ceiling on public data is ~0.74–0.78; to push further, add pitch type at first move and pitcher handedness (see [`AUC_Roadmap.md`](AUC_Roadmap.md)).
 
-**v8 model update (season model).** Model B was upgraded from a gradient-boosting classifier to a
-Bayesian-tuned XGBoost; on the same de-leaked data, season CV AUC rose 0.589 → **0.624** overall and
-0.588 → **0.665** post-2023. A six-classifier benchmark and the tuning history live in
-`Naylor_Model_Results.csv`. The SSSI rankings and the steal-success equation are unchanged.
-
-> **AUC caveat (de-leaking).** Earlier versions (v4–v6) reported AUCs of ~0.66–0.70, but those
-> runs carried **duplicate runner-season rows** — repeated Statcast split measurements for the same
-> player-season — that leaked across cross-validation folds and inflated the score. v7 averaged those
-> duplicate splits into one row per runner-season, removing the leak; v8 keeps that fix and swaps in the
-> tuned XGBoost. The de-leaked AUCs are **lower but honest** — not a regression. The historical bars in
-> `Fig_v7_AUC.png` are kept for context only and are not a fair comparison.
+**Model B — season skill ranking.** Bayesian-tuned XGBoost on de-leaked runner-seasons: CV AUC 0.624 full, 0.665 post-2023. Used for the SSSI and coaching target board — season grain is the right unit for ranking players, even if attempt grain predicts outcomes better.
 
 ---
 
 ## How to Run
 
 ```bash
-# Refresh the headline model artifacts (no network — reads the cached feature CSV)
-python3 scripts/model_xgb.py     # tuned-XGBoost Model B → AUC + importance CSVs, figures, 2 root CSVs
-python3 scripts/build_v8_report.py  # ⭐ main report (root) + Technical Appendix (Reports/) — reads data/
+# Rebuild the V10 outputs (no network — reads Data/ + Output/Results/)
+python3 Scripts/model_xgb.py        # tuned-XGBoost Model B → AUC + importance → Output/Results, Output/Figures
+python3 Scripts/statcast_tables.py  # Statcast leaderboards → Output/Tables/*.png
+python3 Scripts/build_report.py     # ⭐ main report (root) + Technical Appendix (Reports/)
+
+# Regenerate the raw data (one-time network for assets, then offline)
+python3 Scripts/fetch_assets.py     # MLB headshots + team_map.csv → Output/assets, Data/
+python3 Scripts/consolidate_raw.py  # → Data/Raw_Season.csv + Data/Raw_Attempts.csv
 
 # Compare models / re-tune (no network)
-python3 scripts/benchmark_models.py # 6-classifier AUC bake-off → data/DF_benchmark_AUC.csv
-python3 scripts/tune_xgboost.py     # Optuna Bayesian HPO → data/DF_xgb_tuned_params.csv
+python3 Scripts/benchmark_models.py # 6-classifier AUC bake-off → Output/Results/DF_benchmark_AUC.csv
+python3 Scripts/tune_xgboost.py     # Optuna Bayesian HPO → Output/Results/DF_xgb_tuned_params.csv
 
-# Full data pipeline (requires network — pybaseball / Savant / MLB API)
-python3 scripts/v7_explore.py    # SSSI, Model B, GLM, xSB, figures → data/, Figures/
-python3 scripts/build_v7_report.py  # prior comprehensive v7 DOCX → Reports/
-python3 scripts/write_glossary.py   # Variable Glossary → Reports/
-
-# Blueprint + CV pipelines (Jupyter notebooks under Computer Vision/)
-jupyter notebook "Computer Vision/notebooks/Data Pipeline.ipynb"
-jupyter notebook "Computer Vision/notebooks/Blueprint Analysis.ipynb"
+# Full Statcast pull (requires network — pybaseball / Savant / MLB API)
+python3 Scripts/v7_explore.py       # SSSI, Model B, GLM, xSB → Output/Results, Output/Figures
 ```
 
 ---
 
 ## Repository Structure
 
-The repo root is intentionally minimal — the report, one notebook, and two curated CSVs:
+The root holds the report, one notebook, and three top-level folders — raw in, results out:
 
 ```
-The-Naylor-Model/
-├── Naylor_Model.ipynb           ← ⭐ master notebook (data → SSSI → tuned-XGBoost Model B → GLM → xSB → report)
-├── Naylor_Model_v8_Report.docx  ← ⭐ the applied BLUF report (XGBoost-updated)
-├── Naylor_Model_Data.csv        ← runner-season master (features + SSSI rankings)
-├── Naylor_Model_Results.csv     ← model results: GLM weights + AUC by era + benchmark + tuned params
-├── AUC_Roadmap.md               ← how to push AUC higher (matchup-variable roadmap)
-├── README.md
-├── scripts/        ← v7_explore.py, model_xgb.py, build_v8_report.py, build_v7_report.py,
-│                     write_glossary.py, benchmark_models.py, tune_xgboost.py, make_main_notebook.py
-├── Figures/        ← all output PNGs (incl. per-season BCS figures + logos/)
-├── data/           ← working CSVs (DF_v7_*, benchmark, tuning) + Naylor Blueprint.xlsx, v7 Model.xlsx
-├── Reports/        ← v8 Technical Appendix + v7 report, glossary PDFs
-├── Computer Vision/← all CV analysis (notebooks/ code/ data/ archive/) — see its own README
-└── Previous Versions/  ← v3–v6 pipelines and outputs
+The-Naylor-Model/                    ← = V10
+├── Naylor_Model_V10_Report.docx     ← ⭐ the applied report (Statcast tables, steals units)
+├── Naylor_Model.ipynb               ← ⭐ master notebook (raw → models → tables → report)
+├── AUC_Roadmap.md   README.md
+├── Data/            ← Raw_Season.csv, Raw_Attempts.csv, team_map.csv, Naylor Blueprint.xlsx, v7 Model.xlsx
+├── Output/          ← Figures/ · Tables/ (Statcast PNGs) · Results/ (DF_* model results) · assets/ (headshots, logos)
+├── Scripts/         ← consolidate_raw, fetch_assets, statcast_tables, build_report, model_xgb,
+│                      model_perattempt, v7_explore, benchmark_models, tune_xgboost, make_main_notebook
+├── Reports/         ← V10 Technical Appendix + Variable Glossary PDF
+├── Computer Vision/ ← all CV analysis (notebooks/ code/ data/ archive/) — see its own README
+└── Previous Versions/  ← v3–v8 pipelines, reports, and figures
 ```
 
 ---

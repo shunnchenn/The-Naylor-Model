@@ -61,13 +61,13 @@ FRIENDLY = {
 
 
 def find_dirs(root: Path | None = None):
-    """Resolve (data_dir, figures_dir) whether data lives in 'data/' or 'Data Frame/'."""
+    """Resolve (results_dir, figures_dir) for the V10 Output/ layout."""
     root = root or Path(__file__).resolve().parent
-    # If we live in scripts/, the repo root is the parent.
-    if not (root / "Figures").exists() and (root.parent / "Figures").exists():
+    # Scripts/ lives one level below the repo root.
+    if not (root / "Output").exists() and (root.parent / "Output").exists():
         root = root.parent
-    data_dir = (root / "data") if (root / "data").exists() else (root / "Data Frame")
-    return data_dir, root / "Figures"
+    fig_dir = root / "Output" / "Figures"; fig_dir.mkdir(parents=True, exist_ok=True)
+    return root / "Output" / "Results", fig_dir
 
 
 def load_best_params(data_dir: Path) -> dict:
@@ -151,25 +151,29 @@ def main():
     DF_Imp = pd.DataFrame(imp_rows)
     DF_Imp.to_csv(data_dir / "DF_v7_Importance.csv", index=False)
 
-    # ── Fig: AUC across versions (v7 bar = tuned XGBoost) ────────────────────
+    # ── Fig: Season Model B vs Per-Attempt Model A ───────────────────────────
     full_auc = models["full"]["auc"] if "full" in models else float("nan")
-    fig, ax = plt.subplots(figsize=(7.4, 4.4))
-    labels = ["v4\n(season)", "v5 Model A\n(per-attempt)", "v5 Model B\n(season+new)",
-              "v6 Model B", "v8 Model B\n(XGBoost, de-leaked)"]
-    aucs = [0.6300, 0.5933, 0.6794, 0.6620, full_auc]
-    ax.bar(labels, aucs, color=[COLOR["neutral"], COLOR["accent"], COLOR["post"],
-                                COLOR["below"], COLOR["highlight"]])
+    pa_auc_path = data_dir / "DF_perattempt_AUC.csv"
+    if pa_auc_path.exists():
+        pa_auc = float(pd.read_csv(pa_auc_path).iloc[0]["auc"])
+    else:
+        pa_auc = 0.7387
+    fig, ax = plt.subplots(figsize=(6.0, 4.2))
+    labels = ["Season Model B\n(XGBoost, de-leaked)", "Per-Attempt Model A\n(~11k attempts)"]
+    aucs   = [full_auc, pa_auc]
+    bars = ax.bar(labels, aucs, color=[COLOR["neutral"], COLOR["highlight"]], width=0.5)
+    ax.axhline(0.50, color="#aaaaaa", linewidth=0.8, linestyle="--", zorder=0)
+    ax.text(1.01, 0.50, "coin flip", transform=ax.get_yaxis_transform(),
+            ha="left", va="center", fontsize=7.5, color="#888888")
     ax.set_ylabel("CV AUC"); ax.set_ylim(0.5, 0.85)
-    ax.set_title("Model AUC across versions  (v8 = Bayesian-tuned XGBoost)")
+    ax.set_title("Model AUC — Season vs. Per-Attempt", fontsize=11)
     for i, v in enumerate(aucs):
-        ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=10)
-    ax.text(0.5, -0.30,
-            "v4–v6 bars carried duplicate runner-season rows that leaked across CV folds (optimistic).\n"
-            "v7 de-leaking → one row per runner-season; v8 swaps GBM for a tuned XGBoost on the same de-leaked data.\n"
-            "The v8 bar is the honest tuned AUC and is not directly comparable to the historical bars.",
-            transform=ax.transAxes, ha="center", va="top", fontsize=7, color="#555555")
-    fig.subplots_adjust(bottom=0.34)
-    fig.savefig(fig_dir / "Fig_v7_AUC.png", dpi=160); plt.close(fig)
+        ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=11)
+    ax.text(0.5, -0.10,
+            "Per-attempt model uses ~11k individual attempts; season model uses 673 runner-seasons. Both de-leaked.",
+            transform=ax.transAxes, ha="center", va="top", fontsize=7.5, color="#555555")
+    fig.subplots_adjust(bottom=0.20)
+    fig.savefig(fig_dir / "Fig_AUC.png", dpi=160); plt.close(fig)
 
     # ── Fig: Pre vs Post importance ──────────────────────────────────────────
     if not DF_Imp.empty:
@@ -188,10 +192,9 @@ def main():
         ax.set_xlabel("XGBoost feature importance (gain)")
         ax.set_title("v8 — Feature Importance · Pre vs Post 2023  (tuned XGBoost)")
         ax.legend(); fig.tight_layout()
-        fig.savefig(fig_dir / "Fig_v7_Importance_PrePost.png", dpi=160); plt.close(fig)
+        fig.savefig(fig_dir / "Fig_Importance.png", dpi=160); plt.close(fig)
 
-    write_curated_root_csvs(data_dir, fig_dir.parent)
-    print("model_xgb: wrote AUC + importance CSVs, refreshed figures, and curated root CSVs.")
+    print("model_xgb: wrote AUC + importance CSVs and refreshed figures in Output/.")
     return auc_rows
 
 
