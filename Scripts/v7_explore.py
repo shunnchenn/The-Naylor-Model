@@ -79,8 +79,8 @@ NAYLOR_ID, SOTO_ID = 647304, 665742
 SPEED_CAP        = 28.0
 OUTPUT_DIR       = Path("/Users/shunchen/Desktop/The-Naylor-Model")
 CACHE_DIR        = OUTPUT_DIR / ".cache"
-FIGURES_DIR      = OUTPUT_DIR / "Figures"
-DATA_DIR         = OUTPUT_DIR / "data"
+FIGURES_DIR      = OUTPUT_DIR / "Output" / "Figures"     # V10 layout
+DATA_DIR         = OUTPUT_DIR / "Output" / "Results"     # DF_v7_* results live here
 REPORTS_DIR      = OUTPUT_DIR / "Reports"
 for _d in (FIGURES_DIR, DATA_DIR, REPORTS_DIR):
     _d.mkdir(exist_ok=True)
@@ -481,9 +481,9 @@ for c in ["pop_time","pickoff_rate","primary_lead","sprint_speed"]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. MODEL B — season-level GBM with v7 features
+# 5. SEASON FEATURE FRAME  (shared by the GLM, SSSI, xSB — no predictive Model B)
 # ─────────────────────────────────────────────────────────────────────────────
-print("\n[4/10] Model B — season-level GBM …")
+print("\n[4/10] Building season feature frame (work) …")
 
 V6_FEATURES = [
     "sprint_speed","speed_capped","jump_time","accel_phase","top_speed_phase",
@@ -500,47 +500,12 @@ work = DF_Season[mask_q].dropna(subset=V6_FEATURES+["real_sb_pct"]).copy()
 work["y"] = (work["real_sb_pct"]>=league_sb).astype(int)
 print(f"   Qualified rows w/ all features: {len(work)}")
 
-# v8.3: Model B is now a Bayesian-tuned XGBoost (see model_xgb.py / DF_xgb_tuned_params.csv).
-import sys as _sys
-_sys.path.insert(0, str(Path(__file__).resolve().parent))
-import model_xgb as _mxgb
-_XGB_PARAMS = _mxgb.load_best_params(DATA_DIR)
-
-def fit_season(df_sub, label):
-    if len(df_sub) < 50: return None
-    X = df_sub[V6_FEATURES].values; y = df_sub["y"].values
-    w = df_sub["sb_attempts"].values.astype(float)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
-    preds = cross_val_predict(
-        _mxgb.make_model(_XGB_PARAMS),
-        X, y, cv=cv, method="predict_proba",
-        params={"sample_weight": w})[:,1]
-    return {"label":label, "n":len(df_sub),
-             "auc":roc_auc_score(y, preds), "X":X, "y":y, "w":w}
-
-m_full = fit_season(work,                          "full")
-m_pre  = fit_season(work[work["era"]=="pre_2023"], "pre_2023")
-m_post = fit_season(work[work["era"]=="post_2023"],"post_2023")
-
-print()
-auc_rows = []
-for m in [m_full, m_pre, m_post]:
-    if m is None: continue
-    print(f"   {m['label']:>10}  n={m['n']:>4}  AUC={m['auc']:.4f}")
-    auc_rows.append({"epoch":m["label"], "n":m["n"], "auc":round(m["auc"],4)})
-pd.DataFrame(auc_rows).to_csv(DATA_DIR/"DF_v7_ModelB_AUC.csv", index=False)
-
-# Feature importance (XGBoost gain) per era
-shap_rows = []
-for m in [m_full, m_pre, m_post]:
-    if m is None: continue
-    xgb = _mxgb.make_model(_XGB_PARAMS).fit(m["X"], m["y"], sample_weight=m["w"])
-    imp = xgb.feature_importances_
-    for f, v in zip(V6_FEATURES, imp):
-        shap_rows.append({"epoch":m["label"], "feature":f,
-                          "importance": round(float(v), 4)})
-DF_Imp = pd.DataFrame(shap_rows)
-DF_Imp.to_csv(DATA_DIR/"DF_v7_Importance.csv", index=False)
+# The season-level predictive model (former "Model B", a tuned XGBoost on 673
+# runner-seasons) has been REMOVED. The project's predictive model is per-attempt
+# (Scripts/model_perattempt.py, ~11,000 rows) — the grain that actually decides a steal.
+# This script still builds the season-level DESCRIPTIVE outputs below: the interpretable
+# GLM (Model C), the SSSI composite, the xSB lens, and the leaderboards. `work` is the
+# qualified season frame those share.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -790,61 +755,8 @@ for i, v in enumerate(g["sb_pct_boost_per_tier"]):
 fig.tight_layout()
 fig.savefig(FIGURES_DIR/"Fig_v7_GLM_PlainEnglish.png", dpi=160); plt.close(fig)
 
-# Fig: AUC across versions
-#  NOTE: v4–v6 AUCs were computed BEFORE the v7 de-duplication fix.  Those runs
-#  carried duplicate runner-season rows that leaked across CV folds, inflating
-#  AUC.  v7 averages duplicate split measurements into one row per runner-season,
-#  removing the leak — so the v7 bar is the honest, de-leaked figure and is NOT
-#  directly comparable to the (optimistic) historical bars.
-fig, ax = plt.subplots(figsize=(7.4, 4.4))
-labels = ["v4\n(season)","v5 Model A\n(per-attempt)","v5 Model B\n(season+new)","v6 Model B","v7 Model B\n(de-leaked)"]
-v4_auc = 0.6300
-v5_A = 0.5933
-v5_B = 0.6794
-v6_B = 0.6620
-v7_B = m_full["auc"] if m_full else float("nan")
-aucs = [v4_auc, v5_A, v5_B, v6_B, v7_B]
-ax.bar(labels, aucs, color=[COLOR["neutral"], COLOR["accent"], COLOR["post"], COLOR["below"], COLOR["highlight"]])
-ax.set_ylabel("CV AUC"); ax.set_ylim(0.5, 0.85)
-ax.set_title("Model AUC across versions")
-for i, v in enumerate(aucs):
-    ax.text(i, v+0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=10)
-ax.text(0.5, -0.30,
-        "v4–v6 bars carried duplicate runner-season rows that leaked across CV folds (optimistic).\n"
-        "v7 averages duplicate split measurements → one row per runner-season, removing the leak.\n"
-        "The v7 bar is the honest de-leaked AUC and is not directly comparable to the historical bars.",
-        transform=ax.transAxes, ha="center", va="top", fontsize=7, color="#555555")
-fig.subplots_adjust(bottom=0.34)
-fig.savefig(FIGURES_DIR/"Fig_v7_AUC.png", dpi=160); plt.close(fig)
-
-# Fig: Pre vs Post importance
-fig, ax = plt.subplots(figsize=(9, 6))
-imp = DF_Imp.pivot(index="feature", columns="epoch", values="importance")
-imp_friendly_idx = imp.index.map(
-    lambda f: {"jump_time":"Jump Time","sprint_speed":"Sprint Speed",
-                "primary_lead":"Primary Lead","lead_gain":"Lead Gain",
-                "secondary_lead":"Secondary Lead",
-                "avg_pop_faced":"Pop Time Faced",
-                "avg_pickoff_rate_faced":"Pickoff Rate Faced",
-                "weak_arm_share":"Weak-Arm Catcher Share",
-                "avg_pre_release_velocity":"Pre-Release Velocity",
-                "avg_post_release_distance":"Post-Release Distance",
-                "accel_gap":"Accel Gap","bolts":"Bolts",
-                "speed_capped":"Sprint (capped)","accel_phase":"Accel Phase",
-                "top_speed_phase":"Top-Speed Phase","total_90":"Total 90",
-                "two_strike_share":"Two-Strike Share",
-                "n_attempts":"# Attempts"}.get(f, f))
-imp.index = imp_friendly_idx
-imp = imp.dropna(subset=[c for c in ["pre_2023","post_2023"] if c in imp.columns]).sort_values("post_2023")
-y_ = np.arange(len(imp))
-ax.barh(y_-0.18, imp.get("pre_2023", imp.iloc[:,0]), height=0.36, color=COLOR["pre"], label="pre-2023")
-ax.barh(y_+0.18, imp.get("post_2023", imp.iloc[:,1]), height=0.36, color=COLOR["post"], label="post-2023")
-ax.set_yticks(y_); ax.set_yticklabels(imp.index)
-ax.set_xlabel("Mean |SHAP| importance")
-ax.set_title("v7 — Feature Importance · Pre vs Post 2023")
-ax.legend()
-fig.tight_layout()
-fig.savefig(FIGURES_DIR/"Fig_v7_Importance_PrePost.png", dpi=160); plt.close(fig)
+# (Former Model-B AUC and feature-importance figures removed — the predictive model
+#  is now per-attempt; see Scripts/model_perattempt.py → Fig_AUC.png / Fig_Importance.png.)
 
 
 # Fig: Naylor + Soto Statcast-style profile
@@ -925,7 +837,7 @@ ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
 fig.tight_layout()
 fig.savefig(FIGURES_DIR/"Fig_v7_xSB_Quadrant.png", dpi=160); plt.close(fig)
 
-print("   5 v7 figures written.")
+print("   3 v7 figures written.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -994,21 +906,12 @@ with PdfPages(pdf_path) as pdf:
         "• GLM table shows  'SB % Boost per Tier'  =  pp change in success rate.",
         "• Real catcher pop, pitcher pickoff rate, lead variables.",
         "",
-        "## AUC summary  (READ THE CAVEAT)",
-        f"• v4 baseline:           0.6300   (leaked dup rows)",
-        f"• v5 Model A (per-att):  0.5933   (leaked dup rows)",
-        f"• v5 Model B (season):   0.6794   (leaked dup rows)",
-        f"• v6 Model B (full):     0.6620   (leaked dup rows)",
-        f"• v7 Model B (full):     {m_full['auc']:.4f}   ← honest, de-leaked",
-        f"• v7 Model B (pre-23):   {m_pre['auc']:.4f}" if m_pre else "",
-        f"• v7 Model B (post-23):  {m_post['auc']:.4f}" if m_post else "",
-        "",
-        "  v4–v6 runs carried duplicate runner-season rows (repeated Statcast",
-        "  split measurements) that leaked across CV folds and inflated AUC.",
-        "  v7 averages those duplicate splits into ONE row per runner-season,",
-        "  removing the leak.  So v7's lower AUC is not a regression — it is the",
-        "  first honest estimate.  The earlier bars are optimistic and are kept",
-        "  only for historical context, NOT as a fair comparison.",
+        "## The model is PER-ATTEMPT",
+        "  Players are analysed at the attempt grain (~11,000 rows), not season",
+        "  aggregates (673). The per-attempt model (Scripts/model_perattempt.py)",
+        "  reaches CV AUC ~0.74, driven by the per-pitch lead distances. The old",
+        "  season-level predictor (Model B) has been removed. This script builds",
+        "  the season-level DESCRIPTIVE outputs: GLM (Model C), SSSI, xSB.",
         "",
         "## Naylor + Soto rank under SSSI v7",
     ] + [
@@ -1017,21 +920,11 @@ with PdfPages(pdf_path) as pdf:
         for _, r in SSSI[SSSI["runner_id"].isin([NAYLOR_ID,SOTO_ID])].iterrows()
     ])
 
-    imgpage(pdf, "§1 · AUC Comparison", FIGURES_DIR/"Fig_v7_AUC.png",
-            "v7 Model B at the season level (real catcher pop, pitcher pickoff "
-            "rate, lead variables).  CAVEAT: the v4–v6 bars were computed before "
-            "the v7 de-duplication fix — duplicate runner-season rows leaked across "
-            "CV folds and inflated those numbers.  v7 averages duplicate splits "
-            "into one row per runner-season, so its bar is the honest de-leaked "
-            "AUC and is not directly comparable to the historical bars.")
     imgpage(pdf, "§2 · GLM Plain-English Weight Chart",
             FIGURES_DIR/"Fig_v7_GLM_PlainEnglish.png",
             "Each bar = predicted percentage-point change in SB success when "
             "the runner improves on that feature by ONE TIER (1 SD).  Positive "
             "and green = the feature HELPS; red/orange = HURTS.")
-    imgpage(pdf, "§3 · Feature Importance · Pre vs Post 2023",
-            FIGURES_DIR/"Fig_v7_Importance_PrePost.png",
-            "How feature importance shifted after the 2023 rule change.")
     imgpage(pdf, "§4 · Naylor + Soto Statcast-style Profile",
             FIGURES_DIR/"Fig_v7_NaylorSoto_Profile.png",
             "Season-by-season values of the key features for the two "
@@ -1145,8 +1038,6 @@ _sheet_map = {
     "DF_v7_SSSI.csv":                 "SSSI v7",
     "DF_v7_xSB_Outcome.csv":          "xSB Outcome",
     "DF_v7_GLM_PlainEnglish.csv":     "GLM Weights",
-    "DF_v7_Importance.csv":           "Feature Importance",
-    "DF_v7_ModelB_AUC.csv":           "Model B AUC",
     "DF_v7_LB_JumpTime.csv":          "LB JumpTime",
     "DF_v7_LB_LeadGain.csv":          "LB LeadGain",
     "DF_v7_LB_PreReleaseVelocity.csv":"LB PreRelVel",
@@ -1176,10 +1067,6 @@ for p in sorted(FIGURES_DIR.glob("Fig_v7_*.png")):
 print(f"   Naylor_Model_v7_Report.pdf            "
       f"{(REPORTS_DIR/'Naylor_Model_v7_Report.pdf').stat().st_size/1024:.1f} KB")
 print()
-print(f"Headline (v7 is the first DE-LEAKED estimate — v4–v6 leaked dup rows):")
-print(f"  v4 baseline:       0.6300  (leaked)")
-print(f"  v5 Model B:        0.6794  (leaked)")
-print(f"  v6 Model B:        0.6620  (leaked)")
-print(f"  v7 Model B (full): {m_full['auc']:.4f}  <- honest, de-leaked")
-print(f"  v7 Model B (pre):  {m_pre['auc']:.4f}" if m_pre else "")
-print(f"  v7 Model B (post): {m_post['auc']:.4f}" if m_post else "")
+print("Headline: the predictive model is PER-ATTEMPT (~11,000 rows), not season.")
+print("  See Scripts/model_perattempt.py  ·  CV AUC ~0.74 (leads carry the signal).")
+print("  This script produces the season-level descriptive outputs (SSSI, GLM, xSB).")

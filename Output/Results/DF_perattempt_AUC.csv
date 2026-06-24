@@ -1,4 +1,3 @@
 model,auc
-per-attempt: leads+base+runner,0.7387
-per-attempt: + catcher/pitcher (OOF),0.7231
-"season Model B (XGBoost, for reference)",0.6244
+per-attempt: leads+base+runner,0.7388
+per-attempt: + catcher/pitcher (OOF),0.7228

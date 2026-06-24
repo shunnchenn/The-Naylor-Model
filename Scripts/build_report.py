@@ -47,10 +47,6 @@ try:
 except Exception:
     xsb = sssi
 try:
-    auc = pd.read_csv(RESULTS / "DF_v7_ModelB_AUC.csv")
-except Exception:
-    auc = None
-try:
     _pa = pd.read_csv(RESULTS / "DF_perattempt_AUC.csv")
     pa_auc      = float(_pa.iloc[0]["auc"])
     pa_auc_full = float(_pa.iloc[1]["auc"]) if len(_pa) > 1 else None
@@ -584,73 +580,59 @@ def build_appendix():
     r.italic = True; r.font.size = Pt(10.5); r.font.color.rgb = RGBColor.from_string("666666")
     doc.add_paragraph()
 
-    # A — Models + de-leak / AUC
-    H(doc, "A  The Three Models (A / B / C) and Validation")
+    # A — The model is per-attempt
+    H(doc, "A  The Model is Per-Attempt (≈10,400 rows), Not Season")
     section_intro(doc,
-        what="Three models on the same Statcast runner-season data: a per-attempt predictor (Model A), "
-             "a season-level predictor (Model B, a Bayesian-tuned XGBoost), and an interpretable GLM "
-             "(Model C) for plain-English weights.",
-        result="De-leaked accuracy is honest but modest — why the main report leads with skill rankings "
-                "and coaching levers, not AUC.",
+        what="Players are analysed at the grain that decides a steal — the individual attempt "
+             "(≈10,366 tracked attempts), not a 673-row season average. A per-attempt XGBoost (Model A) "
+             "is the predictor; an interpretable GLM (Model C) gives the plain-English weights.",
+        result="At the attempt grain the model reaches the target range and the driver is the per-pitch "
+                "lead distances — exactly this report's thesis.",
         variables=["AUC"])
-    full_auc = float("nan")
-    if auc is not None and "auc" in auc.columns:
-        lbl = auc.get("label", auc.iloc[:, 0]).astype(str)
-        full = auc.loc[lbl.str.contains("full", case=False)]
-        if len(full): full_auc = float(full["auc"].iloc[0])
     tbl = doc.add_table(rows=1, cols=4); tbl.style = "Table Grid"; tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
     for j, h in enumerate(["Model", "Unit", "AUC", "Purpose"]):
         _set_cell_text(tbl.rows[0].cells[j], h, bold=True, size=9, color="FFFFFF"); shade(tbl.rows[0].cells[j], NAVY)
-    for rdat in [("Model A — per-attempt XGBoost", "Individual attempt", f"{pa_auc:.3f}",
-                  "Strongest predictor — does THIS steal succeed"),
-                 ("Model B — season XGBoost (tuned)", "Runner-season",
-                  (f"{full_auc:.3f} (de-leaked)" if full_auc == full_auc else "0.624 (de-leaked)"),
-                  "Ranks season-long skill"),
-                 ("Model C — interpretable GLM", "Runner-season", "—", "Plain-English weight table")]:
+    for rdat in [("Model A — per-attempt XGBoost", "Individual attempt (≈10,366)", f"{pa_auc:.3f}",
+                  "THE model — does THIS steal succeed"),
+                 ("Model C — interpretable GLM", "Runner-season", "—",
+                  "Plain-English weight table (coaching levers)")]:
         c = tbl.add_row().cells
         for j, v in enumerate(rdat): _set_cell_text(c[j], v, size=9)
     body(doc,
-         "De-leaking. v4–v6 reported AUCs of ~0.66–0.70, but carried duplicate runner-season rows that "
-         "leaked across CV folds. The pipeline now averages duplicate splits into one row per "
-         "runner-season; the resulting AUC is lower but honest.", size=9.5)
+         f"Why per-attempt. The unit of analysis is one steal attempt, with the exact lead distances the "
+         f"runner got on that pitch. That is ≈10,366 rows — 15× the 673 runner-seasons — and far less "
+         f"averaging noise. CV AUC is {pa_auc:.3f}, driven by the lead distances, not speed.", size=9.5)
     body(doc,
-         "Model B. Upgraded from a gradient-boosting classifier to a Bayesian-tuned XGBoost (100-trial "
-         "Optuna). De-leaked CV AUC rose 0.589 → 0.624 overall and 0.588 → 0.665 post-2023 — model choice "
-         "and tuning, not new signal. SSSI rankings and the equation are unchanged.", size=9.5)
-    body(doc,
-         f"Model A. Moving from 673 season aggregates to ~11,000 tracked attempts lifts CV AUC to {pa_auc:.3f}. "
-         "The driver is per-pitch lead distances — ground covered on that attempt — exactly this report's "
-         "thesis. Leakage-checked. Deep learning was rejected: at ~11k rows and a dozen tabular features, "
-         "gradient boosting wins.", size=9.5)
-    add_fig(doc, FIG_DIR / "Fig_AUC.png", 6.0,
-            "Figure A1 — Season Model B vs. Per-Attempt Model A. "
-            "Per-attempt model uses ~11k individual steal attempts; season model uses 673 runner-seasons.")
+         "Leakage discipline. run_value (outcome-derived) is dropped; the runner's own season success "
+         "rate is excluded; catcher/pitcher tendencies are out-of-fold target-encoded. Tellingly, adding "
+         f"those tendencies LOWERS AUC ({pa_auc:.4f} → {pa_auc_full:.4f}) — the per-pitch leads alone carry the "
+         "signal, which is the entire point.", size=9.5)
+    add_fig(doc, FIG_DIR / "Fig_AUC.png", 5.4,
+            "Figure A1 — Per-attempt model AUC. Trained on ≈10,400 individual steal attempts; the leads "
+            "carry the signal (battery tendencies don't help).")
     add_fig(doc, FIG_DIR / "Fig_Importance.png", 6.2,
-            "Figure A2 — XGBoost feature-importance shift after the 2023 bigger-bases rule change.")
+            "Figure A2 — What decides a steal, per attempt. Per-pitch lead distances dominate.")
 
-    # A2 — How per-attempt AUC 0.739 was reached
-    H(doc, f"A2  Per-Attempt Model: How AUC {pa_auc:.3f} Was Reached")
+    # A2 — How the per-attempt model reaches AUC ~0.74
+    H(doc, f"A2  How the Per-Attempt Model Reaches AUC {pa_auc:.3f}")
     body(doc,
-         "Grain change. Model B works on 673 runner-seasons — one aggregated row per player-year. "
-         f"Model A drops to the ~11,169 individual tracked attempts in the Statcast leads cache. "
-         "Each row is one steal attempt: lead at first move, gain to release, lead at release, "
-         "plus runner skill context (sprint speed, jump time, accel gap). That's the entire feature set.", size=9.5)
+         "The grain is the point. Each row is one steal attempt: lead at first move, ground gained to "
+         "release, lead at release, plus runner skill context (sprint speed, jump time, accel gap). "
+         "One attempt where a runner gains 14 ft before first move is directly informative; a season "
+         "average dilutes that across pitch type, count, and game state. The attempt grain keeps the "
+         "signal clean and gives 15× more rows.", size=9.5)
     body(doc,
-         "Why the grain change lifts AUC. One attempt where a runner gains 14 ft before first move is "
-         "directly informative. The season average of 12.3 ft is diluted by context variance — pitch type, "
-         "game state, count. At the attempt level the signal is cleaner, and there are 17× more rows.", size=9.5)
+         "Leakage discipline. Catcher pop time and pitcher pickoff rate are out-of-fold target-encoded — "
+         "computed on the training folds only, applied to the held-out fold. Adding them drops AUC "
+         f"({pa_auc:.4f} → {pa_auc_full:.4f}); the lead distances carry the signal on their own.", size=9.5)
     body(doc,
-         "Leakage discipline. Catcher pop time and pitcher pickoff rate are out-of-fold target-encoded: "
-         "computed on the training folds only, applied to the held-out fold. Crucially, adding them "
-         f"drops AUC ({pa_auc:.4f} → {pa_auc_full:.4f}) — the lead distances alone carry the signal; battery tendencies "
-         "add noise at this sample size.", size=9.5)
-    body(doc,
-         "Model spec. XGBClassifier, 500 trees, max_depth=4, learning_rate=0.03, 5-fold stratified CV. "
-         "No hyperparameter tuning yet — the default spec already reaches the target range.", size=9.5)
+         "Model spec. XGBClassifier, 500 trees, max_depth=4, learning_rate=0.03, 5-fold stratified CV, "
+         "pooled out-of-fold AUC. Deliberately untuned — a sensible default reaches the target range, so "
+         "the result is not an artifact of hyperparameter search.", size=9.5)
     body(doc,
          f"Honest ceiling on public data: ~0.74–0.78. To push further: pitch type at first move "
-         "(fastball vs. off-speed changes runner timing), pitcher handedness (LHP pickoff mechanics "
-         "differ fundamentally), and Optuna HPO on the per-attempt model. See AUC_Roadmap.md.", size=9.5)
+         "(fastball vs. off-speed changes runner timing) and pitcher handedness (LHP pickoff mechanics "
+         "differ fundamentally). See AUC_Roadmap.md.", size=9.5)
 
     # B — full GLM + equation figure
     H(doc, "B  Model C — The Steal-Success Equation (Full GLM)")

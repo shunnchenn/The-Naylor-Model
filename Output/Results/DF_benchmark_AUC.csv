@@ -1,7 +1,0 @@
-model,auc,vs_baseline
-XGBoost,0.6159,0.0155
-CatBoost,0.6016,0.0012
-GBM (sklearn) — baseline,0.6004,0.0
-Random Forest,0.5872,-0.0132
-Logistic Regression (L2),0.5785,-0.0219
-GAM (LogisticGAM),0.565,-0.0354

@@ -9,7 +9,7 @@
 > | **See the outputs** | `Output/Tables/` (Statcast leaderboards) · `Output/Figures/` · `Output/Results/` |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
 >
-> Everything else is plumbing: `Scripts/` (code) · `Reports/` (appendix + glossary) ·
+> Everything else is plumbing: `Scripts/` (code) · `Reports/` (appendix + methods guide) ·
 > `Computer Vision/` (CV pilot) · `Previous Versions/` (v3–v8).
 
 ---
@@ -29,11 +29,11 @@ That's why specificity with the biomechanics suite matters. Knowing a runner has
 | | |
 |---|---|
 | ⭐ **[Main Report — V10 (DOCX)](Naylor_Model_V10_Report.docx)** | **Start here.** Applied report for MLB R&D + coaches — what each skill is worth (in steals), Statcast-style leaderboards of who already has it, the speed-vs-production quadrant, and a **2025 coaching target board** (green-light vs. technique-fix). Built around the *trait* — a slow runner who steals better than ~99% of MLB — not any one player |
-| 🧾 **[V10 Technical Appendix (DOCX)](Reports/Naylor_Model_V10_Technical_Appendix.docx)** | Full model detail for auditors — Models A/B/C + de-leaked AUC, complete GLM weight table, full SSSI Top 25, xSB leaderboards, and the Blueprint Conversion Score with **team logos** |
-| 📓 **[Master Notebook](Naylor_Model.ipynb)** | End-to-end pipeline — raw data → SSSI → tuned-XGBoost Model B → GLM → xSB → Statcast tables → report |
+| 🧾 **[V10 Technical Appendix (DOCX)](Reports/Naylor_Model_V10_Technical_Appendix.docx)** | Full detail for auditors — the per-attempt model (Model A) + interpretable GLM, complete GLM weight table, full SSSI Top 25, xSB leaderboards, and the Blueprint Conversion Score with **team logos** |
+| 📓 **[Master Notebook](Naylor_Model.ipynb)** | End-to-end pipeline — raw data → per-attempt model (~10k rows) → SSSI → GLM → xSB → Statcast tables → report |
 | 🖼️ **[Statcast leaderboards](Output/Tables/)** | Slow-Steal Skill, Blueprint Conversion, Ground Covered — headshot + team logo + heat-colored headline |
 | 🗺️ **[AUC Roadmap](AUC_Roadmap.md)** | How to push the model's AUC higher — the untapped matchup variables, ranked |
-| 📖 **[Variable Glossary](Reports/Variable_Glossary.pdf)** | Plain-English reference — every metric on a compact card (units, tiers, example, why it matters) |
+| 📖 **[Methods & Metrics Guide](Reports/Naylor_Model_Methods_and_Metrics.docx)** | How the data was scraped → aggregated → turned into every metric, the model specs (CV protocol, tuned params), an expert-question defense Q&A, known limitations, and a compact metric glossary. Built for defense / interview prep |
 | 🧠 **[Computer Vision](Computer%20Vision/)** | All CV analysis — Statcast Analysis Core (Blueprint model) + the CV delivery-time pilot |
 | 🗂️ **[Previous Versions](Previous%20Versions/)** | Archived v3–v8 pipelines, reports, and figures |
 
@@ -137,18 +137,20 @@ xSB is descriptive, not predictive — it is deliberately kept out of the GBM (z
 
 *† 2026 partial season (~1/3 complete, May 2026); min 3 tracked Statcast attempts.*
 
-### Models
+### The Model — per attempt, not per season
+
+The analysis is **per attempt**: **~10,366 individual tracked steal attempts** (one row each), not 673 season averages. This is the project's core strength — the model learns what makes *one* steal succeed, at the grain that actually decides it.
 
 | Model | Unit | AUC | Purpose |
 |---|---|---|---|
-| **Model A** (per-attempt XGBoost) | Individual attempt | **0.739** | Strongest predictor — does *this* steal succeed |
-| Model B (season XGBoost, Bayesian-tuned) | Runner-season | 0.624 | Ranks season-long skill |
+| **Model A** (per-attempt XGBoost) | **Individual attempt (~10,366)** | **0.739** | **THE model — does *this* steal succeed** |
+| Model C (interpretable GLM) | Runner-season | — | Plain-English coaching weights |
 
-**Model A — the headline.** Moving from 673 runner-seasons to **~11,169 individual tracked attempts** lifts CV AUC to **0.739**. The driver is per-pitch lead distances — ground covered before and after the pitcher commits — exactly this report's thesis. Catcher/pitcher tendencies are out-of-fold encoded but, tellingly, *don't* help (leads alone carry the signal). See `Scripts/model_perattempt.py` and Technical Appendix §A2 for full methodology.
+**Model A — the model.** Each row is one steal attempt with the exact lead distances the runner got on that pitch — 15× more rows than a season aggregate and far less averaging noise. CV AUC **0.739**, driven by per-pitch lead distances, exactly this report's thesis. Catcher/pitcher tendencies are out-of-fold encoded but, tellingly, *don't* help (leads alone carry the signal). See `Scripts/model_perattempt.py`.
 
-**Why not deep learning?** At ~11k rows and a dozen tabular features, gradient boosting wins — neural nets need far more data and overfit here. Honest ceiling on public data is ~0.74–0.78; to push further, add pitch type at first move and pitcher handedness (see [`AUC_Roadmap.md`](AUC_Roadmap.md)).
+**Why not deep learning?** At ~10k rows and a dozen tabular features, gradient boosting wins — neural nets need far more data and overfit here. Honest ceiling on public data is ~0.74–0.78; to push further, add pitch type at first move and pitcher handedness (see [`AUC_Roadmap.md`](AUC_Roadmap.md)).
 
-**Model B — season skill ranking.** Bayesian-tuned XGBoost on de-leaked runner-seasons: CV AUC 0.624 full, 0.665 post-2023. Used for the SSSI and coaching target board — season grain is the right unit for ranking players, even if attempt grain predicts outcomes better.
+> The earlier **season-level predictive model (Model B)** has been **removed** — a 673-row season average topped out near AUC 0.62 and added nothing the per-attempt model doesn't say better. Season data still powers the *descriptive* outputs (SSSI, xSB, Blueprint Conversion Score, the GLM).
 
 ---
 
@@ -156,20 +158,17 @@ xSB is descriptive, not predictive — it is deliberately kept out of the GBM (z
 
 ```bash
 # Rebuild the V10 outputs (no network — reads Data/ + Output/Results/)
-python3 Scripts/model_xgb.py        # tuned-XGBoost Model B → AUC + importance → Output/Results, Output/Figures
-python3 Scripts/statcast_tables.py  # Statcast leaderboards → Output/Tables/*.png
-python3 Scripts/build_report.py     # ⭐ main report (root) + Technical Appendix (Reports/)
+python3 Scripts/model_perattempt.py   # ⭐ THE model (per attempt, ~10k rows) → AUC + importance figures
+python3 Scripts/statcast_tables.py    # Statcast leaderboards → Output/Tables/*.png
+python3 Scripts/build_report.py       # main report (root) + Technical Appendix (Reports/)
+python3 Scripts/write_methods_guide.py# Methods & Metrics defense guide → Reports/
 
 # Regenerate the raw data (one-time network for assets, then offline)
-python3 Scripts/fetch_assets.py     # MLB headshots + team_map.csv → Output/assets, Data/
-python3 Scripts/consolidate_raw.py  # → Data/Raw_Season.csv + Data/Raw_Attempts.csv
-
-# Compare models / re-tune (no network)
-python3 Scripts/benchmark_models.py # 6-classifier AUC bake-off → Output/Results/DF_benchmark_AUC.csv
-python3 Scripts/tune_xgboost.py     # Optuna Bayesian HPO → Output/Results/DF_xgb_tuned_params.csv
+python3 Scripts/fetch_assets.py       # MLB headshots + team_map.csv → Output/assets, Data/
+python3 Scripts/consolidate_raw.py    # → Data/Raw_Season.csv + Data/Raw_Attempts.csv
 
 # Full Statcast pull (requires network — pybaseball / Savant / MLB API)
-python3 Scripts/v7_explore.py       # SSSI, Model B, GLM, xSB → Output/Results, Output/Figures
+python3 Scripts/v7_explore.py         # SSSI, GLM, xSB, leaderboards → Output/Results, Output/Figures
 ```
 
 ---
@@ -185,9 +184,9 @@ The-Naylor-Model/                    ← = V10
 ├── AUC_Roadmap.md   README.md
 ├── Data/            ← Raw_Season.csv, Raw_Attempts.csv, team_map.csv, Naylor Blueprint.xlsx, v7 Model.xlsx
 ├── Output/          ← Figures/ · Tables/ (Statcast PNGs) · Results/ (DF_* model results) · assets/ (headshots, logos)
-├── Scripts/         ← consolidate_raw, fetch_assets, statcast_tables, build_report, model_xgb,
-│                      model_perattempt, v7_explore, benchmark_models, tune_xgboost, make_main_notebook
-├── Reports/         ← V10 Technical Appendix + Variable Glossary PDF
+├── Scripts/         ← model_perattempt (⭐ THE model), statcast_tables, build_report,
+│                      write_methods_guide, consolidate_raw, fetch_assets, v7_explore, make_main_notebook
+├── Reports/         ← V10 Technical Appendix + Methods & Metrics Guide
 ├── Computer Vision/ ← all CV analysis (notebooks/ code/ data/ archive/) — see its own README
 └── Previous Versions/  ← v3–v8 pipelines, reports, and figures
 ```

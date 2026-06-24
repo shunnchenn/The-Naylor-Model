@@ -1,12 +1,11 @@
 """
-make_main_notebook.py  —  Generate the master Naylor_Model.ipynb at the repo root.
+make_main_notebook.py — generate the master Naylor_Model.ipynb at the repo root (V10).
 
-The notebook walks the whole model end-to-end and is runnable top-to-bottom WITHOUT
-network (it reads the cached feature CSV and the on-disk figures):
-  1. Data            2. SSSI            3. Model B (tuned XGBoost)   4. GLM equation
-  5. xSB quadrant    6. Benchmark/tuning recap                      7. Build the report
+The notebook walks the model end-to-end and runs WITHOUT network: it reads the
+consolidated raw data (Data/Raw_Season.csv, Data/Raw_Attempts.csv), the model results
+in Output/Results, and the figures/tables in Output/.
 
-Run:  python3 scripts/make_main_notebook.py
+Run:  python3 Scripts/make_main_notebook.py
 """
 import nbformat as nbf
 from pathlib import Path
@@ -21,25 +20,24 @@ nb = nbf.v4.new_notebook()
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
 
 nb.cells = [
-md("""# The Naylor Model — Master Notebook
+md("""# The Naylor Model — Master Notebook (V10)
 
-Base-stealing intelligence for slow-but-elite stealers (the *Josh Naylor* trait: a runner who
-steals better than ~99% of MLB without the wheels). This notebook runs the model end-to-end.
+Base-stealing skill that sprint speed hides — the *Josh Naylor* trait: a runner who steals
+better than ~99% of MLB without the wheels.
 
-**Runs without network** — it reads the cached feature data (`Naylor_Model_Data.csv`) and the
-tuned hyperparameters, refits Model B, and rebuilds the report. The full Statcast data pull lives in
-`scripts/v7_explore.py` (network-bound) and is *not* required here.
+**Runs without network.** Reads `Data/Raw_Season.csv`, `Data/Raw_Attempts.csv`, the results in
+`Output/Results/`, and the figures/tables in `Output/`. The Statcast pull lives in
+`Scripts/v7_explore.py` (network-bound) and is not required here.
 
-| Section | What |
+| § | What |
 |---|---|
-| 1 | Data — the runner-season master |
-| 2 | SSSI — Slow-Steal Skill Index leaderboard |
-| 3 | Model B — season-level Bayesian-tuned **XGBoost** (AUC by era) |
-| 4 | GLM — the steal-success equation |
+| 1 | Raw data — per-attempt (the primary grain) + season |
+| 2 | **Model A — per-attempt XGBoost (~11k rows, AUC ~0.74) — THE model** |
+| 3 | Slow-Steal Skill leaderboard (SSSI) |
+| 4 | GLM — the steal-success equation (coaching levers) |
 | 5 | xSB — speed-vs-production quadrant |
-| 6 | **Model A — per-attempt XGBoost (AUC ~0.74)** |
-| 7 | Benchmark & tuning recap |
-| 8 | Build the v8 report |
+| 6 | Statcast-style leaderboards |
+| 7 | Build the report |
 """),
 
 md("## Setup"),
@@ -50,103 +48,94 @@ import pandas as pd
 from IPython.display import Image, display
 
 ROOT = Path().resolve()
-while not (ROOT / "Figures").exists() and ROOT.parent != ROOT:
+while not (ROOT / "Output").exists() and ROOT.parent != ROOT:
     ROOT = ROOT.parent
-SCRIPTS = ROOT / "scripts"
-DATA    = ROOT / "data"
-FIGS    = ROOT / "Figures"
+SCRIPTS = ROOT / "Scripts"
+DATA    = ROOT / "Data"
+RESULTS = ROOT / "Output" / "Results"
+FIGS    = ROOT / "Output" / "Figures"
+TABLES  = ROOT / "Output" / "Tables"
 sys.path.insert(0, str(SCRIPTS))
 print("Repo root:", ROOT)
 """),
 
-md("""## 1 — Data: the runner-season master
+md("""## 1 — Raw data
 
-`Naylor_Model_Data.csv` is the curated master — one row per qualified runner-season with every
-feature plus the SSSI ranking. (`data/` holds the full working set the pipeline reads.)"""),
+`Data/Raw_Season.csv` is the runner-season master (one row per qualified runner-season, every
+feature + SSSI + team). `Data/Raw_Attempts.csv` is the per-attempt grain the AUC model uses."""),
 code("""\
-data = pd.read_csv(ROOT / "Naylor_Model_Data.csv")
-print(f"{len(data)} runner-seasons × {data.shape[1]} columns")
-data[["player_name", "season", "sprint_speed", "jump_time", "lead_gain",
-      "real_sb_pct", "sb_attempts"]].head()
+season = pd.read_csv(DATA / "Raw_Season.csv")
+attempts = pd.read_csv(DATA / "Raw_Attempts.csv")
+print(f"season:   {len(season)} runner-seasons × {season.shape[1]} cols")
+print(f"attempts: {len(attempts)} attempts × {attempts.shape[1]} cols")
+season[["player_name", "season", "team", "sprint_speed", "jump_time",
+        "real_sb_pct", "sb_attempts", "SSSI_v7"]].head()
 """),
 
-md("""## 2 — SSSI: Slow-Steal Skill Index
+md("""## 2 — Model A: the per-attempt model (THE model)
 
-A weighted composite that surfaces the Naylor/Soto archetype — elite-performing slow runners.
-Naylor and Soto were held out when the weights were fit, so their ranking is genuinely out-of-sample."""),
-code("""\
-sssi_col = next((c for c in data.columns if c.lower().startswith("sssi")), None)
-top = data.sort_values(sssi_col, ascending=False).head(15)
-top[["player_name", "season", "sprint_speed", "real_sb_pct", sssi_col]].reset_index(drop=True)
-"""),
-
-md("""## 3 — Model B: Bayesian-tuned XGBoost
-
-Model B predicts season steal success. v8 upgraded it from a gradient-boosting classifier to a
-**Bayesian-tuned XGBoost** (Optuna, 100 trials). `model_xgb.main()` refits it on the cached features
-(no network), recomputes AUC by era, and refreshes the AUC + importance figures."""),
-code("""\
-import model_xgb
-auc_rows = model_xgb.main()
-pd.DataFrame(auc_rows)
-"""),
-code("""\
-display(Image(filename=str(FIGS / "Fig_v7_AUC.png")))
-"""),
-
-md("""## 4 — GLM: the steal-success equation
-
-The interpretable model. Each lever's weight is reported as the change in steal-success rate for a
-+1-SD improvement — the basis for the report's equation figure and coaching levers."""),
-code("""\
-glm = pd.read_csv(DATA / "DF_v7_GLM_PlainEnglish.csv")
-display(glm)
-display(Image(filename=str(FIGS / "Fig_v8_Equation.png")))
-"""),
-
-md("""## 5 — xSB: speed-vs-production quadrant
-
-A descriptive lens splitting the league into Realized Burners, Untapped Wheels, Crafty Technicians
-(the Naylor/Soto archetype), and Stationary runners."""),
-code("""\
-xsb = pd.read_csv(DATA / "DF_v7_xSB_Outcome.csv")
-print(xsb["quadrant"].value_counts())
-display(Image(filename=str(FIGS / "Fig_v8_xSB_Quadrant.png")))
-"""),
-
-md("""## 6 — Per-attempt model (Model A) — the AUC jump
-
-The season model tops out near 0.62 on 673 rows. Modeling the **~10,400 individual tracked attempts**
-(Statcast leads cache) instead lifts CV AUC to **~0.74** — the per-pitch lead distances are what
-decide a steal. Leakage-checked; deep learning is *not* used (gradient boosting wins on tabular data
-this size)."""),
+**This is the primary analysis.** It models the ~11,169 individual tracked attempts (one row per
+steal), not 673 season aggregates — the grain that actually decides a steal. CV AUC ~0.74, driven
+by the per-pitch lead distances. `model_perattempt.main()` runs 5-fold CV (no network), writes the
+AUC + importance, and refreshes `Fig_AUC.png` / `Fig_Importance.png`. Leakage-checked; gradient
+boosting wins on tabular data this size, so no deep learning."""),
 code("""\
 import model_perattempt
 pa = model_perattempt.main()
 display(pa)
 """),
+code("""display(Image(filename=str(FIGS / "Fig_AUC.png")))
+display(Image(filename=str(FIGS / "Fig_Importance.png")))"""),
 
-md("""## 7 — Benchmark & tuning recap
+md("""## 3 — Slow-Steal Skill (SSSI)
 
-Six season-level classifiers compared on the same de-leaked data, plus the tuned XGBoost params."""),
+A descriptive season-level composite that surfaces the Naylor/Soto archetype — elite-performing
+slow runners. Naylor and Soto were held out when the weights were fit, so their ranking is
+out-of-sample."""),
 code("""\
-bench = pd.read_csv(DATA / "DF_benchmark_AUC.csv")
-display(bench.sort_values("auc", ascending=False).reset_index(drop=True))
-params = pd.read_csv(DATA / "DF_xgb_tuned_params.csv")
-display(params.T)
+top = season.sort_values("SSSI_v7", ascending=False).head(15)
+top[["player_name", "season", "team", "sprint_speed", "real_sb_pct", "SSSI_v7"]].reset_index(drop=True)
 """),
 
-md("""## 8 — Build the v8 report
+md("""## 4 — GLM: the steal-success equation
 
-Regenerates the applied main report (repo root) and the Technical Appendix (`Reports/`). Reads the
-data refreshed above — no network."""),
+The interpretable season-level model (not a predictor). Each lever's weight is the change in
+steal-success rate for a +1-SD improvement — the basis for the report's equation figure and
+coaching levers."""),
+code("""\
+glm = pd.read_csv(RESULTS / "DF_v7_GLM_PlainEnglish.csv")
+display(glm)
+display(Image(filename=str(FIGS / "Fig_Equation.png")))
+"""),
+
+md("""## 5 — xSB: speed-vs-production quadrant
+
+Realized Burners, Untapped Wheels, Crafty Technicians (the Naylor/Soto archetype), and Stationary."""),
+code("""\
+xsb = pd.read_csv(RESULTS / "DF_v7_xSB_Outcome.csv")
+print(xsb["quadrant"].value_counts())
+display(Image(filename=str(FIGS / "Fig_xSB_Quadrant.png")))
+"""),
+
+md("""## 6 — Statcast-style leaderboards
+
+The marquee outputs: headshot + team logo + supporting stats + a heat-colored headline column."""),
+code("""\
+for t in ["Slow_Steal_Skill.png", "Blueprint_Conversion.png", "Ground_Covered.png"]:
+    p = TABLES / t
+    if p.exists():
+        display(Image(filename=str(p)))
+"""),
+
+md("""## 7 — Build the report
+
+Regenerates the V10 main report (repo root) and the Technical Appendix (`Reports/`)."""),
 code("""\
 import importlib.util, subprocess
 if importlib.util.find_spec("docx") is None:
-    print("python-docx is not installed in this kernel — skipping the in-notebook build.")
-    print("Run it from the project environment:  python3 scripts/build_v8_report.py")
+    print("python-docx not installed in this kernel — run: python3 Scripts/build_report.py")
 else:
-    r = subprocess.run([sys.executable, str(SCRIPTS / "build_v8_report.py")],
+    r = subprocess.run([sys.executable, str(SCRIPTS / "build_report.py")],
                        capture_output=True, text=True)
     print(r.stdout[-1500:])
     if r.returncode != 0:
@@ -154,10 +143,12 @@ else:
 """),
 
 md("""---
-### Next steps
-See [`AUC_Roadmap.md`](AUC_Roadmap.md) for the prioritized plan to push AUC higher — the untapped
-matchup variables (pitcher handedness, pitch type, count, catcher identity). To re-pull raw Statcast
-data, run `python3 scripts/v7_explore.py` (requires network)."""),
+### Regenerating from scratch
+- Assets (one-time network): `python3 Scripts/fetch_assets.py`
+- Consolidate raw: `python3 Scripts/consolidate_raw.py`
+- Statcast tables: `python3 Scripts/statcast_tables.py`
+- Full Statcast pull (network): `python3 Scripts/v7_explore.py`
+See [`AUC_Roadmap.md`](AUC_Roadmap.md) for how to push AUC higher."""),
 ]
 
 nbf.write(nb, str(OUT))
