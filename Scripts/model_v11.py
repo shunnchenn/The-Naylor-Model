@@ -333,6 +333,71 @@ def run_perattempt(seed: int = 42):
     return auc_leads, auc_full
 
 
+# ── the whiteboard model: 3 inputs, plain logistic regression ────────────────
+SIMPLE_FEATS = ["sprint_speed", "burst_ft", "gain_to_release_ft"]
+
+def run_success_model(seed: int = 42):
+    """P(safe) for ONE attempt from three numbers a coach already has: sprint speed, the
+    runner's Burst, and the ground he gained on that pitch (first move -> pitch reaching the
+    catcher). Deliberately a plain logistic regression on RAW units, so the coefficients read
+    directly as 'per ft/s' and 'per foot' and the web calculator can evaluate it in one line.
+    Writes Output/Results/DF_success_model.csv and syncs the fit into docs/index.html."""
+    try:
+        from sklearn.model_selection import StratifiedKFold, cross_val_predict
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import make_pipeline
+        from sklearn.impute import SimpleImputer
+        from sklearn.metrics import roc_auc_score
+    except ImportError as e:
+        print(f"success model skipped (missing {e.name})")
+        return None
+
+    at = pd.read_csv(DATA / "Raw_Attempts.csv")
+    at = at[at["result"].isin(["SB", "CS"])].copy()
+    at["y"] = (at["result"] == "SB").astype(int)
+    lb = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")[["runner_id", "season", "sprint_speed", "burst_ft"]]
+    at = at.merge(lb, on=["runner_id", "season"], how="left")
+    at[SIMPLE_FEATS] = at[SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
+    at = at.dropna(subset=SIMPLE_FEATS).reset_index(drop=True)
+    X, y = at[SIMPLE_FEATS].values, at["y"].values
+
+    pipe = make_pipeline(SimpleImputer(), LogisticRegression(max_iter=5000))
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    auc = roc_auc_score(y, cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1])
+    pipe.fit(X, y)
+    lr = pipe.named_steps["logisticregression"]
+    coefs = dict(zip(SIMPLE_FEATS, lr.coef_[0]))
+    payload = {"intercept": float(lr.intercept_[0]),
+               "coef": {k: float(v) for k, v in coefs.items()},
+               "auc": round(float(auc), 4), "n": int(len(at)),
+               "base_rate": round(float(y.mean()), 4),
+               # full observed span so the sliders cover everyone (incl. Naylor at 24.4 ft/s)
+               "range": {f: [round(float(at[f].min()), 1),
+                             round(float(at[f].max()), 1),
+                             round(float(at[f].median()), 1)] for f in SIMPLE_FEATS}}
+    rows = [{"term": "intercept", "coefficient": round(payload["intercept"], 5), "odds_multiplier": ""}]
+    rows += [{"term": f, "coefficient": round(v, 5), "odds_multiplier": round(float(np.exp(v)), 4)}
+             for f, v in coefs.items()]
+    rows.append({"term": "CV AUC (5-fold)", "coefficient": payload["auc"], "odds_multiplier": ""})
+    pd.DataFrame(rows).to_csv(RESULTS / "DF_success_model.csv", index=False)
+
+    # keep the browser calculator locked to this fit — never let the two drift apart
+    site = ROOT / "docs" / "index.html"
+    if site.exists():
+        html = site.read_text(encoding="utf-8")
+        a, b = "/*__SUCCESS_MODEL__*/", "/*__END_SUCCESS_MODEL__*/"
+        if a in html and b in html:
+            head, rest = html.split(a, 1)
+            _, tail = rest.split(b, 1)
+            site.write_text(head + a + json.dumps(payload, separators=(",", ":")) + b + tail,
+                            encoding="utf-8")
+
+    per_ft = np.exp(coefs["gain_to_release_ft"])
+    print(f"3-input success model (logistic): AUC {auc:.4f}, n={len(at)} | "
+          f"each +1 ft of ground gained multiplies the odds of being safe by {per_ft:.2f}x")
+    return payload
+
+
 def main():
     full, fit, val = build()
     lb_cols = ["runner_id", "season", "player_name", "team", "sprint_speed", "jump_time",
@@ -363,6 +428,7 @@ def main():
     print(top12.to_string(index=False))
     print(val.to_string(index=False))
     run_perattempt()
+    run_success_model()
     return full, val
 
 

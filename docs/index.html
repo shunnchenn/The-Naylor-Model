@@ -173,6 +173,33 @@
   #tip .tphd .nm{font-weight:800;font-size:13px}
   #tip .tphd .mt{color:var(--mut);font-size:11.6px}
 
+
+  /* ---------- odds calculator ---------- */
+  .calcbox{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+  .calcgrid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:start}
+  .slider{margin-bottom:16px}
+  .slider .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .slider .lab{font-size:12.6px;font-weight:700}
+  .slider .lab small{display:block;font-weight:500;color:var(--mut);font-size:11.2px;margin-top:1px}
+  .slider .val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--cold)}
+  .slider input[type=range]{width:100%;accent-color:var(--hot);height:22px}
+  .slider .ends{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim);margin-top:-2px}
+  .odds{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center}
+  .odds .big{font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .odds .cap{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+  .odds .vs{font-size:12.4px;color:var(--mut);margin-top:8px}
+  .gaugebar{height:12px;border-radius:7px;margin:12px 0 4px;position:relative;
+            background:linear-gradient(90deg,var(--cold),var(--mid),var(--hot))}
+  .gaugebar i{position:absolute;top:-4px;width:5px;height:20px;border-radius:3px;background:#16191d;
+              transform:translateX(-50%)}
+  .contrib{margin-top:14px;font-size:11.8px}
+  .contrib .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted var(--line)}
+  .contrib .row b{font-variant-numeric:tabular-nums}
+  .up{color:var(--pos)} .down{color:var(--neg)}
+  .caveat{margin-top:14px;font-size:11.8px;color:var(--mut);background:var(--bg3);
+          border-left:3px solid var(--gold);padding:9px 12px;border-radius:4px}
+  @media(max-width:900px){.calcgrid{grid-template-columns:1fr}}
+
   /* ---------- glossary ---------- */
   .gl{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .gl table{font-size:13px}
@@ -198,7 +225,7 @@
       <div class="sub">Base-stealing skill that sprint speed hides — a Statcast-style leaderboard</div>
     </div>
     <div class="tabs">
-      <a href="#board">Leaderboard</a><a href="#map">Skill Map</a><a href="#gloss">Definitions</a>
+      <a href="#board">Leaderboard</a><a href="#map">Skill Map</a><a href="#calc">Odds Calculator</a><a href="#gloss">Definitions</a>
     </div>
   </div>
 </header>
@@ -295,9 +322,41 @@
     </div>
   </section>
 
+  <!-- ============ ODDS CALCULATOR ============ -->
+  <section id="calc">
+    <div class="h2"><span class="n">03</span> Steal odds calculator</div>
+    <div class="calcbox">
+      <p style="margin:0 0 16px;color:#3d444d;font-size:13.4px;max-width:900px">
+        A plain <b>logistic regression</b> on three numbers, fit on <span id="cN"></span> tracked
+        attempts (CV AUC <span id="cAUC"></span>). Drag the sliders to see the modelled chance that
+        <b>one</b> attempt is safe. This is the whiteboard version of the full model — simple enough
+        to reason about, and it gets within a hair of it.
+      </p>
+      <div class="calcgrid">
+        <div>
+          <div class="slider" id="s_sprint_speed"></div>
+          <div class="slider" id="s_gain_to_release_ft"></div>
+          <div class="slider" id="s_burst_ft"></div>
+          <div class="caveat" id="cWhy"></div>
+        </div>
+        <div>
+          <div class="odds">
+            <div class="cap">Chance the attempt is safe</div>
+            <div class="big" id="cP">—</div>
+            <div class="gaugebar"><i id="cMark"></i></div>
+            <div class="ends" style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim)">
+              <span>0%</span><span>100%</span></div>
+            <div class="vs" id="cVs"></div>
+          </div>
+          <div class="contrib" id="cContrib"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ GLOSSARY ============ -->
   <section id="gloss">
-    <div class="h2"><span class="n">03</span> Definitions</div>
+    <div class="h2"><span class="n">04</span> Definitions</div>
     <div class="gl"><table><tbody id="gtbl"></tbody></table></div>
     <footer id="foot"></footer>
   </section>
@@ -584,7 +643,66 @@ function buildGlossary(){
     CV AUC ≈ 0.75. Headshots &amp; logos: MLB. Everything computed locally — no external calls.`;
 }
 
-initControls(); buildGlossary(); render(); drawScatter();
+
+/* ---------- steal odds calculator (3-input logistic regression) ----------
+   The block between the markers is written by model_v11.py (run_success_model) so the page
+   can never drift from the fitted model. Do not hand-edit it. */
+const SUCCESS_MODEL = /*__SUCCESS_MODEL__*/{"intercept":-10.276260280761393,"coef":{"sprint_speed":0.3005815947051851,"burst_ft":-0.0985600179033943,"gain_to_release_ft":0.3117546784306641},"auc":0.7299,"n":6712,"base_rate":0.8264,"range":{"sprint_speed":[24.4,30.5,28.5],"burst_ft":[-4.4,10.0,-0.1],"gain_to_release_ft":[0.7,39.6,10.8]}}/*__END_SUCCESS_MODEL__*/;
+const CALC_META = {
+  sprint_speed:       {label:"Sprint speed",  unit:"ft/s", step:0.1,
+                       hint:"how fast he runs — structural, not coachable"},
+  gain_to_release_ft: {label:"Ground gained on this pitch", unit:"ft", step:0.1,
+                       hint:"first move → pitch reaching the catcher. What he did on THIS pitch."},
+  burst_ft:           {label:"Burst (his typical)", unit:"ft", step:0.1,
+                       hint:"his season-long ground gained above what his speed predicts"}
+};
+function initCalc(){
+  const M=SUCCESS_MODEL; if(!M||!M.coef){ const el=$("#calc"); if(el) el.style.display="none"; return; }
+  $("#cN").textContent=M.n.toLocaleString(); $("#cAUC").textContent=M.auc.toFixed(3);
+  const state={};
+  Object.keys(CALC_META).forEach(k=>{
+    const [lo,hi,mid]=M.range[k], meta=CALC_META[k]; state[k]=mid;
+    $("#s_"+k).innerHTML=`
+      <div class="top"><span class="lab">${meta.label}<small>${meta.hint}</small></span>
+        <span class="val"><span id="v_${k}">${mid.toFixed(1)}</span> ${meta.unit}</span></div>
+      <input type="range" id="r_${k}" min="${lo}" max="${hi}" step="${meta.step}" value="${mid}">
+      <div class="ends"><span>${lo}</span><span>${hi}</span></div>`;
+    $("#r_"+k).addEventListener("input",e=>{ state[k]=+e.target.value;
+      $("#v_"+k).textContent=state[k].toFixed(1); recalc(state); });
+  });
+  recalc(state);
+}
+function recalc(state){
+  const M=SUCCESS_MODEL;
+  let z=M.intercept; const parts=[];
+  for(const k in M.coef){ const c=M.coef[k]*state[k]; z+=c; parts.push([k,M.coef[k],state[k]]); }
+  const p=1/(1+Math.exp(-z));
+  $("#cP").textContent=(p*100).toFixed(1)+"%";
+  $("#cP").style.color=pctColor(Math.max(0,Math.min(100,(p-0.5)*200)));
+  $("#cMark").style.left=(p*100)+"%";
+  const base=M.base_rate;
+  const d=(p-base)*100;
+  $("#cVs").innerHTML=`League average on a tracked attempt: <b>${(base*100).toFixed(1)}%</b> · `+
+    `<span class="${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)} pts</span>`;
+  // per-input effect: how many points the probability moves if that input goes to its median
+  const rows=parts.map(([k,coef,val])=>{
+    const mid=M.range[k][2];
+    let z2=M.intercept; for(const j in M.coef) z2+=M.coef[j]*(j===k?mid:state[j]);
+    const eff=(p-1/(1+Math.exp(-z2)))*100;
+    return `<div class="row"><span>${CALC_META[k].label} vs typical</span>
+      <b class="${eff>=0?'up':'down'}">${eff>=0?'+':''}${eff.toFixed(1)} pts</b></div>`;
+  }).join("");
+  $("#cContrib").innerHTML=rows;
+  const perFt=Math.exp(M.coef.gain_to_release_ft);
+  $("#cWhy").innerHTML=`<b>Reading it:</b> every extra foot of ground gained on the pitch multiplies
+    the odds of being safe by <b>${perFt.toFixed(2)}×</b> — by far the strongest lever.
+    <b>Burst carries a small negative weight here (${M.coef.burst_ft.toFixed(2)})</b>, which looks
+    backwards but isn't: once you have told the model what he <i>actually</i> gained on this pitch,
+    a runner whose typical Burst is higher was having a below-average jump. On its own, without the
+    per-pitch number, Burst is positive.`;
+}
+
+initControls(); buildGlossary(); render(); drawScatter(); initCalc();
 window.addEventListener("resize",drawScatter);
 </script>
 </body>
