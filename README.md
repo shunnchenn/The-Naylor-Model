@@ -77,7 +77,7 @@ The honest read: **Steal+ is the single best answer to "who steals well"** — i
 
 The model has two clearly separated jobs — kept apart on purpose:
 
-1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,000 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUC ≈ 0.74**. It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
+1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,000 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUC ≈ 0.75** (0.741 on the leads alone, 0.752 once catcher tendency is added). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
 
 2. **The metric suite (per runner-season).** `Scripts/model_v11.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
    - `fit_league(era)` learns the league constants (the `ground ~ sprint_speed` line, the percentile references) **once** on the whole pool;

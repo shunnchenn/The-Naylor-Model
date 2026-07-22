@@ -265,42 +265,60 @@ def run_perattempt(seed: int = 42):
                              colsample_bytree=0.8, min_child_weight=5, reg_lambda=1.0,
                              eval_metric="logloss", verbosity=0, random_state=seed, use_label_encoder=False)
 
-    def target_encode(train_idx, val_idx, key, smoothing=20.0):
-        """Smoothed mean-target encoding fit on the train fold, applied out-of-fold to val."""
-        stats = df.iloc[train_idx].groupby(key)["y"].agg(["sum", "count"])
-        enc = (stats["sum"] + prior * smoothing) / (stats["count"] + smoothing)
-        return df.iloc[val_idx][key].map(enc).fillna(prior).values
+    def encode_map(idx, key, smoothing=20.0):
+        """Smoothed mean-target encoding learned from the rows in `idx`."""
+        stats = df.iloc[idx].groupby(key)["y"].agg(["sum", "count"])
+        return (stats["sum"] + prior * smoothing) / (stats["count"] + smoothing)
 
-    def cv_auc(use_battery: bool):
-        """Pooled out-of-fold AUC; use_battery adds OOF-encoded catcher/pitcher tendency."""
+    def apply_map(enc, idx, key):
+        return df.iloc[idx][key].map(enc).fillna(prior).values
+
+    def cv_auc(battery_keys=()):
+        """Pooled out-of-fold AUC. Battery tendency is target-encoded, and the TRAINING rows
+        are encoded with an inner K-fold so no row ever sees its own outcome. Encoding the
+        train rows from the same rows leaks the label into the feature: the model over-trusts
+        it in training, the clean val encoding then behaves differently, and AUC drops. The
+        leak is ~1/(n+smoothing) per row, so it is worst for sparsely-seen pitchers."""
         oof = np.zeros(len(df))
         for tr, va in cv.split(df, y):
             Xtr, Xva = df.iloc[tr][feats].copy(), df.iloc[va][feats].copy()
-            if use_battery:
-                for key, col in [("catcher_id", "catch_enc"), ("pitcher_id", "pitch_enc")]:
-                    Xtr[col] = target_encode(tr, tr, key); Xva[col] = target_encode(tr, va, key)
-            model = xgb().fit(Xtr.values, y[tr])
-            oof[va] = model.predict_proba(Xva.values)[:, 1]
+            for key in battery_keys:
+                col = key + "_enc"
+                inner_enc = np.full(len(tr), prior)
+                inner = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed + 1)
+                for i_tr, i_va in inner.split(df.iloc[tr], y[tr]):
+                    inner_enc[i_va] = apply_map(encode_map(tr[i_tr], key), tr[i_va], key)
+                Xtr[col] = inner_enc                                  # nested OOF -> no self-leak
+                Xva[col] = apply_map(encode_map(tr, key), va, key)    # val: encoded from full train
+            oof[va] = xgb().fit(Xtr.values, y[tr]).predict_proba(Xva.values)[:, 1]
         return roc_auc_score(y, oof)
 
-    auc_leads = cv_auc(False)                       # leads + base + runner skill only
-    auc_full  = cv_auc(True)                        # + catcher/pitcher tendency
-    pd.DataFrame([{"model": "per-attempt: leads+base+runner", "auc": round(auc_leads, 4)},
-                  {"model": "per-attempt: + catcher/pitcher (OOF)", "auc": round(auc_full, 4)}]
+    auc_leads   = cv_auc()                                        # leads + base + runner skill
+    auc_catcher = cv_auc(["catcher_id"])                          # + catcher tendency
+    auc_pitcher = cv_auc(["pitcher_id"])                          # + pitcher tendency
+    auc_full    = cv_auc(["catcher_id", "pitcher_id"])            # + both
+    pd.DataFrame([{"model": "per-attempt: leads+base+runner",            "auc": round(auc_leads, 4)},
+                  {"model": "per-attempt: + catcher (nested OOF)",       "auc": round(auc_catcher, 4)},
+                  {"model": "per-attempt: + pitcher (nested OOF)",       "auc": round(auc_pitcher, 4)},
+                  {"model": "per-attempt: + both battery (nested OOF)",  "auc": round(auc_full, 4)}]
                  ).to_csv(RESULTS / "DF_perattempt_AUC.csv", index=False)
 
     imp = (pd.DataFrame({"feature": feats, "importance": xgb().fit(df[feats].values, y).feature_importances_})
            .sort_values("importance", ascending=False).reset_index(drop=True))
     imp.to_csv(RESULTS / "DF_perattempt_Importance.csv", index=False)
 
-    fig, ax = plt.subplots(figsize=(6.2, 4.3))
-    ax.bar(["Leads + runner skill", "+ catcher / pitcher\ntendency (OOF)"], [auc_leads, auc_full],
-           color=["#10B981", "#9CA3AF"], width=0.5)
-    ax.axhline(0.50, color="#aaa", lw=0.8, ls="--", zorder=0)
-    ax.set_ylabel("CV AUC"); ax.set_ylim(0.5, 0.82)
-    ax.set_title("Per-Attempt Model — the leads carry the signal", fontsize=11.5)
-    for i, v in enumerate([auc_leads, auc_full]):
+    fig, ax = plt.subplots(figsize=(7.6, 4.3))
+    labels = ["Leads +\nrunner skill", "+ catcher\ntendency", "+ pitcher\ntendency", "+ both"]
+    vals   = [auc_leads, auc_catcher, auc_pitcher, auc_full]
+    ax.bar(labels, vals, color=["#10B981", "#2F6FB0", "#9CA3AF", "#1F2D3D"], width=0.55)
+    ax.axhline(auc_leads, color="#10B981", lw=1, ls="--", zorder=0)
+    ax.set_ylabel("CV AUC (nested out-of-fold)"); ax.set_ylim(0.5, 0.82)
+    ax.set_title("Per-Attempt Model — leads carry most of it; the catcher adds the rest", fontsize=11.5)
+    for i, v in enumerate(vals):
         ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontweight="bold", fontsize=11)
+    ax.text(0.5, -0.20, "Catchers are seen ~46 times each, so their tendency is estimable; pitchers a median of 6 times,\n"
+            "and the runner's lead already absorbs most of the pitcher's effect.",
+            transform=ax.transAxes, ha="center", va="top", fontsize=8, color="#555")
     fig.tight_layout(); fig.savefig(figs / "Fig_AUC.png", dpi=160); plt.close(fig)
 
     g = imp.iloc[::-1]
@@ -310,7 +328,8 @@ def run_perattempt(seed: int = 42):
     ax.set_xlabel("XGBoost gain importance")
     ax.set_title("Per-Attempt Model — what decides a steal (blue = per-pitch lead distances)", fontsize=11)
     plt.tight_layout(); plt.savefig(figs / "Fig_Importance.png", dpi=160); plt.close()
-    print(f"per-attempt SB-success AUC: {auc_leads:.4f} (leads+runner) | {auc_full:.4f} (+battery), n={len(df)}")
+    print(f"per-attempt SB-success AUC (nested OOF): {auc_leads:.4f} leads+runner | "
+          f"{auc_catcher:.4f} +catcher | {auc_pitcher:.4f} +pitcher | {auc_full:.4f} +both, n={len(df)}")
     return auc_leads, auc_full
 
 

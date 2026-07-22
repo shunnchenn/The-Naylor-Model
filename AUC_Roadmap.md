@@ -4,21 +4,40 @@
 
 The project's model works at the **attempt grain**: ~10,366 individual tracked steal attempts
 (`Scripts/model_v11.py` (`run_perattempt`)), not 673 season averages. That choice is what reached the target —
-CV AUC **0.739**, with no leakage. (An earlier season-aggregate predictor topped out near 0.62 and
+CV AUC **0.753**, with no leakage. (An earlier season-aggregate predictor topped out near 0.62 and
 has been removed; season data now only powers the descriptive SSSI / xSB / Blueprint outputs.)
 
 | Model | Unit | Rows | AUC |
 |---|---|---|---|
 | season aggregate (removed) | runner-season | 673 | ~0.62 |
-| **per-attempt XGBoost (the model)** | **individual attempt** | **~10,366** | **0.739** |
+| **per-attempt XGBoost (the model)** | **individual attempt** | **~10,366** | **0.753** |
 
 **What drove it:** the per-pitch **lead distances** (`lead_at_firstmove_ft`, `gain_to_release_ft`,
 `lead_at_release_ft`) — how much ground the runner actually covered on *that* attempt. Exactly the
-project's thesis: ground covered, not raw speed, decides the steal. Adding out-of-fold
-catcher/pitcher tendency encodings *did not help* (0.723 < 0.739) — the leads already carry the signal.
+project's thesis: ground covered, not raw speed, decides the steal.
 
-**Leakage discipline (so 0.739 is honest):** no outcome-derived columns (`run_value` dropped); the
-runner's own season success rate is excluded; catcher/pitcher encodings are computed out-of-fold.
+**Battery tendency — corrected.** An earlier version reported that catcher/pitcher encodings *hurt*
+(0.723 < 0.739). That was an encoding bug, not a finding: the training rows were target-encoded from
+those same rows, so each row's own outcome leaked into its feature, the model over-trusted it, and the
+clean validation encoding then behaved differently. With the encoding nested properly inside the
+training fold the sign flips:
+
+| variant (nested out-of-fold) | AUC |
+|---|---|
+| leads + base + runner skill | 0.741 |
+| **+ catcher tendency** | **0.752** |
+| + pitcher tendency | 0.743 |
+| + both | 0.753 |
+
+The **catcher** carries the gain — 147 catchers seen a median of 46 times each, enough to estimate a
+real trait (pop time, arm). The **pitcher** adds almost nothing: 1,025 pitchers at a median of 6
+attempts is too sparse to estimate a hold tendency, and the runner's lead distances already absorb
+most of the pitcher's effect — he only goes when he likes the look. The leak scaled as ~1/(n+20) per
+row, which is why the sparse pitcher encoding did the damage (0.708 on its own).
+
+**Leakage discipline (so 0.753 is honest):** no outcome-derived columns (`run_value` dropped); the
+runner's own season success rate is excluded; catcher/pitcher encodings are nested out-of-fold on both
+the training and validation side.
 
 ## Would deep learning help? No.
 
@@ -89,7 +108,7 @@ Pulled with the same Savant per-pitch feed (or the cached pitch table), keyed by
 
 ## The concrete next experiment
 
-> The per-attempt model (0.739) uses leads + base + runner skill. To push toward ~0.76: fetch
+> The per-attempt model (0.753) uses leads + base + runner skill + catcher tendency. To push further: fetch
 > **`p_throws`** and **`pitch_name`** for each `play_id` in the leads cache (Savant per-pitch feed),
 > add `is_lhp` and `pitch_class` as per-attempt features in `Scripts/model_v11.py` (`run_perattempt`), and re-run.
 > Pitcher handedness at the attempt level is the single most likely lift (LHP see and hold the runner).
