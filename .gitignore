@@ -1,0 +1,49 @@
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+## IDE
+.vscode/
+.idea/
+
+## pybaseball cache
+.pybaseball_cache/
+*.cache
+
+## v5 pickle cache (large pitch-by-pitch data, regenerable)
+.cache/
+
+## league-wide raw per-attempt leads cache (regenerable via scrape_statcast.py; ~1.1k small CSVs)
+## the committed Data/Raw_Attempts.csv is the model input, so this raw cache need not be committed
+Data/leads_cache/
+Data/discovery/
+*.mp4
+
+## OS / editor noise
+*~
+*.swp
+*.swo
+
+## v1 legacy (still kept locally as reference, but don't push)
+stolen_base_analysis.py
+
+## CatBoost training logs (regenerable)
+catboost_info/
+
+## MS Office lock/temp files
+~$*
+
+# NOTE: docs/assets/ IS committed — GitHub Pages serves the site from /docs, so the
+# headshots and logos must be in the repo or every image 404s on the live site. They are
+# byte-identical copies of Output/assets (made by build_web.py sync_assets), so git stores
+# them as the same blobs and the duplication costs essentially nothing.

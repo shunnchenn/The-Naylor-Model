@@ -1,0 +1,22 @@
+question,metric,value,note
+corr with sprint speed (|low| = skill not wheels),Net Bases Gained,0.298,
+corr with sprint speed (|low| = skill not wheels),Statcast SB Run Value,0.233,
+corr with sprint speed (|low| = skill not wheels),Steal+,-0.011,
+corr with sprint speed (|low| = skill not wheels),Burst,-0.0,
+corr with Statcast SB Run Value,Net Bases Gained,0.854,
+corr with Statcast SB Run Value,Steal+,0.759,
+corr with Statcast SB Run Value,Burst,0.179,
+describes net steals SB-CS (same season),Steal+,0.639,
+describes net steals SB-CS (same season),Burst,0.083,
+describes success rate (same season),Steal+,0.882,
+describes success rate (same season),Burst,0.153,
+predicts NEXT-YEAR net steals (SB-CS),Net Bases Gained,0.321,n=197
+predicts NEXT-YEAR net steals (SB-CS),Steal+,0.142,n=197
+predicts NEXT-YEAR net steals (SB-CS),Burst,0.05,n=197
+predicts NEXT-YEAR success rate,Net Bases Gained,0.13,n=197
+predicts NEXT-YEAR success rate,Steal+,0.201,n=197
+predicts NEXT-YEAR success rate,Burst,0.036,n=197
+year-over-year self-stability,Net Bases Gained,0.321,n=197
+year-over-year self-stability,Steal+,0.168,n=197
+year-over-year self-stability,Burst,0.474,n=197
+Steal+ vs Burst (independent lenses; ~0 = orthogonal),Steal+ x Burst,0.158,
