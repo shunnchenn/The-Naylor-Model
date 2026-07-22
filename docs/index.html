@@ -56,6 +56,15 @@
   .scalegrad{width:150px;height:9px;border-radius:5px;
              background:linear-gradient(90deg,var(--cold),var(--mid),var(--hot))}
 
+
+  details.about summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px}
+  details.about summary::-webkit-details-marker{display:none}
+  details.about summary h2{margin:0}
+  details.about summary::after{content:"Hide";font-size:11px;font-weight:700;color:var(--cold);
+      letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+  details.about:not([open]) summary::after{content:"What is this?"}
+  details.about:not([open]){padding-bottom:14px}
+
   /* ---------- section ---------- */
   section{margin:20px 0}
   .h2{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
@@ -200,6 +209,26 @@
           border-left:3px solid var(--gold);padding:9px 12px;border-radius:4px}
   @media(max-width:900px){.calcgrid{grid-template-columns:1fr}}
 
+
+  /* ---------- real tabs (panels, not scroll anchors) ---------- */
+  .tabs a{cursor:pointer}
+  .tabs a.on{background:var(--bg2);color:var(--navy);border-color:var(--bg2)}
+  section[data-panel]{display:none}
+  section[data-panel].on{display:block}
+  /* ---------- pagination ---------- */
+  .pager{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 4px 2px;
+         font-size:12.8px;color:var(--mut)}
+  .pager button{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 12px;
+                font-size:12.8px;font-weight:700;color:var(--ink);cursor:pointer}
+  .pager button:hover:not(:disabled){background:var(--bg3);border-color:var(--dim)}
+  .pager button:disabled{opacity:.4;cursor:default}
+  .pager .pnum{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+  .pager select{background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12.8px}
+  .pager .sp{flex:1}
+  /* primary-lead context line in the calculator */
+  .plnote{margin-top:12px;font-size:11.8px;color:var(--mut);background:#eef1f6;
+          border-left:3px solid var(--cold);padding:9px 12px;border-radius:4px}
+
   /* ---------- glossary ---------- */
   .gl{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .gl table{font-size:13px}
@@ -225,7 +254,7 @@
       <div class="sub">Base-stealing skill that sprint speed hides — a Statcast-style leaderboard</div>
     </div>
     <div class="tabs">
-      <a href="#calc">Odds Calculator</a><a href="#board">Leaderboard</a><a href="#map">Skill Map</a><a href="#gloss">Definitions</a>
+      <a href="#calc" data-tab="calc">Odds Calculator</a><a href="#board" data-tab="board">Leaderboard</a><a href="#map" data-tab="map">Skill Map</a><a href="#gloss" data-tab="gloss">Definitions</a>
     </div>
   </div>
 </header>
@@ -233,8 +262,8 @@
 <div class="wrap">
 
   <!-- ============ DESCRIPTION (top) ============ -->
-  <div class="about">
-    <h2>What this leaderboard measures</h2>
+  <details class="about" id="about" open>
+    <summary><h2>What this leaderboard measures</h2></summary>
     <p>Stolen bases are usually credited to speed. Most of the time that's right — but not always.
     <b>Josh Naylor stole 30 bases at 94% while running slower than 98% of the league.</b> This model
     strips sprint speed out of base-stealing and shows what's left: the part a runner actually
@@ -271,10 +300,10 @@
       <span>·</span>
       <span>Click any row to open the full player card.</span>
     </div>
-  </div>
+  </details>
 
   <!-- ============ ODDS CALCULATOR ============ -->
-  <section id="calc">
+  <section id="calc" data-panel>
     <div class="h2"><span class="n">01</span> Steal odds calculator</div>
     <div class="calcbox">
       <p style="margin:0 0 16px;color:#3d444d;font-size:13.4px;max-width:900px">
@@ -289,6 +318,7 @@
           <div class="slider" id="s_gain_to_release_ft"></div>
           <div class="slider" id="s_burst_ft"></div>
           <div class="caveat" id="cWhy"></div>
+          <div class="plnote" id="cPL"></div>
         </div>
         <div>
           <div class="odds">
@@ -306,7 +336,7 @@
   </section>
 
   <!-- ============ LEADERBOARD ============ -->
-  <section id="board">
+  <section id="board" data-panel>
     <div class="h2"><span class="n">02</span> Leaderboard</div>
     <div class="ctrls">
       <label>Season<select id="season"></select></label>
@@ -317,6 +347,14 @@
       <label>Search<input type="search" id="q" placeholder="Player name…"></label>
       <div class="spacer"></div>
       <div class="count" id="count"></div>
+    </div>
+    <div class="pager" id="pagerTop">
+      <span>Rows per page</span>
+      <select id="pagesize"><option>25</option><option selected>50</option><option>100</option><option value="0">All</option></select>
+      <span class="sp"></span>
+      <button id="pgFirst">« First</button><button id="pgPrev">‹ Prev</button>
+      <span class="pnum" id="pgLabel"></span>
+      <button id="pgNext">Next ›</button><button id="pgLast">Last »</button>
     </div>
     <div class="tblwrap">
       <table>
@@ -338,7 +376,7 @@
   </section>
 
   <!-- ============ SKILL MAP ============ -->
-  <section id="map">
+  <section id="map" data-panel>
     <div class="h2"><span class="n">03</span> Skill map — speed vs. what he created</div>
     <div class="scatterbox">
       <div class="sc-ctrls">
@@ -355,7 +393,7 @@
   </section>
 
   <!-- ============ GLOSSARY ============ -->
-  <section id="gloss">
+  <section id="gloss" data-panel>
     <div class="h2"><span class="n">04</span> Definitions</div>
     <div class="gl"><table><tbody id="gtbl"></tbody></table></div>
     <footer id="foot"></footer>
@@ -406,14 +444,19 @@ function initControls(){
   const teams=[...new Set(DATA.map(d=>d.team).filter(Boolean))].sort();
   $("#team").innerHTML='<option value="all">All teams</option>'+
     teams.map(t=>`<option value="${t}">${t}</option>`).join("");
-  ["season","team","q"].forEach(id=>$("#"+id).addEventListener("input",()=>{render();drawScatter();}));
+  ["season","team","q"].forEach(id=>$("#"+id).addEventListener("input",()=>{page=1;render();drawScatter();}));
   $("#minatt").addEventListener("input",e=>{ $("#minlab").textContent=e.target.value;
-    render(); drawScatter(); });
+    page=1; render(); drawScatter(); });
   $("#yaxis").addEventListener("change",drawScatter);
+  $("#pagesize").addEventListener("change",e=>{ pageSize=+e.target.value; page=1; render(); });
+  $("#pgFirst").addEventListener("click",()=>{ page=1; render(); scrollTop(); });
+  $("#pgPrev").addEventListener("click", ()=>{ page--;  render(); scrollTop(); });
+  $("#pgNext").addEventListener("click", ()=>{ page++;  render(); scrollTop(); });
+  $("#pgLast").addEventListener("click", ()=>{ page=1e9; render(); scrollTop(); });
   $$("thead th[data-k]").forEach(th=>th.addEventListener("click",()=>{
     const k=th.dataset.k;
     if(sortK===k) sortAsc=!sortAsc; else { sortK=k; sortAsc=(k==="name"); }
-    render();
+    page=1; render();
   }));
 }
 
@@ -431,9 +474,19 @@ function rowsFor(){
     return sortAsc?x-y:y-x; });
   return r;
 }
+let page=1, pageSize=50;
 function render(){
-  const rs=rowsFor(), tb=$("#rows"); tb.innerHTML="";
-  $("#count").textContent=rs.length+" runner-seasons";
+  const all=rowsFor(), tb=$("#rows"); tb.innerHTML="";
+  $("#count").textContent=all.length+" runner-seasons";
+  const size = pageSize>0 ? pageSize : all.length || 1;
+  const pages = Math.max(1, Math.ceil(all.length/size));
+  if(page>pages) page=pages; if(page<1) page=1;
+  const from=(page-1)*size, rs=all.slice(from, from+size);
+  $("#pgLabel").textContent = all.length
+      ? `${from+1}–${Math.min(from+size, all.length)} of ${all.length}  ·  page ${page}/${pages}`
+      : "no runners match";
+  $("#pgPrev").disabled = $("#pgFirst").disabled = (page<=1);
+  $("#pgNext").disabled = $("#pgLast").disabled = (page>=pages);
   $$("thead th[data-k]").forEach(th=>{
     const on=th.dataset.k===sortK;
     th.classList.toggle("sorted",on);
@@ -444,7 +497,7 @@ function render(){
     const tr=document.createElement("tr"); tr.className="main";
     const slow=r.speed!=null&&r.speed<=27;
     tr.innerHTML=`
-      <td class="l rk">${i+1}</td>
+      <td class="l rk">${from+i+1}</td>
       <td class="l"><span class="pcell">
         <img class="rowhs" src="${hs(r.id)}" alt="" loading="lazy" onerror="this.src='assets/_blank.png'">
         <span class="pname">${r.name}</span>
@@ -647,7 +700,7 @@ function buildGlossary(){
 /* ---------- steal odds calculator (3-input logistic regression) ----------
    The block between the markers is written by model_v11.py (run_success_model) so the page
    can never drift from the fitted model. Do not hand-edit it. */
-const SUCCESS_MODEL = /*__SUCCESS_MODEL__*/{"intercept":-10.276260280761393,"coef":{"sprint_speed":0.3005815947051851,"burst_ft":-0.0985600179033943,"gain_to_release_ft":0.3117546784306641},"auc":0.7299,"n":6712,"base_rate":0.8264,"range":{"sprint_speed":[24.4,30.5,28.5],"burst_ft":[-4.4,10.0,-0.1],"gain_to_release_ft":[0.7,39.6,10.8]}}/*__END_SUCCESS_MODEL__*/;
+const SUCCESS_MODEL = /*__SUCCESS_MODEL__*/{"intercept":-10.276260280761393,"coef":{"sprint_speed":0.3005815947051851,"burst_ft":-0.0985600179033943,"gain_to_release_ft":0.3117546784306641},"auc":0.7299,"n":6712,"base_rate":0.8264,"primary_lead":{"mean":12.4,"runner_min":10.4,"runner_max":14.6,"within_pct":84.2,"n_runner_seasons":215},"range":{"sprint_speed":[24.4,30.5,28.5],"burst_ft":[-4.4,10.0,-0.1],"gain_to_release_ft":[0.7,39.6,10.8]}}/*__END_SUCCESS_MODEL__*/;
 const CALC_META = {
   sprint_speed:       {label:"Sprint speed",  unit:"ft/s", step:0.1,
                        hint:"how fast he runs — structural, not coachable"},
@@ -694,6 +747,13 @@ function recalc(state){
   }).join("");
   $("#cContrib").innerHTML=rows;
   const perFt=Math.exp(M.coef.gain_to_release_ft);
+  const PL=M.primary_lead;
+  if(PL) $("#cPL").innerHTML=`<b>Why primary lead isn't an input:</b> the lead a runner already has
+    <i>before</i> the pitcher commits averages <b>${PL.mean} ft</b> league-wide, and across
+    ${PL.n_runner_seasons} qualified runner-seasons the averages span only
+    <b>${PL.runner_min}–${PL.runner_max} ft</b>. <b>${PL.within_pct}%</b> of the variation in any single
+    lead is which pitch it was, not which runner took it — so it barely separates anyone. What moves the
+    odds is the ground gained <i>after</i> the pitcher commits, which is the slider above.`;
   $("#cWhy").innerHTML=`<b>Reading it:</b> every extra foot of ground gained on the pitch multiplies
     the odds of being safe by <b>${perFt.toFixed(2)}×</b> — by far the strongest lever.
     <b>Burst carries a small negative weight here (${M.coef.burst_ft.toFixed(2)})</b>, which looks
@@ -702,7 +762,28 @@ function recalc(state){
     per-pitch number, Burst is positive.`;
 }
 
-initControls(); buildGlossary(); render(); drawScatter(); initCalc();
+
+/* ---------- tabs: switch panels instead of scrolling ---------- */
+const TABS=["calc","board","map","gloss"];
+function scrollTop(){ window.scrollTo({top:0,behavior:"smooth"}); }
+function showTab(id,push){
+  if(!TABS.includes(id)) id="calc";
+  TABS.forEach(t=>{
+    const sec=document.getElementById(t); if(sec) sec.classList.toggle("on",t===id);
+    const a=document.querySelector('.tabs a[data-tab="'+t+'"]'); if(a) a.classList.toggle("on",t===id);
+  });
+  if(id==="map") drawScatter();          // SVG needs a real width, so draw once visible
+  if(push && location.hash!=="#"+id) history.replaceState(null,"","#"+id);
+}
+function initTabs(){
+  document.querySelectorAll('.tabs a[data-tab]').forEach(a=>{
+    a.addEventListener("click",e=>{ e.preventDefault(); showTab(a.dataset.tab,true); scrollTop(); });
+  });
+  window.addEventListener("hashchange",()=>showTab(location.hash.replace("#",""),false));
+  showTab(location.hash.replace("#","")||"calc",false);
+}
+
+initControls(); buildGlossary(); render(); initCalc(); initTabs();
 window.addEventListener("resize",drawScatter);
 </script>
 </body>

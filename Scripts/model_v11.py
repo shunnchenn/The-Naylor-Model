@@ -358,6 +358,24 @@ def run_success_model(seed: int = 42):
     lb = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")[["runner_id", "season", "sprint_speed", "burst_ft"]]
     at = at.merge(lb, on=["runner_id", "season"], how="left")
     at[SIMPLE_FEATS] = at[SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
+
+    # Primary lead (the ground he has BEFORE the pitcher commits) is context, not an input:
+    # runners converge on it, so it barely separates anyone. Quantify that for the page.
+    pl = pd.to_numeric(at["lead_at_firstmove_ft"], errors="coerce")
+    seas = at.assign(_pl=pl).dropna(subset=["_pl"]).groupby(["runner_id", "season"])["_pl"]
+    means, counts = seas.mean(), seas.count()
+    qual = means[counts >= 15]
+    grand = float(pl.mean())
+    ss_between = float((counts[counts >= 15] * (qual - grand) ** 2).sum())
+    dq = at.assign(_pl=pl).dropna(subset=["_pl"])
+    dq = dq[dq.set_index(["runner_id", "season"]).index.isin(qual.index)]
+    ss_total = float(((dq["_pl"] - grand) ** 2).sum())
+    primary_lead = {"mean": round(grand, 1),
+                    "runner_min": round(float(qual.min()), 1),
+                    "runner_max": round(float(qual.max()), 1),
+                    "within_pct": round(100 * (1 - ss_between / ss_total), 1),
+                    "n_runner_seasons": int(len(qual))}
+
     at = at.dropna(subset=SIMPLE_FEATS).reset_index(drop=True)
     X, y = at[SIMPLE_FEATS].values, at["y"].values
 
@@ -371,6 +389,7 @@ def run_success_model(seed: int = 42):
                "coef": {k: float(v) for k, v in coefs.items()},
                "auc": round(float(auc), 4), "n": int(len(at)),
                "base_rate": round(float(y.mean()), 4),
+               "primary_lead": primary_lead,
                # full observed span so the sliders cover everyone (incl. Naylor at 24.4 ft/s)
                "range": {f: [round(float(at[f].min()), 1),
                              round(float(at[f].max()), 1),
