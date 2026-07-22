@@ -225,7 +225,7 @@
       <div class="sub">Base-stealing skill that sprint speed hides — a Statcast-style leaderboard</div>
     </div>
     <div class="tabs">
-      <a href="#board">Leaderboard</a><a href="#map">Skill Map</a><a href="#calc">Odds Calculator</a><a href="#gloss">Definitions</a>
+      <a href="#calc">Odds Calculator</a><a href="#board">Leaderboard</a><a href="#map">Skill Map</a><a href="#gloss">Definitions</a>
     </div>
   </div>
 </header>
@@ -273,9 +273,41 @@
     </div>
   </div>
 
+  <!-- ============ ODDS CALCULATOR ============ -->
+  <section id="calc">
+    <div class="h2"><span class="n">01</span> Steal odds calculator</div>
+    <div class="calcbox">
+      <p style="margin:0 0 16px;color:#3d444d;font-size:13.4px;max-width:900px">
+        A plain <b>logistic regression</b> on three numbers, fit on <span id="cN"></span> tracked
+        attempts (CV AUC <span id="cAUC"></span>). Drag the sliders to see the modelled chance that
+        <b>one</b> attempt is safe. This is the whiteboard version of the full model — simple enough
+        to reason about, and it gets within a hair of it.
+      </p>
+      <div class="calcgrid">
+        <div>
+          <div class="slider" id="s_sprint_speed"></div>
+          <div class="slider" id="s_gain_to_release_ft"></div>
+          <div class="slider" id="s_burst_ft"></div>
+          <div class="caveat" id="cWhy"></div>
+        </div>
+        <div>
+          <div class="odds">
+            <div class="cap">Chance the attempt is safe</div>
+            <div class="big" id="cP">—</div>
+            <div class="gaugebar"><i id="cMark"></i></div>
+            <div class="ends" style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim)">
+              <span>0%</span><span>100%</span></div>
+            <div class="vs" id="cVs"></div>
+          </div>
+          <div class="contrib" id="cContrib"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ LEADERBOARD ============ -->
   <section id="board">
-    <div class="h2"><span class="n">01</span> Leaderboard</div>
+    <div class="h2"><span class="n">02</span> Leaderboard</div>
     <div class="ctrls">
       <label>Season<select id="season"></select></label>
       <label>Team<select id="team"></select></label>
@@ -307,7 +339,7 @@
 
   <!-- ============ SKILL MAP ============ -->
   <section id="map">
-    <div class="h2"><span class="n">02</span> Skill map — speed vs. what he created</div>
+    <div class="h2"><span class="n">03</span> Skill map — speed vs. what he created</div>
     <div class="scatterbox">
       <div class="sc-ctrls">
         <label>Y axis:
@@ -319,38 +351,6 @@
         <span>Bubble size = attempts · color = Steal+ percentile · ★ = Josh Naylor</span>
       </div>
       <svg id="scatter" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
-  </section>
-
-  <!-- ============ ODDS CALCULATOR ============ -->
-  <section id="calc">
-    <div class="h2"><span class="n">03</span> Steal odds calculator</div>
-    <div class="calcbox">
-      <p style="margin:0 0 16px;color:#3d444d;font-size:13.4px;max-width:900px">
-        A plain <b>logistic regression</b> on three numbers, fit on <span id="cN"></span> tracked
-        attempts (CV AUC <span id="cAUC"></span>). Drag the sliders to see the modelled chance that
-        <b>one</b> attempt is safe. This is the whiteboard version of the full model — simple enough
-        to reason about, and it gets within a hair of it.
-      </p>
-      <div class="calcgrid">
-        <div>
-          <div class="slider" id="s_sprint_speed"></div>
-          <div class="slider" id="s_gain_to_release_ft"></div>
-          <div class="slider" id="s_burst_ft"></div>
-          <div class="caveat" id="cWhy"></div>
-        </div>
-        <div>
-          <div class="odds">
-            <div class="cap">Chance the attempt is safe</div>
-            <div class="big" id="cP">—</div>
-            <div class="gaugebar"><i id="cMark"></i></div>
-            <div class="ends" style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim)">
-              <span>0%</span><span>100%</span></div>
-            <div class="vs" id="cVs"></div>
-          </div>
-          <div class="contrib" id="cContrib"></div>
-        </div>
-      </div>
     </div>
   </section>
 

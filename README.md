@@ -1,16 +1,26 @@
 # The Naylor Model
 
-> ### Open this first  (v11)
+## ▶ **[Try the steal-odds calculator](https://shunnchenn.github.io/The-Naylor-Model/#calc)** &nbsp;·&nbsp; [explore the full model](https://shunnchenn.github.io/The-Naylor-Model/)
+
+**Drag three sliders — sprint speed, the ground a runner gains off the base, and his Burst — and see
+the modelled odds that a stolen-base attempt is safe.** Runs in the browser, nothing to install.
+
+> A slow runner with a great jump (24.4 ft/s, 16.7 ft gained) reads **89.2 %**.
+> An elite sprinter with a poor jump (30.5 ft/s, 8 ft) reads **80.0 %**.
+> That gap is the whole project.
+
+---
+
+> ### Then dig in  (v11)
 > | If you want to… | Open |
 > |---|---|
-> | **Explore the model** (interactive, local web app) | **[`docs/index.html`](docs/index.html)** — sortable leaderboard, click any runner for the Net-Bases breakdown, the skill map, and the evidence panel |
+> | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 3 sliders, live |
+> | **Explore the leaderboard** | **https://shunnchenn.github.io/The-Naylor-Model/** — sortable board, player cards with percentile bars, skill map |
 > | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v11_Report.docx`](Naylor_Model_v11_Report.docx)** |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |
 > | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
 > | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v11_leaderboard.csv`, `DF_v11_validation.csv`) |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
->
-> | **See it live** | **https://shunnchenn.github.io/The-Naylor-Model/** |
 >
 > Everything else is plumbing: `Scripts/` (three analysis scripts — scrape, features, model) ·
 > `Data/` (raw in) · `Output/` (results out).
