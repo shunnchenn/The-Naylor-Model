@@ -161,13 +161,31 @@ def main():
     pd.DataFrame(rows).to_csv(RESULTS / "DF_v13_Attempt.csv", index=False)
 
     # ── the diagnostic this model exists for: the selection effect, without a model ──
-    print("\nattempt rate by runner sprint speed (the self-selection that flattens the success model):")
-    q = pd.qcut(df["sprint_speed_all"], 5, labels=["slowest", "slow", "mid", "fast", "fastest"],
-                duplicates="drop")
-    tab = df.groupby(q)["attempt"].agg(["mean", "size"])
-    tab["mean"] = (tab["mean"] * 100).round(2)
-    print(tab.rename(columns={"mean": "attempt_%", "size": "opportunities"}).to_string())
+    # SPEED BINS, DEFINED. Quintiles of the OPPORTUNITY population — every pitch with a runner on
+    # 1st — so a runner who reaches base often carries more weight. They are NOT MLB-wide
+    # percentiles and NOT equal numbers of runners, and a runner can fall in different bins in
+    # different seasons because sprint speed is measured per season.
+    q, edges = pd.qcut(df["sprint_speed_all"], 5, retbins=True, duplicates="drop",
+                       labels=["slowest", "slow", "mid", "fast", "fastest"])
+    tab = df.groupby(q).agg(low_ftps=("sprint_speed_all", "min"),
+                            high_ftps=("sprint_speed_all", "max"),
+                            mean_ftps=("sprint_speed_all", "mean"),
+                            runner_seasons=("runner_1b", "nunique"),
+                            opportunities=("attempt", "size"),
+                            attempts=("attempt", "sum")).round(2)
+    tab["attempt_pct"] = (100 * tab["attempts"] / tab["opportunities"]).round(2)
+    tab["share_of_opps_pct"] = (100 * tab["opportunities"] / len(df)).round(1)
+    print("\nSPEED BINS — quintiles of the opportunity population (pitch-weighted, NOT MLB percentile):")
+    print(tab.to_string())
     tab.to_csv(RESULTS / "DF_v13_SelectionEffect.csv")
+
+    pcts = [0, 5, 10, 25, 50, 75, 90, 95, 100]
+    pct = pd.DataFrame({"percentile": pcts,
+                        "sprint_speed_ftps": [round(float(np.percentile(
+                            df["sprint_speed_all"].dropna(), p)), 1) for p in pcts]})
+    pct.to_csv(RESULTS / "DF_v13_SpeedPercentiles.csv", index=False)
+    print("speed percentiles in this population (ft/s): " +
+          " · ".join(f"p{r.percentile}={r.sprint_speed_ftps}" for r in pct.itertuples()))
 
     print("\nattempt rate by count:")
     ct = df.groupby(["balls", "strikes"])["attempt"].agg(["mean", "size"])
