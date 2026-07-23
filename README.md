@@ -16,7 +16,7 @@ the modelled odds that a stolen-base attempt is safe.** Runs in the browser, not
 > |---|---|
 > | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 3 sliders, live |
 > | **Explore the leaderboard** | **https://shunnchenn.github.io/The-Naylor-Model/** — sortable board, player cards with percentile bars, skill map |
-> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v11_Report.docx`](Naylor_Model_v11_Report.docx)** |
+> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v11_Report.docx`](Naylor_Model_v11_Report.docx)** (Steal+/Burst) · [`v12`](Naylor_Model_v12_Report.docx) (per-attempt success) · [`v13`](Naylor_Model_v13_Report.docx) (the 2023–2026 decision model) · [`classic`](Naylor_Model_classic_Report.docx) (2015–2022) |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |
 > | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
 > | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v11_leaderboard.csv`, `DF_v11_validation.csv`) |
@@ -87,7 +87,7 @@ The honest read: **Steal+ is the single best answer to "who steals well"** — i
 
 The model has two clearly separated jobs — kept apart on purpose:
 
-1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,000 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUROC ≈ 0.78** (v12: 0.741 leads-only → 0.783 with pitch context and catcher arm; **0.770 under a forward train-past/test-future holdout**, the honest number). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
+1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,100 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUROC ≈ 0.78** (v12: 0.741 leads-only → 0.783 with pitch context and catcher arm; **0.770 under a forward train-past/test-future holdout**, the honest number). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
 
 2. **The metric suite (per runner-season).** `Scripts/model_v11.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
    - `fit_league(era)` learns the league constants (the `ground ~ sprint_speed` line, the percentile references) **once** on the whole pool;
@@ -97,7 +97,7 @@ The model has two clearly separated jobs — kept apart on purpose:
 
 3. **Projection is validated separately** by the year T → T+1 correlations above — the only place the model speaks to "next season," and it does so honestly (Net Bases is the better volume forecaster; v11 wins on skill, efficiency, and technique).
 
-*† 2026 is a partial season (~1/3 complete); the era pool is the 2023–26 Statcast lead-tracking window, 408 runner-seasons.*
+*† The modern pool is the 2023–2026 Statcast lead-tracking window, **452 runner-seasons** (2026 current through 2026-07-17). A **separate classic model** covers **2015–2022** (1,280 runner-seasons) — same Steal+/Burst architecture, re-fit on its own league constants because the 2023 rule changes (disengagement limit, bigger bases, pitch clock) made the eras non-comparable. See `Naylor_Model_classic_Report.docx` and `Scripts/model_classic.py`.*
 
 ---
 

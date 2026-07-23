@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-model_v13.py — the DECISION model: P(attempt), not P(success).
+model_v13.py — the DECISION model (2023–2026): P(attempt), not P(success).
+
+Scope note: this is a 2023–2026 model on purpose. The opportunity denominator is built from the
+post-rule-change environment (disengagement limit, bigger bases, pitch clock), where the decision
+to run is a different game than it was pre-2023. The classic 2015–2022 era has its own separate
+Steal+/Burst + per-attempt fit (see model_classic.py); no classic decision model is built.
 
 Every other model in this repo conditions on a steal attempt having happened. That is why sprint
 speed alone scores AUROC 0.53 on the success model: runners self-select, only going when they
@@ -138,7 +143,7 @@ def evaluate(df, y, feats, split="random", seed=42, return_pred=False):
 
 def main():
     df, y = load()
-    print(f"opportunities: {len(df):,} pitches (runner on 1B, 2B empty) | "
+    print(f"v13 DECISION MODEL (2023-2026): {len(df):,} opportunity pitches (runner on 1B, 2B empty) | "
           f"attempts {y.sum():,} | attempt rate {y.mean()*100:.2f}%")
     print(f"seasons: {sorted(df['season'].unique())} | distinct runners: {df['runner_1b'].nunique():,}")
 
@@ -206,7 +211,7 @@ def main():
         t = df.groupby(q)["attempt"].mean() * 100
         ax.bar([str(i) for i in t.index], t.values, color="#2F6FB0", width=0.6)
         ax.set_ylabel("attempt rate (%)"); ax.set_xlabel("runner sprint-speed quintile")
-        ax.set_title("Runners self-select: who even tries to steal", fontsize=12)
+        ax.set_title("Runners self-select: who even tries to steal (2023–2026)", fontsize=12)
         for i, v in enumerate(t.values):
             ax.text(i, v + 0.03, f"{v:.2f}%", ha="center", fontweight="bold", fontsize=10)
         plt.tight_layout(); plt.savefig(FIGS / "Fig_v13_Attempt.png", dpi=160); plt.close()

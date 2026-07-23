@@ -1,6 +1,6 @@
 term,coefficient,odds_multiplier
-intercept,-11.57844,
-sprint_speed,0.34242,1.4084
-burst_ft,-0.10295,0.9022
-gain_to_release_ft,0.31512,1.3704
-CV AUC (5-fold),0.7372,
+intercept,-11.54506,
+sprint_speed,0.34319,1.4094
+burst_ft,-0.10051,0.9044
+gain_to_release_ft,0.30913,1.3622
+CV AUC (5-fold),0.734,

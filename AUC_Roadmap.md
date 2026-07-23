@@ -39,6 +39,25 @@ row, which is why the sparse pitcher encoding did the damage (0.708 on its own).
 runner's own season success rate is excluded; catcher/pitcher encodings are nested out-of-fold on both
 the training and validation side.
 
+## Classic era (2015–2022) and the 2026 refresh
+
+The pool is now the full **2015–2026** span, split into two separately-fit models because the 2023
+rule package (two-disengagement limit, bigger bases, pitch clock) moved the baselines too far to
+pool:
+
+| league constant | classic 2015–2022 | modern 2023–2026 |
+|---|---|---|
+| SB success | 75.0% | 80.4% |
+| ground vs speed | 25.1 − 0.48·spd | 36.8 − 0.89·spd |
+| per-attempt AUROC | 0.745 (leads+runner) | 0.783 (full) |
+
+Same architecture (`Scripts/model_classic.py` reuses v11's `fit_league`/`score`), own constants.
+Classic = v11 + v12 only; the v13 decision model is deliberately **2023–2026** (the attempt-vs-
+no-attempt question is about the current rule environment). The modern 2026 season was refreshed
+current (through 2026-07-17), which re-fit the league on fuller data and republished the leaderboard
+and live site; the 2023–2025 metrics moved only slightly (mean |ΔSteal+| ≈ 0.04) since only the
+league constants shifted.
+
 ## v13 — what was tried next, and what it bought
 
 **Validation hardened (the number holds).** Reported under three regimes instead of one:

@@ -1,10 +1,10 @@
 model,n_features,auroc,auprc,brier
-v11 baseline — leads + runner skill,10,0.7407,0.926,0.1375
-v11 + catcher tendency (nested OOF),11,0.7521,0.9296,0.1359
-+ 1. battery & pitch type,16,0.7724,0.9354,0.132
-+ 2. count & situation,22,0.7726,0.9354,0.132
-+ 3. catcher arm (pop time),25,0.784,0.9391,0.1296
-v12 SHIPPED (post-pitch count dropped),22,0.7829,0.9388,0.1298
-alone: battery & pitch type,15,0.762,0.9318,0.1334
-alone: count & situation,16,0.7439,0.9267,0.1369
-alone: catcher arm,13,0.7642,0.9338,0.1338
+v11 baseline — leads + runner skill,10,0.7388,0.9252,0.1374
+v11 + catcher tendency (nested OOF),11,0.7517,0.9297,0.1356
++ 1. battery & pitch type,16,0.7716,0.9355,0.1318
++ 2. count & situation,22,0.7733,0.9361,0.1315
++ 3. catcher arm (pop time),25,0.7856,0.9399,0.1292
+v12 SHIPPED (post-pitch count dropped),22,0.7832,0.9389,0.1294
+alone: battery & pitch type,15,0.7616,0.932,0.1334
+alone: count & situation,16,0.7438,0.9268,0.1366
+alone: catcher arm,13,0.763,0.933,0.1338

@@ -18,6 +18,7 @@ Run:  python3 Scripts/build_features.py
 """
 from pathlib import Path
 import re
+import numpy as np
 import pandas as pd
 
 ROOT  = Path(__file__).resolve().parent.parent
@@ -81,9 +82,44 @@ def add_legacy_metrics(df):
     return df
 
 
-def build_season():
-    """Assemble Data/Raw_Season.csv (one row per runner-season)."""
+def refresh_live_sbcs(df, years, min_att=1):
+    """Overlay year-correct StatsAPI SB/CS + sprint onto the given seasons, and append any newly
+    qualifying runner-seasons. Used to bring an in-progress season (e.g. 2026) current WITHOUT
+    mutating the frozen DF_v7_SSSI on disk — final seasons are left exactly as published. New rows
+    carry NaN for the SSSI running-mechanics columns (jump_time etc.); Steal+/Burst don't use them
+    and the per-attempt model tolerates the NaNs."""
+    import scrape_statcast as S
+    sp = pd.read_csv(DATA / "sprint_speed.csv").rename(columns={"sprint_speed_all": "sprint_speed"})
+    keep_other = df[~df["season"].isin(years)]
+    updated = [keep_other]
+    for y in years:
+        live = S.fetch_sb_cs(y, y)                       # {pid: {sb, cs, name, team, ...}}
+        cur = df[df["season"] == y].set_index("runner_id")
+        rows = []
+        for pid, a in live.items():
+            att = a["sb"] + a["cs"]
+            if att < min_att:
+                continue
+            base = cur.loc[pid].to_dict() if pid in cur.index else {c: np.nan for c in df.columns}
+            base.update({"runner_id": pid, "season": y, "SB": a["sb"], "CS": a["cs"],
+                         "sb_attempts": att, "player_name": a["name"] or base.get("player_name")})
+            spd = sp[(sp.runner_id == pid) & (sp.season == y)]["sprint_speed"]
+            if len(spd):
+                base["sprint_speed"] = float(spd.iloc[0])
+            rows.append(base)
+        got = pd.DataFrame(rows)
+        print(f"  refreshed {y}: {len(got)} runner-seasons (was {len(cur)}), "
+              f"total SB {int(got['SB'].sum()) if len(got) else 0}")
+        updated.append(got)
+    return pd.concat(updated, ignore_index=True)
+
+
+def build_season(refresh_years=None, refresh_min_att=10):
+    """Assemble Data/Raw_Season.csv (one row per runner-season). If refresh_years is given,
+    overlay live StatsAPI SB/CS for those seasons (network) so an in-progress season is current."""
     df = pd.read_csv(SSSI).merge(pd.read_csv(XSB)[XSB_ONLY], on=["runner_id", "season"], how="left")
+    if refresh_years:
+        df = refresh_live_sbcs(df, refresh_years, refresh_min_att)
     if TEAM_MAP.exists():
         df = df.merge(pd.read_csv(TEAM_MAP), on=["runner_id", "season"], how="left")
     else:
@@ -98,9 +134,13 @@ def build_season():
 
 
 def build_attempts():
-    """Assemble Data/Raw_Attempts.csv (one row per tracked steal attempt)."""
+    """Assemble Data/Raw_Attempts.csv (one row per tracked steal attempt) for the MODERN era.
+    The cache now also holds classic 2015-2022 leads (for model_classic.py), so filter to >=2023
+    here — otherwise the modern per-attempt model would train across the 2023 rule change."""
     frames = []
     for runner_id, season, a in _iter_leads():
+        if season < 2023:
+            continue
         if "runner_id" not in a.columns:            # older cache files carry no id/season columns
             a.insert(0, "runner_id", runner_id)
             a.insert(1, "season", season)
@@ -112,5 +152,10 @@ def build_attempts():
 
 
 if __name__ == "__main__":
-    build_season()
+    import sys
+    refresh = None
+    if "--refresh" in sys.argv:
+        i = sys.argv.index("--refresh")
+        refresh = [int(y) for y in sys.argv[i + 1].split(",")]   # e.g. --refresh 2026
+    build_season(refresh_years=refresh)
     build_attempts()

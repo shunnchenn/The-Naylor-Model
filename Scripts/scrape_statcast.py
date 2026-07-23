@@ -309,7 +309,8 @@ def fetch_poptime(start: int, end: int) -> None:
 # The committed DF_v7_SSSI.csv only covers runner-seasons with >=10 attempts, which is why the
 # web calculator could only be fit on 6,712 of 10,366 attempts. This pulls the full leaderboard
 # (one small request per season) so speed exists for everyone; Burst is then recomputed offline.
-def fetch_sprint(start: int, end: int) -> None:
+# NOTE: named distinctly from the discover() helper `fetch_sprint` (a dict), which it must not shadow.
+def fetch_sprint_leaderboard(start: int, end: int) -> None:
     """Full sprint-speed leaderboard per season -> Data/sprint_speed.csv."""
     out = []
     for y in range(start, end + 1):
@@ -647,7 +648,7 @@ def main():
         return
 
     if args.cmd == "sprint":
-        fetch_sprint(args.start, args.end)
+        fetch_sprint_leaderboard(args.start, args.end)
         return
 
     if args.cmd == "opportunities":
