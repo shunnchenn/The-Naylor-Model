@@ -1,0 +1,7 @@
+model,split,auprc,auroc,brier,base_rate,n_scored
+situation only,random,0.042,0.6707,0.0223,0.023,517068
+personnel only,random,0.0567,0.7144,0.0222,0.023,517068
+v13 FULL (situation + personnel),random,0.0765,0.7799,0.0219,0.023,517068
+v13 FULL,random,0.0765,0.7799,0.0219,0.023,517068
+v13 FULL,group,0.0686,0.7704,0.022,0.023,517068
+v13 FULL,forward,0.0652,0.762,0.0225,0.0236,361326

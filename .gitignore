@@ -51,3 +51,9 @@ catboost_info/
 ## v12 play-by-play cache (one slim json per game; hundreds of MB, fully regenerable via
 ## `scrape_statcast.py context`). The derived Data/Raw_Attempt_Context.csv IS committed.
 Data/pbp_cache/
+
+## v13 opportunity cache (regenerable via `scrape_statcast.py opportunities`)
+Data/pbp_opps_cache/
+
+## v13 opportunities: the plain CSV is 41MB; the gzipped copy is committed instead
+Data/Raw_Opportunities.csv

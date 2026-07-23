@@ -81,6 +81,51 @@ because it merged the 408-runner-season leaderboard. Sprint speed now comes from
 leaderboard and Burst is recomputed offline against the same league line (min 3 tracked attempts,
 shrunk toward the league mean below ~10). Now **10,063 attempts, and AUC improved 0.730 → 0.737**.
 
+## v13 — modelling the decision, not the outcome
+
+Every earlier model conditions on an attempt having happened, which is why sprint speed alone
+scores AUROC 0.53 on the success model. v13 builds the denominator that never existed: **517,068
+pitches with a runner on 1st and 2nd empty**, from 8,148 regular-season games, of which **11,917
+are attempts (2.30%)**. Base-state replay agreed with MLB's own end-of-PA state on **99.25%** of
+615,967 plate appearances.
+
+Labelling is league-wide off the play-by-play feed (`runners[].details.eventType`), so it covers
+**917 runners and 11,917 attempts** versus the 499 runners / 9,412 tracked 2B attempts Savant
+publishes. A free by-product: pitch ordering gives the **true pre-pitch count**, retiring the
+post-pitch caveat that forced `SITUATION_FEATS` out of v12.
+
+**The headline: runners self-select, hard.** Attempt rate by sprint-speed quintile —
+
+| slowest | slow | mid | fast | fastest |
+|---|---|---|---|---|
+| 0.70% | 1.22% | 1.87% | 3.08% | **4.87%** |
+
+A **7x** spread. Fast runners take the chances; slow runners only go when the situation is already
+favourable. That is the selection effect, measured — and it is the reason speed looks worthless
+*inside* the success model while dominating the decision to run at all.
+
+**Model.** P(attempt) on situation + personnel. AUPRC leads here because attempts are 2.3% of
+opportunities (the inverse of the success model's 81%), so the no-skill floor is 0.023:
+
+| split | AUPRC (floor 0.023) | AUROC | Brier |
+|---|---|---|---|
+| random | 0.0765 | 0.7799 | 0.0219 |
+| group (by runner) | 0.0686 | 0.7704 | 0.0220 |
+| **forward** | **0.0652** | **0.7620** | **0.0225** |
+
+About 3x the no-skill floor, and the three regimes now agree — which they did not at first.
+
+**A leak caught in the build.** The runner's own attempt rate is the natural "scouting report"
+prior, but a same-season leave-one-out version still reads the season being predicted: random
+AUPRC 0.2534 against grouped 0.0606, a 4x gap. Rebuilt as an expanding **prior-seasons-only** rate
+the gap closes and forward calibration improves from max gap 0.171 to **0.016**. Third time this
+same self-contamination pattern has appeared in this project.
+
+**Known limitation.** The lead distances that carry all of v11/v12's signal exist only on tracked
+attempts — Savant never publishes a lead for a pitch where the runner stayed. So the decision model
+structurally cannot see the runner's *signal*, only the situation and the personnel. Not a
+modelling choice; a data limitation.
+
 ## Would deep learning help? No.
 
 At ~10k rows and ~10 tabular features, **gradient boosting is the right tool**. Neural nets need far

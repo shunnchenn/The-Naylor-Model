@@ -52,6 +52,8 @@ LOGOS      = ROOT / "Output" / "assets" / "logos"
 SEASON_MASTER = ROOT / "Output" / "Results" / "DF_v7_SSSI.csv"
 TEAM_MAP_OUT  = ROOT / "Data" / "team_map.csv"
 PBP_DIR       = ROOT / "Data" / "pbp_cache"          # one small json per game (resumable)
+OPPS_DIR      = ROOT / "Data" / "pbp_opps_cache"     # v13: separate cache — richer schema
+OPPS_OUT      = ROOT / "Data" / "Raw_Opportunities.csv"
 POPTIME_OUT   = ROOT / "Data" / "poptime.csv"
 SPRINT_OUT    = ROOT / "Data" / "sprint_speed.csv"
 CONTEXT_OUT   = ROOT / "Data" / "Raw_Attempt_Context.csv"
@@ -74,6 +76,15 @@ PBP_URL     = ("https://statsapi.mlb.com/api/v1/game/{pk}/playByPlay?fields="
                "allPlays,playEvents,playId,details,type,code,count,balls,strikes,outs,"
                "about,inning,halfInning,matchup,pitchHand,batSide,result,awayScore,homeScore")
 SCHED_URL   = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date}"
+# v13 opportunity feed. `fields` is a FLAT key-name whitelist applied at every depth, so each
+# descendant key must be named individually. Carries runner movement so base state can be
+# replayed, and pitch ordering so the TRUE pre-pitch count is recoverable.
+PBP_OPPS_URL = ("https://statsapi.mlb.com/api/v1/game/{pk}/playByPlay?fields="
+                "allPlays,atBatIndex,about,inning,halfInning,playEvents,playId,isPitch,index,"
+                "pitchNumber,details,type,code,count,balls,strikes,outs,matchup,pitchHand,"
+                "batSide,postOnFirst,postOnSecond,postOnThird,id,runners,movement,originBase,"
+                "start,end,outBase,isOut,event,eventType,playIndex,runner,result,awayScore,homeScore")
+SCHED_R_URL = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&date={date}"
 POPTIME_URL = ("https://baseballsavant.mlb.com/leaderboard/poptime"
                "?year={y}&team=&min2sb=1&min3b=0&csv=true")
 SPRINT_URL  = ("https://baseballsavant.mlb.com/leaderboard/sprint_speed"
@@ -314,6 +325,165 @@ def fetch_sprint(start: int, end: int) -> None:
     print(f"[write] {SPRINT_OUT.name}  ({len(out)} player-seasons)")
 
 
+
+# ── v13: opportunity denominator (every pitch with a runner on 1B, 2B empty) ─
+BASES = ("1B", "2B", "3B")
+
+
+def _apply_movement(state, r):
+    """Apply one runner movement to the base state (outs come from the feed's own count)."""
+    mv = r.get("movement") or {}
+    det = r.get("details") or {}
+    rid = (det.get("runner") or {}).get("id")
+    start, end = mv.get("originBase") or mv.get("start"), mv.get("end")
+    if mv.get("isOut"):
+        for b in BASES:
+            if state[b] == rid:
+                state[b] = None
+        return
+    if end and end != start:
+        for b in BASES:
+            if state[b] == rid:
+                state[b] = None
+        if end in BASES:
+            state[end] = rid
+
+
+def _game_opportunities(pk):
+    """One row per pitch with a runner on 1B and 2B empty, carrying the base state and TRUE
+    pre-pitch count. Returns (rows, plate_appearances_checked, mismatches) so the caller can
+    gate on how well the base-state replay agrees with MLB's own end-of-PA state.
+
+    Two things the feed does that are easy to get wrong:
+      * a steal is its own non-pitch ACTION event inserted AFTER the pitch it happened on, so
+        runners[].details.playIndex points past the pitch — attribute it to the preceding pitch;
+      * playEvents[].count is the count AFTER that event, so the pre-pitch count (and outs) is
+        the previous event's count, and 0-0 at the start of each plate appearance.
+    """
+    OPPS_DIR.mkdir(parents=True, exist_ok=True)
+    cache = OPPS_DIR / f"{pk}.json"
+    if cache.exists():
+        try:
+            d = json.loads(cache.read_text())
+            return d["rows"], d["checked"], d["bad"]
+        except Exception:
+            pass
+
+    d = get_json(PBP_OPPS_URL.format(pk=pk)) or {}
+    rows, checked, bad = [], 0, 0
+    state = {b: None for b in BASES}
+    outs_now, cur_half = 0, None
+
+    for play in d.get("allPlays", []):
+        about = play.get("about") or {}
+        half, inning = about.get("halfInning"), about.get("inning")
+        if (half, inning) != cur_half:
+            state = {b: None for b in BASES}
+            outs_now, cur_half = 0, (half, inning)
+
+        mu, res = play.get("matchup") or {}, play.get("result") or {}
+        away, home = res.get("awayScore"), res.get("homeScore")
+        diff = None if away is None or home is None else ((away - home) if half == "top" else (home - away))
+        is_lhp = 1 if (mu.get("pitchHand") or {}).get("code") == "L" else 0
+        bat_r = 1 if (mu.get("batSide") or {}).get("code") == "R" else 0
+
+        moves = {}
+        for r in play.get("runners", []):
+            moves.setdefault((r.get("details") or {}).get("playIndex"), []).append(r)
+        seen = set()
+
+        balls = strikes = 0
+        last_row = None                          # the most recent pitch row, for steal attribution
+        for ev in play.get("playEvents", []):
+            i = ev.get("index")
+            if ev.get("isPitch"):
+                on1, on2 = state["1B"], state["2B"]
+                if on1 and not on2:
+                    last_row = {"game_pk": pk, "at_bat": play.get("atBatIndex"),
+                                "half": half, "inning": inning, "pitch_index": i,
+                                "play_id": ev.get("playId"), "runner_1b": on1,
+                                "outs": outs_now, "balls": balls, "strikes": strikes,
+                                "score_diff": diff, "is_lhp": is_lhp, "bat_side_r": bat_r,
+                                "pitch_code": ((ev.get("details") or {}).get("type") or {}).get("code"),
+                                "attempt": 0, "attempt_type": ""}
+                    rows.append(last_row)
+                else:
+                    last_row = None
+
+            for r in moves.get(i, []):
+                seen.add(i)
+                et = ((r.get("details") or {}).get("eventType") or "")
+                # steals/pickoffs belong to the pitch just thrown, not to this action event
+                if et in ("stolen_base_2b", "caught_stealing_2b", "pickoff_1b",
+                          "pickoff_caught_stealing_2b") and last_row is not None:
+                    last_row["attempt_type"] = et
+                    if et.startswith(("stolen_base", "caught_stealing")):
+                        last_row["attempt"] = 1
+                _apply_movement(state, r)
+
+            c = ev.get("count") or {}            # authoritative post-event count / outs
+            balls = c.get("balls", balls)
+            strikes = c.get("strikes", strikes)
+            outs_now = c.get("outs", outs_now)
+
+        for idx in sorted((k for k in moves if k not in seen), key=lambda v: (v is None, v)):
+            for r in moves[idx]:
+                _apply_movement(state, r)
+
+        # a third out ends the inning, so the bases are empty regardless of who reached
+        pa_outs = (play.get("count") or {}).get("outs", outs_now)
+        if pa_outs is not None and pa_outs >= 3:
+            state = {b: None for b in BASES}
+
+        checked += 1
+        post = {b: (mu.get("postOn" + w) or {}).get("id")
+                for b, w in zip(BASES, ("First", "Second", "Third"))}
+        if any(state[b] != post[b] for b in BASES):
+            bad += 1
+            state = dict(post)                   # resync so one bad PA cannot poison the inning
+        outs_now = (play.get("count") or {}).get("outs", outs_now)
+
+    cache.write_text(json.dumps({"rows": rows, "checked": checked, "bad": bad},
+                                separators=(",", ":")))
+    return rows, checked, bad
+
+
+def fetch_opportunities() -> None:
+    """Build Data/Raw_Opportunities.csv — the denominator the success models never had."""
+    src = ROOT / "Data" / "Raw_Attempts.csv"
+    if not src.exists():
+        sys.exit("Data/Raw_Attempts.csv missing — run build_features.py first")
+    dates = sorted({r["date"][:10] for r in csv.DictReader(open(src)) if r.get("date")})
+    print(f"walking {len(dates)} dates for regular-season games")
+
+    pks = []
+    for i, dt in enumerate(dates, 1):
+        sched = get_json(SCHED_R_URL.format(date=dt)) or {}
+        pks.extend(g.get("gamePk") for d_ in sched.get("dates", []) for g in d_.get("games", []))
+        if i % 100 == 0:
+            print(f"  schedule {i}/{len(dates)} -> {len(set(pks))} games")
+    pks = sorted({p for p in pks if p})
+    print(f"{len(pks)} regular-season games to read")
+
+    cols = ["game_pk", "at_bat", "half", "inning", "pitch_index", "play_id", "runner_1b",
+            "outs", "balls", "strikes", "score_diff", "is_lhp", "bat_side_r", "pitch_code",
+            "attempt", "attempt_type"]
+    n, checked, bad = 0, 0, 0
+    with open(OPPS_OUT, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols); w.writeheader()
+        for i, pk in enumerate(pks, 1):
+            rows, c, b = _game_opportunities(pk)
+            checked += c; bad += b; n += len(rows)
+            w.writerows(rows)
+            if i % 250 == 0:
+                acc = 100 * (1 - bad / max(1, checked))
+                print(f"  games {i}/{len(pks)}  opportunities {n:,}  base-state accuracy {acc:.2f}%")
+    acc = 100 * (1 - bad / max(1, checked))
+    print(f"[write] {OPPS_OUT.name}  ({n:,} opportunity pitches from {len(pks)} games)")
+    print(f"base-state reconstruction: {acc:.2f}% of {checked:,} plate appearances matched MLB's "
+          f"own end-of-PA state  ({'PASS' if acc >= 99 else 'FAIL — investigate before modelling'})")
+
+
 # ── v12: per-pitch context (handedness / pitch type / count / situation) ─────
 def _game_context(pk: int) -> dict:
     """play_id -> pitch+situation for one game. Cached, so re-runs are cheap and resumable."""
@@ -462,6 +632,8 @@ def main():
     sp = sub.add_parser("sprint", help="v13: full sprint-speed leaderboard -> Data/sprint_speed.csv")
     sp.add_argument("--start", type=int, default=2023); sp.add_argument("--end", type=int, default=2026)
 
+    sub.add_parser("opportunities", help="v13: every pitch with a runner on 1B -> Data/Raw_Opportunities.csv")
+
     sub.add_parser("context", help="v12: per-pitch handedness/count/situation -> Data/Raw_Attempt_Context.csv")
 
     args = ap.parse_args()
@@ -476,6 +648,10 @@ def main():
 
     if args.cmd == "sprint":
         fetch_sprint(args.start, args.end)
+        return
+
+    if args.cmd == "opportunities":
+        fetch_opportunities()
         return
 
     if args.cmd == "context":
