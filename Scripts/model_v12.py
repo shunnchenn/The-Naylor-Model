@@ -50,6 +50,9 @@ PITCH_CLASS = {
 }
 BATTERY_FEATS   = ["is_lhp", "bat_side_r", "pc_fastball", "pc_breaking", "pc_offspeed"]
 SITUATION_FEATS = ["balls", "strikes", "outs", "inning", "score_diff", "ahead_in_count"]
+# what actually ships: the post-pitch count columns are dropped (see load()), the
+# unambiguous situation columns are kept.
+SAFE_SITUATION_FEATS = ["outs", "inning", "score_diff"]
 ARM_FEATS       = ["pop_2b_sba", "maxeff_arm_2b_3b_sba", "exchange_2b_3b_sba"]
 
 
@@ -97,9 +100,36 @@ def load() -> tuple[pd.DataFrame, np.ndarray]:
     return df, df["y"].values
 
 
-def evaluate(df: pd.DataFrame, y: np.ndarray, feats: list[str], catcher_enc: bool, seed: int = 42):
-    """Pooled out-of-fold AUROC / AUPRC / Brier. Catcher tendency, when used, is encoded with
-    an inner fold so no row ever sees its own outcome (the v11 leak, fixed)."""
+def _splits(df, y, split: str, seed: int):
+    """Yield (train_idx, val_idx) for a named validation regime.
+
+    random  — StratifiedKFold. Optimistic: a runner's other attempts sit in the training set,
+              and his season-level features are constant, so identity partly carries over.
+    group   — GroupKFold on runner_id. No runner appears on both sides.
+    forward — train on seasons < T, test on season T. The only regime that mirrors real use
+              (predicting a season you have not seen) and the only one immune to the season
+              aggregates in the feature set leaking backwards.
+    """
+    from sklearn.model_selection import StratifiedKFold, GroupKFold
+    if split == "random":
+        yield from StratifiedKFold(5, shuffle=True, random_state=seed).split(df, y)
+    elif split == "group":
+        yield from GroupKFold(5).split(df, y, df["runner_id"].values)
+    elif split == "forward":
+        for T in sorted(df["season"].unique())[1:]:
+            tr = np.where(df["season"].values < T)[0]
+            va = np.where(df["season"].values == T)[0]
+            if len(va) >= 200 and len(tr) >= 500:
+                yield tr, va
+    else:
+        raise ValueError(split)
+
+
+def evaluate(df: pd.DataFrame, y: np.ndarray, feats: list[str], catcher_enc: bool,
+             seed: int = 42, split: str = "random", return_pred: bool = False):
+    """Pooled out-of-fold AUROC / AUPRC / Brier under a chosen validation regime. Catcher
+    tendency, when used, is encoded with an inner fold so no row ever sees its own outcome
+    (the v11 leak, fixed)."""
     from sklearn.model_selection import StratifiedKFold
     from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss
     from xgboost import XGBClassifier
@@ -107,7 +137,6 @@ def evaluate(df: pd.DataFrame, y: np.ndarray, feats: list[str], catcher_enc: boo
     feats = [f for f in feats if f in df.columns]
     X = df[feats].apply(pd.to_numeric, errors="coerce")
     prior = float(y.mean())
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
 
     def xgb():
         return XGBClassifier(n_estimators=500, max_depth=4, learning_rate=0.03, subsample=0.8,
@@ -119,8 +148,8 @@ def evaluate(df: pd.DataFrame, y: np.ndarray, feats: list[str], catcher_enc: boo
         s = df.iloc[idx].groupby("catcher_id")["y"].agg(["sum", "count"])
         return (s["sum"] + prior * sm) / (s["count"] + sm)
 
-    oof = np.zeros(len(df))
-    for tr, va in cv.split(df, y):
+    oof = np.full(len(df), np.nan)
+    for tr, va in _splits(df, y, split, seed):
         Xtr, Xva = X.iloc[tr].copy(), X.iloc[va].copy()
         if catcher_enc:
             inner_vals = np.full(len(tr), prior)
@@ -132,9 +161,31 @@ def evaluate(df: pd.DataFrame, y: np.ndarray, feats: list[str], catcher_enc: boo
             Xva["catcher_enc"] = df.iloc[va]["catcher_id"].map(enc_map(tr)).fillna(prior).values
         oof[va] = xgb().fit(Xtr.values, y[tr]).predict_proba(Xva.values)[:, 1]
 
-    return {"auroc": roc_auc_score(y, oof),
-            "auprc": average_precision_score(y, oof),
-            "brier": brier_score_loss(y, oof)}
+    scored = ~np.isnan(oof)            # forward leaves the first season unscored
+    yy, pp = y[scored], oof[scored]
+    out = {"auroc": roc_auc_score(yy, pp), "auprc": average_precision_score(yy, pp),
+           "brier": brier_score_loss(yy, pp), "n_scored": int(scored.sum())}
+    return (out, oof) if return_pred else out
+
+
+def reliability(y: np.ndarray, p: np.ndarray, bins: int = 10) -> pd.DataFrame:
+    """Predicted vs observed frequency. The calculator states a probability, not a rank, so
+    this is the check that matters for it — AUROC would not notice systematic over-confidence."""
+    ok = ~np.isnan(p)
+    y, p = y[ok], p[ok]
+    edges = np.quantile(p, np.linspace(0, 1, bins + 1))
+    edges[0], edges[-1] = -np.inf, np.inf
+    idx = np.digitize(p, edges[1:-1])
+    rows = []
+    for b in range(bins):
+        m = idx == b
+        if m.sum() == 0:
+            continue
+        rows.append({"bin": b + 1, "n": int(m.sum()),
+                     "predicted": round(float(p[m].mean()), 4),
+                     "observed": round(float(y[m].mean()), 4),
+                     "gap": round(float(y[m].mean() - p[m].mean()), 4)})
+    return pd.DataFrame(rows)
 
 
 def main():
@@ -145,12 +196,17 @@ def main():
           f"catcher arm on {df['pop_2b_sba'].notna().mean()*100:.1f}%")
 
     base = PA_LEAD_FEATS + ["base_is_3b"] + [c for c in PA_RUNNER_FEATS if c in df.columns]
+    # SHIP_FEATS drops the post-pitch count (see the caveat in load()): balls/strikes arrive
+    # after the pitch, so they are not what a coach sees, and they are worth +0.0002. outs /
+    # inning / score_diff are unambiguous and stay.
+    ship = base + BATTERY_FEATS + SAFE_SITUATION_FEATS + ARM_FEATS
     ladder = [
         ("v11 baseline — leads + runner skill",        base,                                    False),
         ("v11 + catcher tendency (nested OOF)",        base,                                    True),
         ("+ 1. battery & pitch type",                  base + BATTERY_FEATS,                    True),
         ("+ 2. count & situation",                     base + BATTERY_FEATS + SITUATION_FEATS,  True),
         ("+ 3. catcher arm (pop time)",                base + BATTERY_FEATS + SITUATION_FEATS + ARM_FEATS, True),
+        ("v12 SHIPPED (post-pitch count dropped)",     ship,                                    True),
     ]
 
     # each block ALONE on top of the baseline — cumulative order can hide redundancy
@@ -167,6 +223,35 @@ def main():
                      "auroc": round(m["auroc"], 4), "auprc": round(m["auprc"], 4),
                      "brier": round(m["brier"], 4)})
         print(f"  {name:44s} AUROC {m['auroc']:.4f} | AUPRC {m['auprc']:.4f} | Brier {m['brier']:.4f}")
+
+    # ── validation regimes: the random split is optimistic; report the honest ones too ──
+    print("\nvalidation regimes (shipped feature set):")
+    vrows = []
+    for split in ("random", "group", "forward"):
+        m = evaluate(df, y, ship, True, split=split)
+        vrows.append({"split": split, "auroc": round(m["auroc"], 4), "auprc": round(m["auprc"], 4),
+                      "brier": round(m["brier"], 4), "n_scored": m["n_scored"]})
+        print(f"  {split:8s} AUROC {m['auroc']:.4f} | AUPRC {m['auprc']:.4f} | "
+              f"Brier {m['brier']:.4f} | n={m['n_scored']}")
+    pd.DataFrame(vrows).to_csv(RESULTS / "DF_v12_Validation.csv", index=False)
+
+    # ── calibration: does a stated probability mean what it says? ──
+    # Assessed under BOTH regimes on purpose. In-distribution the model is well calibrated;
+    # the forward holdout drifts because the league itself is drifting (SB success is falling
+    # season over season), so a model trained on the past predicts an easier environment than
+    # the one it is scored in. That is a base-rate shift, not model over-confidence — isotonic
+    # on pooled data would hide the cause rather than fix it, so no correction is applied.
+    rels = []
+    for split in ("random", "forward"):
+        _, oof = evaluate(df, y, ship, True, split=split, return_pred=True)
+        r = reliability(y, oof); r.insert(0, "split", split); rels.append(r)
+        print(f"\ncalibration ({split}): max |predicted − observed| = {r['gap'].abs().max():.3f}, "
+              f"mean gap {r['gap'].mean():+.4f}")
+    pd.concat(rels).to_csv(RESULTS / "DF_v12_Calibration.csv", index=False)
+
+    rate = df.groupby("season")["y"].mean()
+    print("league SB rate by season: " + " · ".join(f"{s} {v:.3f}" for s, v in rate.items()) +
+          "  <- the environment is getting harder, which is what the forward gap reflects")
 
     out = pd.DataFrame(rows)
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -192,8 +277,8 @@ def main():
     except ImportError:
         pass
 
-    gain = out["auroc"].iloc[4] - out["auroc"].iloc[0]
-    print(f"\nv12 vs v11 baseline: AUROC {out['auroc'].iloc[0]:.4f} -> {out['auroc'].iloc[4]:.4f} "
+    gain = out["auroc"].iloc[5] - out["auroc"].iloc[0]
+    print(f"\nv12 vs v11 baseline: AUROC {out['auroc'].iloc[0]:.4f} -> {out['auroc'].iloc[5]:.4f} "
           f"({gain:+.4f})")
     return out
 

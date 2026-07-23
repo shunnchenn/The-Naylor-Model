@@ -39,6 +39,48 @@ row, which is why the sparse pitcher encoding did the damage (0.708 on its own).
 runner's own season success rate is excluded; catcher/pitcher encodings are nested out-of-fold on both
 the training and validation side.
 
+## v13 — what was tried next, and what it bought
+
+**Validation hardened (the number holds).** Reported under three regimes instead of one:
+
+| split | AUROC | note |
+|---|---|---|
+| random (5-fold) | 0.783 | optimistic — a runner's other attempts sit in training |
+| GroupKFold by runner | 0.783 | no runner on both sides; essentially unchanged |
+| **forward (train past → test future)** | **0.770** | the honest number, and how the model would actually be used |
+
+**Calibration.** In-distribution the model is well calibrated (max gap 0.045, mean −0.002). The
+forward holdout drifts (max gap 0.091, mean −0.012) because *the league is drifting*: SB success
+runs 0.830 → 0.810 → 0.808 → **0.769** across 2023-26. A model trained on the past predicts an
+easier game than the one it is scored in. That is a base-rate shift, not over-confidence, so no
+isotonic correction was applied — it would hide the cause. See `DF_v12_Calibration.csv`.
+
+**Post-pitch count retired.** `balls`/`strikes` arrive after the pitch (`strikes==3` is a
+strikeout), so they are not what a coach sees. Dropping them costs **0.0011** AUROC
+(0.7840 → 0.7829) and is worth it.
+
+### Dead ends — measured, so nobody repeats them
+
+- **More season-aggregate features do nothing.** ~60 unused columns already sit in
+  `DF_v7_SSSI.csv` (`avg_pop_faced`, `avg_pickoff_rate_faced`, `avg_pre_release_velocity`,
+  accel/split-time curves, rule-era flags). Adding all 13 relevant ones: **0.7840 → 0.7840**.
+  Subsets: 0.7836 / 0.7845 / 0.7846 — all within ±0.0006. The model is saturated on
+  runner-season aggregates.
+- **Pitcher-side running game is not reachable, and would not help anyway.** Savant's
+  `basestealing-run-value` leaderboard is RUNNER-only (its `type` param selects the metric view,
+  not the entity; `type=Pit` silently returns runners), and the per-entity service returns 0 rows
+  for a pitcher id. `pitch-tempo` *does* expose pitcher hold (median seconds with runners on vs
+  bases empty) but **ignores the year parameter** — identical data for 2023-26 — so it cannot be
+  used season-correctly. Computing pitcher lead-allowed from our own attempts with leave-one-out
+  (year-correct, free) gives **+0.0006**. The wrong-year tempo snapshot gives **−0.0008**. This is
+  consistent with the earlier finding that pitcher target-encoding was worth +0.003 vs catcher's
+  +0.011: pitchers are too sparse, and the runner's realised lead already absorbs the pitcher.
+
+**Calculator coverage.** The 3-input web calculator was fit on only 6,712 of 10,366 attempts,
+because it merged the 408-runner-season leaderboard. Sprint speed now comes from the full Savant
+leaderboard and Burst is recomputed offline against the same league line (min 3 tracked attempts,
+shrunk toward the league mean below ~10). Now **10,063 attempts, and AUC improved 0.730 → 0.737**.
+
 ## Would deep learning help? No.
 
 At ~10k rows and ~10 tabular features, **gradient boosting is the right tool**. Neural nets need far

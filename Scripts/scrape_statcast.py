@@ -53,6 +53,7 @@ SEASON_MASTER = ROOT / "Output" / "Results" / "DF_v7_SSSI.csv"
 TEAM_MAP_OUT  = ROOT / "Data" / "team_map.csv"
 PBP_DIR       = ROOT / "Data" / "pbp_cache"          # one small json per game (resumable)
 POPTIME_OUT   = ROOT / "Data" / "poptime.csv"
+SPRINT_OUT    = ROOT / "Data" / "sprint_speed.csv"
 CONTEXT_OUT   = ROOT / "Data" / "Raw_Attempt_Context.csv"
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -292,6 +293,27 @@ def fetch_poptime(start: int, end: int) -> None:
     print(f"[write] {POPTIME_OUT.name}  ({len(out)} catcher-seasons)")
 
 
+
+# ── v13: sprint speed for EVERY runner-season, not just qualified ones ───────
+# The committed DF_v7_SSSI.csv only covers runner-seasons with >=10 attempts, which is why the
+# web calculator could only be fit on 6,712 of 10,366 attempts. This pulls the full leaderboard
+# (one small request per season) so speed exists for everyone; Burst is then recomputed offline.
+def fetch_sprint(start: int, end: int) -> None:
+    """Full sprint-speed leaderboard per season -> Data/sprint_speed.csv."""
+    out = []
+    for y in range(start, end + 1):
+        rows = get_csv_rows(SPRINT_URL.format(s=y, e=y))
+        for r in rows:
+            out.append({"runner_id": r.get("player_id"), "season": y,
+                        "sprint_speed_all": as_float(r.get("sprint_speed"), 1)})
+        print(f"  sprint speed {y}: {len(rows)} players")
+    SPRINT_OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(SPRINT_OUT, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["runner_id", "season", "sprint_speed_all"])
+        w.writeheader(); w.writerows(out)
+    print(f"[write] {SPRINT_OUT.name}  ({len(out)} player-seasons)")
+
+
 # ── v12: per-pitch context (handedness / pitch type / count / situation) ─────
 def _game_context(pk: int) -> dict:
     """play_id -> pitch+situation for one game. Cached, so re-runs are cheap and resumable."""
@@ -437,6 +459,9 @@ def main():
     pt = sub.add_parser("poptime", help="v12: catcher pop time + arm strength -> Data/poptime.csv")
     pt.add_argument("--start", type=int, default=2023); pt.add_argument("--end", type=int, default=2026)
 
+    sp = sub.add_parser("sprint", help="v13: full sprint-speed leaderboard -> Data/sprint_speed.csv")
+    sp.add_argument("--start", type=int, default=2023); sp.add_argument("--end", type=int, default=2026)
+
     sub.add_parser("context", help="v12: per-pitch handedness/count/situation -> Data/Raw_Attempt_Context.csv")
 
     args = ap.parse_args()
@@ -447,6 +472,10 @@ def main():
 
     if args.cmd == "poptime":
         fetch_poptime(args.start, args.end)
+        return
+
+    if args.cmd == "sprint":
+        fetch_sprint(args.start, args.end)
         return
 
     if args.cmd == "context":

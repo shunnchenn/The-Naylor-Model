@@ -5,7 +5,7 @@
 **Drag three sliders — sprint speed, the ground a runner gains off the base, and his Burst — and see
 the modelled odds that a stolen-base attempt is safe.** Runs in the browser, nothing to install.
 
-> A slow runner with a great jump (24.4 ft/s, 16.7 ft gained) reads **89.2 %**.
+> A slow runner with a great jump (24.4 ft/s, 16.7 ft gained) reads **86.7 %**.
 > An elite sprinter with a poor jump (30.5 ft/s, 8 ft) reads **80.0 %**.
 > That gap is the whole project.
 
@@ -87,7 +87,7 @@ The honest read: **Steal+ is the single best answer to "who steals well"** — i
 
 The model has two clearly separated jobs — kept apart on purpose:
 
-1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,000 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUC ≈ 0.75** (0.741 on the leads alone, 0.752 once catcher tendency is added). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
+1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,000 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUROC ≈ 0.78** (v12: 0.741 leads-only → 0.783 with pitch context and catcher arm; **0.770 under a forward train-past/test-future holdout**, the honest number). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
 
 2. **The metric suite (per runner-season).** `Scripts/model_v11.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
    - `fit_league(era)` learns the league constants (the `ground ~ sprint_speed` line, the percentile references) **once** on the whole pool;

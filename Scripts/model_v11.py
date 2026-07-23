@@ -357,6 +357,30 @@ def run_success_model(seed: int = 42):
     at["y"] = (at["result"] == "SB").astype(int)
     lb = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")[["runner_id", "season", "sprint_speed", "burst_ft"]]
     at = at.merge(lb, on=["runner_id", "season"], how="left")
+
+    # The leaderboard only holds the 408 QUALIFIED runner-seasons (>=10 attempts, gated upstream
+    # by the committed DF_v7_SSSI.csv), while the attempts table spans 1,079 — which used to drop
+    # 3,619 attempts (35%) out of the calculator. Fill the rest in: sprint speed from the full
+    # leaderboard, Burst recomputed from the leads already on disk against the same league line
+    # fit_league() uses, so the definition is identical for everyone.
+    sp_path = DATA / "sprint_speed.csv"
+    if sp_path.exists():
+        sp = pd.read_csv(sp_path)
+        at = at.merge(sp, on=["runner_id", "season"], how="left")
+        at["sprint_speed"] = at["sprint_speed"].fillna(at["sprint_speed_all"])
+
+    meta = json.loads((DATA / "v11_players.json").read_text(encoding="utf-8"))["meta"]
+    b0, b1 = meta["ground_fit"]["b0"], meta["ground_fit"]["b1"]
+    gain = pd.to_numeric(at["gain_to_release_ft"], errors="coerce")
+    grp = at.assign(_g=gain).groupby(["runner_id", "season"])["_g"]
+    ground, n_tracked = grp.transform("mean"), grp.transform("count")
+    league_ground = float(gain.mean())
+    # shrink thin samples toward the league line; below 3 tracked attempts, don't guess at all
+    w = (n_tracked / (n_tracked + 10)).clip(upper=1.0)
+    ground_shrunk = w * ground + (1 - w) * league_ground
+    burst_all = (ground_shrunk - (b0 + b1 * at["sprint_speed"])).where(n_tracked >= 3)
+    at["burst_ft"] = at["burst_ft"].fillna(burst_all)
+
     at[SIMPLE_FEATS] = at[SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
 
     # Primary lead (the ground he has BEFORE the pitcher commits) is context, not an input:

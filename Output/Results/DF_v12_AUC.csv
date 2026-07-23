@@ -4,6 +4,7 @@ v11 + catcher tendency (nested OOF),11,0.7521,0.9296,0.1359
 + 1. battery & pitch type,16,0.7724,0.9354,0.132
 + 2. count & situation,22,0.7726,0.9354,0.132
 + 3. catcher arm (pop time),25,0.784,0.9391,0.1296
+v12 SHIPPED (post-pitch count dropped),22,0.7829,0.9388,0.1298
 alone: battery & pitch type,15,0.762,0.9318,0.1334
 alone: count & situation,16,0.7439,0.9267,0.1369
 alone: catcher arm,13,0.7642,0.9338,0.1338

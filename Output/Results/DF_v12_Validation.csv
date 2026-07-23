@@ -1,0 +1,4 @@
+split,auroc,auprc,brier,n_scored
+random,0.7829,0.9388,0.1298,10366
+group,0.7833,0.9387,0.1299,10366
+forward,0.7704,0.9314,0.1372,7301
