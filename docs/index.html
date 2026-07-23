@@ -683,17 +683,21 @@ function buildGlossary(){
     ["Net Bases Gained","SB − CS. The honest raw baseline. Bundles speed, volume, opponent difficulty, execution and luck — which is exactly why the two metrics above exist."],
     ["NetSpeed","attempts × (2 × speed-expected SB% − 1). The net bases a runner's wheels alone buy. Net Bases = NetSpeed + Steal+, exactly."],
     ["Percentile","Rank against all "+META.n_player_seasons+" qualified runner-seasons, "+META.era+". 50 = league average; 100 = best."],
+    ["Classic era (2015–2022)","A SEPARATE model for the pre-rule-change years, fit on its own league constants — because the 2023 rules (disengagement limit, bigger bases, pitch clock) made stealing a different game: league success ran <b>75%</b> then vs ~80% now, and runners took much shorter secondary leads. Same Steal+/Burst definitions, re-fit. This board shows 2023–2026 only; the classic leaderboard ships as a separate report."],
+    ["Decision model (2023–2026)","A companion that asks whether a runner GOES at all, not just whether he's safe once he does. Across <b>555,000+</b> pitches with a runner on 1st, attempt rate climbs from <b>0.7%</b> for the slowest runners to <b>4.9%</b> for the fastest — a <b>7×</b> spread. That self-selection is exactly why sprint speed looks weak <i>inside</i> the success model: it is spent on the decision to run in the first place."],
   ];
   $("#gtbl").innerHTML=G.map(([t,d])=>`<tr><td class="term">${t}</td><td class="def">${d}</td></tr>`).join("");
   const sNet=vget("describes net steals","Steal+"), sSuc=vget("describes success rate","Steal+"),
         bStab=vget("year-over-year self-stability","Burst"), spSpd=vget("corr with sprint speed","Steal+");
-  $("#foot").innerHTML=`<b>The Naylor Model · v11.</b> ${META.n_player_seasons} runner-seasons,
-    ${META.era} (Statcast lead-tracking era). League SB success ≈ <b>${META.league_success_pct}%</b>.
+  $("#foot").innerHTML=`<b>The Naylor Model.</b> This board: ${META.n_player_seasons} runner-seasons,
+    ${META.era} (Statcast lead-tracking era, 2026 current). League SB success ≈ <b>${META.league_success_pct}%</b>.
     Steal+ describes same-season net steals at <b>${fmt(sNet,2)}</b> and success rate at
     <b>${fmt(sSuc,2)}</b> while staying speed-neutral (<b>${signed(spSpd,2)}</b> with sprint speed);
     Burst is the most repeatable year to year (<b>${fmt(bStab,2)}</b>). A v10 “Steal Grade” averaged the
     two — dropped in v11, since it predicted no better than Steal+ alone. Per-attempt skill model:
-    CV AUC ≈ 0.75. Headshots &amp; logos: MLB. Everything computed locally — no external calls.`;
+    CV AUROC ≈ <b>0.78</b> (0.77 on a train-past/test-future holdout). A separate <b>classic 2015–2022</b>
+    model and a <b>2023–2026 decision model</b> (who even tries to steal) extend the project — see the
+    Definitions above. Headshots &amp; logos: MLB. Everything computed locally — no external calls.`;
 }
 
 
