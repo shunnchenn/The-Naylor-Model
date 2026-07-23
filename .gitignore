@@ -47,3 +47,7 @@ catboost_info/
 # headshots and logos must be in the repo or every image 404s on the live site. They are
 # byte-identical copies of Output/assets (made by build_web.py sync_assets), so git stores
 # them as the same blobs and the duplication costs essentially nothing.
+
+## v12 play-by-play cache (one slim json per game; hundreds of MB, fully regenerable via
+## `scrape_statcast.py context`). The derived Data/Raw_Attempt_Context.csv IS committed.
+Data/pbp_cache/

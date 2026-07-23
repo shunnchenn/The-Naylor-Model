@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import sys
 import time
 from pathlib import Path
@@ -50,6 +51,9 @@ HEADSHOTS  = ROOT / "Output" / "assets" / "headshots"
 LOGOS      = ROOT / "Output" / "assets" / "logos"
 SEASON_MASTER = ROOT / "Output" / "Results" / "DF_v7_SSSI.csv"
 TEAM_MAP_OUT  = ROOT / "Data" / "team_map.csv"
+PBP_DIR       = ROOT / "Data" / "pbp_cache"          # one small json per game (resumable)
+POPTIME_OUT   = ROOT / "Data" / "poptime.csv"
+CONTEXT_OUT   = ROOT / "Data" / "Raw_Attempt_Context.csv"
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36")
@@ -63,6 +67,14 @@ GAMELOG_URL = ("https://statsapi.mlb.com/api/v1/people/{rid}/stats"
                "?stats=gameLog&group=hitting&season={y}&gameType=R")
 STATS_URL   = ("https://statsapi.mlb.com/api/v1/stats?stats=season&group=hitting"
                "&season={y}&gameType=R&playerPool=All&sortStat=stolenBases&order=desc&limit=3000")
+# v12 context: pitch/count/situation joined on play_id, and catcher pop time + arm strength.
+# `fields` shrinks playByPlay ~9x (490KB -> 55KB) while keeping everything we use.
+PBP_URL     = ("https://statsapi.mlb.com/api/v1/game/{pk}/playByPlay?fields="
+               "allPlays,playEvents,playId,details,type,code,count,balls,strikes,outs,"
+               "about,inning,halfInning,matchup,pitchHand,batSide,result,awayScore,homeScore")
+SCHED_URL   = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date}"
+POPTIME_URL = ("https://baseballsavant.mlb.com/leaderboard/poptime"
+               "?year={y}&team=&min2sb=1&min3b=0&csv=true")
 SPRINT_URL  = ("https://baseballsavant.mlb.com/leaderboard/sprint_speed"
                "?attempts=1&min_season={s}&max_season={e}&position=&team=&csv=true")
 
@@ -257,6 +269,107 @@ PERSON_STATS_URL = ("https://statsapi.mlb.com/api/v1/people/{pid}/stats"
                     "?stats=season&season={yr}&group=hitting")
 
 
+
+# ── v12: catcher pop time / arm strength (4 requests, one per season) ────────
+def fetch_poptime(start: int, end: int) -> None:
+    """Savant pop-time leaderboard per season -> Data/poptime.csv (joins on catcher_id)."""
+    keep = ["pop_2b_sba", "pop_3b_sba", "maxeff_arm_2b_3b_sba", "exchange_2b_3b_sba",
+            "pop_2b_sba_count"]
+    out = []
+    for y in range(start, end + 1):
+        rows = get_csv_rows(POPTIME_URL.format(y=y))
+        for r in rows:
+            rec = {"catcher_id": r.get("entity_id"), "season": y,
+                   "catcher_name": r.get("entity_name")}
+            for k in keep:
+                rec[k] = as_float(r.get(k), 3)
+            out.append(rec)
+        print(f"  poptime {y}: {len(rows)} catchers")
+    POPTIME_OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(POPTIME_OUT, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["catcher_id", "season", "catcher_name"] + keep)
+        w.writeheader(); w.writerows(out)
+    print(f"[write] {POPTIME_OUT.name}  ({len(out)} catcher-seasons)")
+
+
+# ── v12: per-pitch context (handedness / pitch type / count / situation) ─────
+def _game_context(pk: int) -> dict:
+    """play_id -> pitch+situation for one game. Cached, so re-runs are cheap and resumable."""
+    PBP_DIR.mkdir(parents=True, exist_ok=True)
+    cache = PBP_DIR / f"{pk}.json"
+    if cache.exists():
+        try:
+            return json.loads(cache.read_text())
+        except Exception:
+            pass
+    d = get_json(PBP_URL.format(pk=pk)) or {}
+    ctx = {}
+    for play in d.get("allPlays", []):
+        ab, mu, res = play.get("about", {}), play.get("matchup", {}), play.get("result", {})
+        half = ab.get("halfInning")
+        away, home = res.get("awayScore"), res.get("homeScore")
+        # score from the BATTING team's view: the runner's side is the batting team
+        if away is not None and home is not None:
+            diff = (away - home) if half == "top" else (home - away)
+        else:
+            diff = None
+        for ev in play.get("playEvents", []):
+            pid = ev.get("playId")
+            if not pid:
+                continue
+            cnt = ev.get("count", {}) or {}
+            ctx[pid] = {"is_lhp": 1 if (mu.get("pitchHand", {}) or {}).get("code") == "L" else 0,
+                        "bat_side_r": 1 if (mu.get("batSide", {}) or {}).get("code") == "R" else 0,
+                        "pitch_code": ((ev.get("details", {}) or {}).get("type", {}) or {}).get("code"),
+                        "balls": cnt.get("balls"), "strikes": cnt.get("strikes"),
+                        "outs": cnt.get("outs"), "inning": ab.get("inning"),
+                        "score_diff": diff}
+    cache.write_text(json.dumps(ctx, separators=(",", ":")))
+    return ctx
+
+
+def fetch_context() -> None:
+    """Resolve every tracked attempt's pitch context by joining Savant play_id to the MLB
+    play-by-play feed. Walks the schedule for each date our attempts fall on, caches one
+    slim json per game, then writes Data/Raw_Attempt_Context.csv."""
+    src = ROOT / "Data" / "Raw_Attempts.csv"
+    if not src.exists():
+        sys.exit("Data/Raw_Attempts.csv missing — run build_features.py first")
+    att = list(csv.DictReader(open(src)))
+    dates = sorted({r["date"][:10] for r in att if r.get("date")})
+    print(f"resolving context for {len(att)} attempts across {len(dates)} dates")
+
+    pks = []
+    for i, d in enumerate(dates, 1):
+        sched = get_json(SCHED_URL.format(date=d)) or {}
+        day = [g.get("gamePk") for dt in sched.get("dates", []) for g in dt.get("games", [])]
+        pks.extend(p for p in day if p)
+        if i % 50 == 0:
+            print(f"  schedule {i}/{len(dates)} dates -> {len(pks)} games so far")
+    pks = sorted(set(pks))
+    print(f"{len(pks)} games to read")
+
+    ctx = {}
+    for i, pk in enumerate(pks, 1):
+        ctx.update(_game_context(pk))
+        if i % 250 == 0:
+            print(f"  games {i}/{len(pks)}  ({len(ctx)} pitches indexed)")
+
+    cols = ["play_id", "is_lhp", "bat_side_r", "pitch_code", "balls", "strikes",
+            "outs", "inning", "score_diff"]
+    hit = 0
+    with open(CONTEXT_OUT, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols); w.writeheader()
+        for r in att:
+            c = ctx.get(r.get("play_id"))
+            if not c:
+                continue
+            hit += 1
+            w.writerow({"play_id": r["play_id"], **{k: c.get(k) for k in cols[1:]}})
+    print(f"[write] {CONTEXT_OUT.name}  ({hit}/{len(att)} attempts matched, "
+          f"{100*hit/max(1,len(att)):.1f}%)")
+
+
 def fetch_assets():
     """Cache MLB headshots per runner and resolve each runner-season's team ->
     Data/team_map.csv (team abbreviations normalized to the logo filenames)."""
@@ -321,10 +434,23 @@ def main():
 
     sub.add_parser("assets", help="cache headshots + resolve Data/team_map.csv")
 
+    pt = sub.add_parser("poptime", help="v12: catcher pop time + arm strength -> Data/poptime.csv")
+    pt.add_argument("--start", type=int, default=2023); pt.add_argument("--end", type=int, default=2026)
+
+    sub.add_parser("context", help="v12: per-pitch handedness/count/situation -> Data/Raw_Attempt_Context.csv")
+
     args = ap.parse_args()
 
     if args.cmd == "assets":
         fetch_assets()
+        return
+
+    if args.cmd == "poptime":
+        fetch_poptime(args.start, args.end)
+        return
+
+    if args.cmd == "context":
+        fetch_context()
         return
 
     if args.cmd == "leads":
