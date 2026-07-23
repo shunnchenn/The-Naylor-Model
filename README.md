@@ -142,6 +142,13 @@ The-Naylor-Model/                       ← = v11
 
 ## Data Sources
 
-- Baseball Savant: sprint speed, running splits, catcher pop times, pitcher running-game leaderboard, base-stealing run value
-- MLB Stats API: season SB/CS records (2015–2026)
-- Statcast pitch-level feed: per-pitch runner context, battery matchups
+All modelling uses the **2023–2026** Statcast lead-tracking era — the only window in which
+per-attempt lead distances exist. `Scripts/model_v11.py` filters to this window via `ERA_MIN =
+2023`; a few committed season files (`DF_v7_SSSI.csv`, `Raw_Season.csv`) still carry inert
+2015–2022 rows from an earlier build, but nothing below 2023 is ever read by the pipeline.
+
+- **Baseball Savant** — per-attempt lead distances and SB run value (the base-stealing drawer),
+  sprint speed and running splits, catcher pop time and arm strength.
+- **MLB Stats API** — league-wide season SB/CS totals, and per-game play-by-play used for
+  per-pitch base state, count, and pitcher/batter handedness (the v12 context and the v13
+  opportunity denominator).
