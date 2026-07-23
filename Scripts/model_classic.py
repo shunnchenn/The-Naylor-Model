@@ -146,6 +146,30 @@ def main():
         M.pearson_r(scored["steal_plus"], scored["burst_ft"]))
     pd.DataFrame(rows).to_csv(RESULTS / "DF_classic_validation.csv", index=False)
 
+    # ── web payload for the site's era toggle (same record schema as v11_players.json) ──
+    w = scored.copy()
+    tmc = DATA / "team_map_classic.csv"
+    if tmc.exists():
+        w = w.merge(pd.read_csv(tmc), on=["runner_id", "season"], how="left", suffixes=("", "_tm"))
+        w["team"] = w["team_tm"].fillna(w.get("team", "")).fillna("")
+    w["speed_pct"] = M.percentile_rank(w["sprint_speed"], w["sprint_speed"].dropna().values)
+    w["ground_pct"] = M.percentile_rank(w["ground"], w["ground"].dropna().values)
+    sssi = pd.read_csv(RESULTS / "DF_v7_SSSI.csv")
+    jt = sssi[["runner_id", "season", "jump_time"]].drop_duplicates(["runner_id", "season"]) \
+        if "jump_time" in sssi.columns else None
+    w = w.merge(jt, on=["runner_id", "season"], how="left") if jt is not None else w.assign(jump_time=np.nan)
+    w["jump_pct"] = (M.percentile_rank(w["jump_time"], w["jump_time"].dropna().values)
+                     if w["jump_time"].notna().any() else np.nan)
+    payload = {"meta": {"version": "classic", "era": "2015-2022", "n_player_seasons": int(len(w)),
+                        "league_success_pct": round(fit["league"] * 100, 1),
+                        "p_speed_fit": {"a0": fit["a0"], "a1": fit["a1"]},
+                        "ground_fit": {"b0": fit["b0"], "b1": fit["b1"]}},
+               "validation": pd.DataFrame(rows).to_dict(orient="records"),
+               "players": M.to_records(w)}
+    (DATA / "v11_players_classic.json").write_text(json.dumps(payload, separators=(",", ":")))
+    print(f"[write] v11_players_classic.json  ({len(w)} players, "
+          f"{int((w['team'].fillna('').astype(str).str.len() > 0).sum())} with team)")
+
     pa = _perattempt_auc(att, season, )
     fit_out = {"era": "2015-2022", "n_runner_seasons": int(len(scored)),
                "n_attempts": int(len(att)), "league_success_pct": round(fit["league"] * 100, 1),

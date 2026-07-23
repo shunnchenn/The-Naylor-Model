@@ -57,3 +57,6 @@ Data/pbp_opps_cache/
 
 ## v13 opportunities: the plain CSV is 41MB; the gzipped copy is committed instead
 Data/Raw_Opportunities.csv
+
+## scraper staging dir; the served copy is docs/assets (committed)
+Output/assets/

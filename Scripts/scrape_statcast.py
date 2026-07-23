@@ -563,12 +563,13 @@ def fetch_context() -> None:
           f"{100*hit/max(1,len(att)):.1f}%)")
 
 
-def fetch_assets():
+def fetch_assets(source=SEASON_MASTER, out_team_map=TEAM_MAP_OUT):
     """Cache MLB headshots per runner and resolve each runner-season's team ->
-    Data/team_map.csv (team abbreviations normalized to the logo filenames)."""
+    team_map (team abbreviations normalized to the logo filenames). `source` is any csv with
+    runner_id + season columns, so the same routine serves the modern pool and the classic pool."""
     import pandas as pd
     HEADSHOTS.mkdir(parents=True, exist_ok=True)
-    df = pd.read_csv(SEASON_MASTER, usecols=["runner_id", "season"]).drop_duplicates()
+    df = pd.read_csv(source, usecols=["runner_id", "season"]).drop_duplicates()
     logo_names = {p.stem for p in LOGOS.glob("*.png")}
     id2abbr = {t["id"]: t["abbreviation"]
                for t in (get_json("https://statsapi.mlb.com/api/v1/teams?sportId=1") or {}).get("teams", [])
@@ -598,8 +599,8 @@ def fetch_assets():
         time.sleep(0.05)
 
     tm = pd.DataFrame(rows).drop_duplicates(["runner_id", "season"])
-    tm.to_csv(TEAM_MAP_OUT, index=False)
-    print(f"[write] {TEAM_MAP_OUT.name}  ({len(tm)} rows, {tm['team'].ne('').sum()} with team; "
+    tm.to_csv(out_team_map, index=False)
+    print(f"[write] {out_team_map.name}  ({len(tm)} rows, {tm['team'].ne('').sum()} with team; "
           f"{len(list(HEADSHOTS.glob('*.png')))} headshots cached)")
     if missing:
         print(f"WARNING — team abbrevs with no logo file: {sorted(missing)}")
@@ -625,7 +626,8 @@ def main():
     pd_.add_argument("--sort", choices=["attempts", "slow"], default="attempts")
     pd_.add_argument("--expand", action="store_true", help="then pull leads for every kept runner")
 
-    sub.add_parser("assets", help="cache headshots + resolve Data/team_map.csv")
+    as_ = sub.add_parser("assets", help="cache headshots + resolve Data/team_map.csv")
+    as_.add_argument("--classic", action="store_true", help="use Raw_Season_classic.csv -> team_map_classic.csv")
 
     pt = sub.add_parser("poptime", help="v12: catcher pop time + arm strength -> Data/poptime.csv")
     pt.add_argument("--start", type=int, default=2023); pt.add_argument("--end", type=int, default=2026)
@@ -640,7 +642,11 @@ def main():
     args = ap.parse_args()
 
     if args.cmd == "assets":
-        fetch_assets()
+        if getattr(args, "classic", False):
+            fetch_assets(source=ROOT / "Data" / "Raw_Season_classic.csv",
+                         out_team_map=ROOT / "Data" / "team_map_classic.csv")
+        else:
+            fetch_assets()
         return
 
     if args.cmd == "poptime":
