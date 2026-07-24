@@ -92,6 +92,52 @@ def year_over_year_corr(df, metric_col, next_year_col, min_att=8):
     return pearson_r(paired["x"].values, paired["y"].values), len(paired)
 
 
+def catcher_faced(attempts: pd.DataFrame) -> pd.DataFrame:
+    """Average catcher POP TIME and ARM STRENGTH faced, per runner-season — the opponent-
+    difficulty context behind a steal. Pop time is the catch-to-second-base transfer+throw; arm
+    is max-effort velocity. Both come from Savant's poptime leaderboard (2015-2026) joined on the
+    catcher actually behind the plate for each tracked attempt."""
+    pop_path = DATA / "poptime.csv"
+    if not pop_path.exists():
+        return pd.DataFrame(columns=["runner_id", "season", "pop_faced", "arm_faced"])
+    pop = pd.read_csv(pop_path)[["catcher_id", "season", "pop_2b_sba", "maxeff_arm_2b_3b_sba"]]
+    a = attempts.merge(pop, on=["catcher_id", "season"], how="left")
+    return (a.groupby(["runner_id", "season"])
+             .agg(pop_faced=("pop_2b_sba", "mean"),
+                  arm_faced=("maxeff_arm_2b_3b_sba", "mean")).reset_index())
+
+
+def sync_site_payload(payload: dict, marker: str) -> None:
+    """Write a payload into docs/index.html in place of the JSON literal after `marker`.
+    Keeps the published site in lockstep with the model instead of relying on a manual swap
+    (the main payload silently went stale once when catcher pop/arm were added)."""
+    site = ROOT / "docs" / "index.html"
+    if not site.exists():
+        return
+    h = site.read_text(encoding="utf-8")
+    if marker not in h:
+        return
+    i = h.index(marker) + len(marker)
+    if h[i] != "{":
+        return
+    depth, j, instr, esc = 0, i, False, False
+    while j < len(h):
+        c = h[j]
+        if instr:
+            if esc: esc = False
+            elif c == "\\": esc = True
+            elif c == '"': instr = False
+        else:
+            if c == '"': instr = True
+            elif c == "{": depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    j += 1; break
+        j += 1
+    site.write_text(h[:i] + json.dumps(payload, separators=(",", ":")) + h[j:], encoding="utf-8")
+    print(f"[sync] docs/index.html <- {marker.strip()}")
+
 # ── raw era pool (per-attempt ground folded onto each runner-season) ────────
 def load_era() -> pd.DataFrame:
     S = pd.read_csv(DATA / "Raw_Season.csv")
@@ -105,7 +151,8 @@ def load_era() -> pd.DataFrame:
            .agg(ground=("gain_to_release_ft", "mean"),
                 lead_rel=("lead_at_release_ft", "mean"),
                 tracked=("gain_to_release_ft", "count")).reset_index())
-    return era.merge(g, on=["runner_id", "season"], how="left")
+    era = era.merge(g, on=["runner_id", "season"], how="left")
+    return era.merge(catcher_faced(av), on=["runner_id", "season"], how="left")
 
 
 # ── stage 1: fit league constants on the whole population (once) ────────────
@@ -190,7 +237,8 @@ def to_records(full: pd.DataFrame) -> list:
             "id": int(r["runner_id"]), "name": r["player_name"],
             "team": (r["team"] if isinstance(r["team"], str) else ""), "season": int(r["season"]),
             "speed": num(r["sprint_speed"], 1), "speed_pct": num(r["speed_pct"], 0),
-            "attempts": int(r["sb_attempts"]), "pop": num(r.get("avg_pop_faced"), 2),
+            "attempts": int(r["sb_attempts"]), "pop": num(r.get("pop_faced"), 2),
+            "arm": num(r.get("arm_faced"), 1),
             "jump": num(r["jump_time"], 2), "jump_pct": num(r["jump_pct"], 0),
             "ground": num(r.get("ground"), 1), "ground_pct": num(r.get("ground_pct"), 0),
             "lead_rel": num(r.get("lead_rel"), 1),
@@ -462,6 +510,7 @@ def main():
         "players": to_records(full),
     }
     (DATA / "v11_players.json").write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    sync_site_payload(payload, "const PAYLOAD = ")
 
     show = ["player_name", "season", "sprint_speed", "SB", "CS", "net_sb", "steal_plus", "burst_ft"]
     top12 = (full.dropna(subset=["steal_plus"])

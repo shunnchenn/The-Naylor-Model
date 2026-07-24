@@ -81,6 +81,7 @@ def _classic_season(att: pd.DataFrame) -> pd.DataFrame:
                       lead_rel=("lead_at_release_ft", "mean"),
                       tracked=("gain_to_release_ft", "count")).reset_index())
     season = season.merge(ground, on=["runner_id", "season"], how="inner")   # need leads for Burst
+    season = season.merge(M.catcher_faced(att), on=["runner_id", "season"], how="left")
 
     season["net_sb"] = (season["SB"] - season["CS"]).astype(int)
     season["raw_succ"] = season["SB"] / season["sb_attempts"].clip(lower=1)
@@ -117,6 +118,50 @@ def _perattempt_auc(att: pd.DataFrame, season: pd.DataFrame, seed=42):
                           eval_metric="logloss", verbosity=0, random_state=seed, use_label_encoder=False)
         oof[va] = m.fit(X[tr], y[tr]).predict_proba(X[va])[:, 1]
     return roc_auc_score(y, oof), len(df)
+
+
+def _classic_calculator(att, scored):
+    """Fit the same 3-input logistic calculator (sprint speed, Burst, ground gained on the pitch)
+    on CLASSIC attempts, so the site's era switch changes the odds model too rather than silently
+    showing modern coefficients over classic players."""
+    try:
+        from sklearn.model_selection import StratifiedKFold, cross_val_predict
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import make_pipeline
+        from sklearn.impute import SimpleImputer
+        from sklearn.metrics import roc_auc_score
+    except ImportError:
+        return None
+    a = att.merge(scored[["runner_id", "season", "sprint_speed", "burst_ft"]],
+                  on=["runner_id", "season"], how="left")
+    a[M.SIMPLE_FEATS] = a[M.SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
+
+    pl = pd.to_numeric(a["lead_at_firstmove_ft"], errors="coerce")
+    seas = a.assign(_pl=pl).dropna(subset=["_pl"]).groupby(["runner_id", "season"])["_pl"]
+    means, counts = seas.mean(), seas.count()
+    qual, grand = means[counts >= 15], float(pl.mean())
+    ss_between = float((counts[counts >= 15] * (qual - grand) ** 2).sum())
+    dq = a.assign(_pl=pl).dropna(subset=["_pl"])
+    dq = dq[dq.set_index(["runner_id", "season"]).index.isin(qual.index)]
+    ss_total = float(((dq["_pl"] - grand) ** 2).sum())
+    primary_lead = {"mean": round(grand, 1), "runner_min": round(float(qual.min()), 1),
+                    "runner_max": round(float(qual.max()), 1),
+                    "within_pct": round(100 * (1 - ss_between / ss_total), 1),
+                    "n_runner_seasons": int(len(qual))}
+
+    a = a.dropna(subset=M.SIMPLE_FEATS).reset_index(drop=True)
+    X, y = a[M.SIMPLE_FEATS].values, a["y"].values
+    pipe = make_pipeline(SimpleImputer(), LogisticRegression(max_iter=5000))
+    auc = roc_auc_score(y, cross_val_predict(
+        pipe, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=42), method="predict_proba")[:, 1])
+    pipe.fit(X, y)
+    lr = pipe.named_steps["logisticregression"]
+    return {"intercept": float(lr.intercept_[0]),
+            "coef": {k: float(v) for k, v in zip(M.SIMPLE_FEATS, lr.coef_[0])},
+            "auc": round(float(auc), 4), "n": int(len(a)),
+            "base_rate": round(float(y.mean()), 4), "primary_lead": primary_lead,
+            "range": {f: [round(float(a[f].min()), 1), round(float(a[f].max()), 1),
+                          round(float(a[f].median()), 1)] for f in M.SIMPLE_FEATS}}
 
 
 def main():
@@ -165,8 +210,10 @@ def main():
                         "p_speed_fit": {"a0": fit["a0"], "a1": fit["a1"]},
                         "ground_fit": {"b0": fit["b0"], "b1": fit["b1"]}},
                "validation": pd.DataFrame(rows).to_dict(orient="records"),
-               "players": M.to_records(w)}
+               "players": M.to_records(w),
+               "success_model": _classic_calculator(att, scored)}
     (DATA / "v11_players_classic.json").write_text(json.dumps(payload, separators=(",", ":")))
+    M.sync_site_payload(payload, "const PAYLOAD_CLASSIC = ")
     print(f"[write] v11_players_classic.json  ({len(w)} players, "
           f"{int((w['team'].fillna('').astype(str).str.len() > 0).sum())} with team)")
 
