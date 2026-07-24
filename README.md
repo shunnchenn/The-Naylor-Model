@@ -41,14 +41,24 @@ Sprint biomechanics research points to three specific targets every baseball pla
 
 Net Bases Gained tells you *what happened* but bundles five things — sprint speed, volume, opponent difficulty, execution, and luck — so it can't tell you *why*, whether it's *coachable*, or whether it will *repeat*. (Statcast's SB Run Value doesn't separate them either: empirically a fixed credit per steal minus a larger debit per caught, correlated **+0.85** with Net Bases and **+0.23** with sprint speed.) v11 strips speed out and isolates the coachable slice — then **validates every claim** against the data.
 
-### Two independent metrics — kept separate, not blended
+### The three numbers — raw, speed-adjusted, and the result
 
 | Metric | What it is | Unit | 0 = |
 |---|---|---|---|
 | **Steal+** (headline) | Net bases (SB − CS) above what an average runner of his **sprint speed** would produce over the same attempts. `= 2(1−p)·SB − 2p·CS`, so a caught stealing costs **~4×** a steal (p ≈ speed-expected success ≈ 0.80). **Volume-aware.** | bases | same-speed average |
-| **Burst** (a separate lens) | Feet of ground the runner gains off the base (first move → pitch reaches the catcher, his secondary lead) **above what his speed predicts** — measured *before any steal outcome.* The coachable jump/lead; replaces v10's "SB Run Value." | feet | speed-predicted |
+| **Ground gained** (the raw measurement) | Feet the runner wins from the pitcher's **first move** until the pitch **reaches the catcher**. On a single pitch this is the strongest lever in the model — each extra foot ≈ **1.36×** the odds of being safe. **Not speed-neutral:** it correlates **−0.49** with sprint speed, because slower runners take bigger secondary leads. | feet | — (raw) |
+| **Burst** (the same thing, speed-adjusted) | Ground gained **minus what a runner of that sprint speed typically gains**. Correlation with sprint speed: **0.00**. This is the fair cross-runner comparison, measured *before any steal outcome* — the coachable jump/lead; replaces v10's "SB Run Value." | feet | speed-predicted |
 
-They're kept **separate** (near-zero correlation, r ≈ 0.16): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
+**Ground gained vs Burst — the distinction that matters.** They are *the same measurement at two baselines*, correlated **+0.87** but not interchangeable. Rank by raw ground gained and you systematically flatter slow runners:
+
+| Runner | Sprint speed | Ground gained | Burst |
+|---|---|---|---|
+| **Josh Naylor** '25 | 24.4 ft/s | **16.7 ft** (the most) | +1.6 |
+| **Corbin Carroll** '23 | 30.1 ft/s | 12.8 ft | **+2.7** (the better jump) |
+
+Naylor wins the most raw ground of anyone — but he is slow, and slow runners are *expected* to. At 30.1 ft/s, Carroll's 12.8 ft is the harder feat. Burst is what makes that comparison fair. Both are shown side by side on the leaderboard.
+
+Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.16): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
 
 Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is the net bases your wheels alone buy (`attempts × (2·p_speed − 1)`), Steal+ is the net bases your skill adds. (Steal+ *is* the surplus term.)
 
@@ -69,7 +79,7 @@ The honest read: **Steal+ is the single best answer to "who steals well"** — i
 
 ## Key Results
 
-### The scorecard — two metrics, all in clear units
+### The scorecard, in clear units
 ![Metric cards](Output/Figures/Fig_Metric_Cards.png)
 
 ### The evidence — three honest wins
