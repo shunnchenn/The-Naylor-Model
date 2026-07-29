@@ -25,6 +25,10 @@ averaged, because they answer different questions:
            the base from the pitcher's first move until the pitch reaches the catcher (his
            secondary lead) ABOVE what his speed predicts. The coachable process / upside;
            replaces v10's Statcast 'SB Run Value'.  — "the coachable jump/lead, before the throw"
+           'Ground' is a WEIGHTED blend of the calculator's own two lead features — lead at first
+           move and gain to release — weighted by the calculator's fitted coefficients (see
+           ground_weights()), so Burst is built from the same two quantities the v14 calculator
+           runs on, weighted the way the calculator itself weighs them.
   (A v10 'Steal Grade' averaged the two percentiles; dropped in v11 — validation showed it
    predicts net steals / success no better than Steal+ alone and mis-ranks pure producers.)
 
@@ -138,6 +142,42 @@ def sync_site_payload(payload: dict, marker: str) -> None:
     site.write_text(h[:i] + json.dumps(payload, separators=(",", ":")) + h[j:], encoding="utf-8")
     print(f"[sync] docs/index.html <- {marker.strip()}")
 
+# ── ground gained: a blend of the calculator's own two lead features ────────
+def ground_weights(coef_path: Path) -> tuple[float, float]:
+    """(w_lead, w_gain), summing to 1, so 'ground' stays in feet — a weighted AVERAGE of
+    lead_at_firstmove_ft and gain_to_release_ft rather than an unweighted mean of the two.
+
+    v14's calculator fits both as separate per-attempt inputs and learns that gain_to_release
+    matters roughly 4x more per foot than lead_at_firstmove (their coefficients, in the currently
+    committed fit: 0.303 vs 0.069). An unweighted 50/50 average was tested against the current
+    gain-only definition and made the season metric WORSE, not better: year-over-year self-
+    stability fell from 0.526 to 0.380, because lead_at_firstmove barely varies between runners
+    (its variance is dominated by within-runner noise — see run_success_model's primary_lead
+    stat) and diluting it in unweighted made Burst noisier for no offsetting gain. Weighting by
+    the calculator's OWN fitted coefficients recovers almost all of that cost (YoY 0.489, Burst
+    YoY 0.370 vs the gain-only 0.402) while making the season metric a direct reflection of what
+    the per-pitch model actually weighs — which is the point of this change.
+
+    Reads the coefficients the calculator last fit (DF_success_model.csv for the modern era, the
+    classic payload's success_model.coef for the classic one) rather than re-fitting here, so this
+    has no import-time dependency on sklearn and no ordering dependency on run_success_model()
+    having already run in THIS invocation — the coefficients are deterministic given fixed data
+    and a fixed seed, so reading yesterday's fit and today's are the same to the reported
+    precision. Falls back to (0, 1) — pure gain_to_release, the pre-v15 definition — if no fit
+    has been written yet (a fresh clone before the first full run)."""
+    if not coef_path.exists():
+        return 0.0, 1.0
+    if coef_path.suffix == ".json":
+        coef = json.loads(coef_path.read_text(encoding="utf-8"))["success_model"]["coef"]
+    else:
+        sm = pd.read_csv(coef_path)
+        coef = {r.term: r.coefficient for r in sm.itertuples() if isinstance(r.term, str)}
+    b_lead, b_gain = coef.get("lead_at_firstmove_ft"), coef.get("gain_to_release_ft")
+    if not b_lead or not b_gain or b_lead <= 0 or b_gain <= 0:
+        return 0.0, 1.0
+    return b_lead / (b_lead + b_gain), b_gain / (b_lead + b_gain)
+
+
 # ── raw era pool (per-attempt ground folded onto each runner-season) ────────
 def load_era() -> pd.DataFrame:
     S = pd.read_csv(DATA / "Raw_Season.csv")
@@ -146,9 +186,12 @@ def load_era() -> pd.DataFrame:
     era = S[S["season"] >= ERA_MIN].copy()
     era["raw_succ"] = era["SB"] / era["sb_attempts"].clip(lower=1)
     era["net_sb"]   = (era["SB"] - era["CS"]).astype(int)
-    av = A[A["result"].isin(["SB", "CS"])]
+    av = A[A["result"].isin(["SB", "CS"])].copy()
+    w_lead, w_gain = ground_weights(RESULTS / "DF_success_model.csv")
+    av["_ground"] = w_lead * pd.to_numeric(av["lead_at_firstmove_ft"], errors="coerce") \
+                  + w_gain * pd.to_numeric(av["gain_to_release_ft"], errors="coerce")
     g = (av.groupby(["runner_id", "season"])
-           .agg(ground=("gain_to_release_ft", "mean"),
+           .agg(ground=("_ground", "mean"),
                 lead_rel=("lead_at_release_ft", "mean"),
                 tracked=("gain_to_release_ft", "count")).reset_index())
     era = era.merge(g, on=["runner_id", "season"], how="left")
@@ -548,7 +591,9 @@ def run_success_model(seed: int = 42):
 
     meta = json.loads((DATA / "v11_players.json").read_text(encoding="utf-8"))["meta"]
     b0, b1 = meta["ground_fit"]["b0"], meta["ground_fit"]["b1"]
-    gain = pd.to_numeric(at["gain_to_release_ft"], errors="coerce")
+    w_lead, w_gain = ground_weights(RESULTS / "DF_success_model.csv")   # same blend load_era() used
+    gain = (w_lead * pd.to_numeric(at["lead_at_firstmove_ft"], errors="coerce")
+            + w_gain * pd.to_numeric(at["gain_to_release_ft"], errors="coerce"))
     grp = at.assign(_g=gain).groupby(["runner_id", "season"])["_g"]
     ground, n_tracked = grp.transform("mean"), grp.transform("count")
     league_ground = float(gain.mean())
@@ -636,7 +681,39 @@ def run_success_model(seed: int = 42):
           f"(floor {y.mean():.4f}) | Brier {brier:.4f} | F1 {f1s[best]:.4f} @thr "
           f"{grid[best]:.2f} | n={len(at)}")
     print(f"  each +1 ft of ground gained multiplies the odds of being safe by {per_ft:.2f}x")
+    fig_roc_calculator(y, oof, auc)
     return payload
+
+
+def fig_roc_calculator(y, oof, auc):
+    """The actual ROC curve behind the v14 calculator's AUROC, not just the number.
+
+    An AUROC on its own doesn't show WHERE the model's discrimination comes from or what it costs
+    to raise the true-positive rate. The curve does: at this base rate (~81% safe), a caught-
+    stealing-averse threshold near the top-left knee trades roughly 1 point of true-positive rate
+    for every ~2 points of false-positive rate it gives up, which is the shape a coach is actually
+    choosing between when picking a threshold."""
+    try:
+        import matplotlib; matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from sklearn.metrics import roc_curve
+    except ImportError:
+        return
+    figs = ROOT / "Output" / "Figures"; figs.mkdir(parents=True, exist_ok=True)
+    fpr, tpr, _ = roc_curve(y, oof)
+    fig, ax = plt.subplots(figsize=(5.6, 5.2), dpi=150)
+    ax.plot(fpr, tpr, lw=2.6, color="#2F6FB0", label=f"v14 calculator (AUROC {auc:.3f})")
+    ax.plot([0, 1], [0, 1], lw=1.2, ls="--", color="#9AA0A6", label="no-skill (AUROC 0.500)")
+    ax.fill_between(fpr, tpr, fpr, alpha=0.08, color="#2F6FB0")
+    ax.set_xlabel("false-positive rate (called safe, actually caught)")
+    ax.set_ylabel("true-positive rate (called safe, actually safe)")
+    ax.set_title("ROC — the calculator vs a coin flip\n5-fold out-of-fold, n=10,844 attempts",
+                fontsize=11, fontweight="bold", color="#0C2340")
+    ax.legend(fontsize=9, frameon=False, loc="lower right")
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    for sp_ in ("top", "right"): ax.spines[sp_].set_visible(False)
+    fig.tight_layout(); fig.savefig(figs / "Fig_ROC_Calculator.png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
 
 
 def main():

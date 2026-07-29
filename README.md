@@ -49,19 +49,19 @@ Net Bases Gained tells you *what happened* but bundles five things — sprint sp
 | Metric | What it is | Unit | 0 = |
 |---|---|---|---|
 | **Steal+** (headline) | Net bases (SB − CS) above what an average runner of his **sprint speed** would produce over the same attempts. `= 2(1−p)·SB − 2p·CS`, so a caught stealing costs **~4×** a steal (p ≈ speed-expected success ≈ 0.80). **Volume-aware.** | bases | same-speed average |
-| **Ground gained** (the raw measurement) | Feet the runner wins from the pitcher's **first move** until the pitch **reaches the catcher**. On a single pitch this is the strongest lever in the model — each extra foot ≈ **1.36×** the odds of being safe. **Not speed-neutral:** it correlates **−0.49** with sprint speed, because slower runners take bigger secondary leads. | feet | — (raw) |
+| **Ground gained** (the raw measurement) | Feet the runner wins from the pitcher's **first move** until the pitch **reaches the catcher**. On a single pitch this is the strongest lever in the model — each extra foot ≈ **1.36×** the odds of being safe. **Not speed-neutral:** it correlates **−0.48** with sprint speed, because slower runners take bigger secondary leads. | feet | — (raw) |
 | **Burst** (the same thing, speed-adjusted) | Ground gained **minus what a runner of that sprint speed typically gains**. Correlation with sprint speed: **0.00**. This is the fair cross-runner comparison, measured *before any steal outcome* — the coachable jump/lead; replaces v10's "SB Run Value." | feet | speed-predicted |
 
 **Ground gained vs Burst — the distinction that matters.** They are *the same measurement at two baselines*, correlated **+0.87** but not interchangeable. Rank by raw ground gained and you systematically flatter slow runners:
 
 | Runner | Sprint speed | Ground gained | Burst |
 |---|---|---|---|
-| **Josh Naylor** '25 | 24.4 ft/s | **16.7 ft** (the most) | +1.6 |
-| **Corbin Carroll** '23 | 30.1 ft/s | 12.8 ft | **+2.7** (the better jump) |
+| **Josh Naylor** '25 | 24.4 ft/s | **15.9 ft** (the most) | +1.3 |
+| **Corbin Carroll** '23 | 30.1 ft/s | 12.6 ft | **+2.1** (the better jump) |
 
-Naylor wins the most raw ground of anyone — but he is slow, and slow runners are *expected* to. At 30.1 ft/s, Carroll's 12.8 ft is the harder feat. Burst is what makes that comparison fair. Both are shown side by side on the leaderboard.
+Naylor wins the most raw ground of anyone — but he is slow, and slow runners are *expected* to. At 30.1 ft/s, Carroll's 12.6 ft is the harder feat. Burst is what makes that comparison fair. Both are shown side by side on the leaderboard.
 
-Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.15): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
+Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.16): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
 
 Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is the net bases your wheels alone buy (`attempts × (2·p_speed − 1)`), Steal+ is the net bases your skill adds. (Steal+ *is* the surplus term.)
 
@@ -70,13 +70,13 @@ Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is 
 | Question | Net Bases | Steal+ | Burst | Verdict |
 |---|---|---|---|---|
 | **corr with sprint speed** (0 = pure skill) | +0.29 | **−0.01** | **+0.00** | Steal+/Burst are speed-neutral |
-| **describes net steals** (SB−CS, same year) | — | **+0.64** | +0.08 | Steal+ is the production read |
-| **describes success rate** (same year) | — | **+0.89** | +0.15 | Steal+ tracks efficiency |
+| **describes net steals** (SB−CS, same year) | — | **+0.64** | +0.10 | Steal+ is the production read |
+| **describes success rate** (same year) | — | **+0.89** | +0.16 | Steal+ tracks efficiency |
 | predict next-year **net steals** | **+0.38** | +0.17 | +0.09 | **Net Bases wins** volume — we concede it |
 | predict next-year **success rate** | +0.16 | **+0.23** | +0.04 | Steal+ wins skill |
-| **year-to-year stability** (repeatable) | +0.38 | +0.19 | **+0.48** | Burst is the most repeatable |
+| **year-to-year stability** (repeatable) | +0.38 | +0.19 | **+0.46** | Burst is the most repeatable |
 
-The honest read: **Steal+ is the single best answer to "who steals well"** — it describes same-season net steals (0.64) and success rate (0.89) far better than anything else while staying speed-neutral. **Burst is a genuinely different, more repeatable signal** (year-to-year 0.48) for coachable technique. Net Bases still wins raw next-year volume.
+The honest read: **Steal+ is the single best answer to "who steals well"** — it describes same-season net steals (0.64) and success rate (0.89) far better than anything else while staying speed-neutral. **Burst is a genuinely different, more repeatable signal** (year-to-year 0.46) for coachable technique. Net Bases still wins raw next-year volume.
 
 ---
 
@@ -91,8 +91,9 @@ audit found. Nothing here overturned a finding; it made the findings defensible.
 | **`pc_fastball` made the reference category** | The three pitch-class dummies sum to 1 on 99.94% of rows — the dummy-variable trap. VIF 561. | Coefficients readable relative to a fastball. |
 | **Calculator re-specified**: speed + lead at first move + ground gained + **catcher pop time** | Measured, not assumed. Burst requires a *qualified* runner-season, so carrying it discarded ~3,600 attempts. | AUROC **0.726 → 0.756** on **10,844** attempts (up from 7,404). Burst stays a season metric; it is not a per-pitch input. |
 | **Every accuracy number printed beside its floor** | AUPRC without its no-skill floor reads better than it is; v13's F1 at the 0.5 threshold is structurally **0.000** at a 2.3% base rate. | See the scorecard in the v14 report. |
-| **Eras fit separately**, pooling priced and rejected | The 2023 rules moved both baselines. | Pooling barely moves ranks (Spearman 0.994) but Burst **stops being speed-neutral** (0.00 → −0.159). |
+| **Eras fit separately**, pooling priced and rejected | The 2023 rules moved both baselines. | Pooling barely moves ranks (Spearman 0.994) but Burst **stops being speed-neutral** (0.00 → −0.139). |
 | **Standing collinearity guard** added to the verification harness | Nothing in the pipeline noticed the dependency above. | `assert max VIF < 10`; it caught two of the three defects on its first run. |
+| **`ground` (and therefore Burst) now blended from the calculator's own coefficients** — a weighted average of lead-at-first-move and gain-to-release, weighted 19%/81% by the calculator's fitted odds ratios rather than using gain-to-release alone | So the season metric reflects the same two quantities, weighted the same way, as the per-pitch calculator — a plain unweighted average of the two was tested first and made Burst *less* repeatable (YoY 0.53 → 0.38); the calculator-weighted version recovers nearly all of that (YoY 0.49). | Burst YoY 0.48 → 0.46 (small, disclosed cost). `ground_weights()` in `model_v11.py`. |
 
 ---
 
@@ -102,10 +103,10 @@ audit found. Nothing here overturned a finding; it made the findings defensible.
 ![Era fits](Output/Figures/Fig_eras_fits.png)
 
 These are the only two lines the model subtracts from, so neither metric can be checked without
-them. **Left:** the line slopes *downward* (−0.89 ft per ft/s) — every extra 1 ft/s of sprint speed
-comes with ~0.89 **fewer** feet of ground gained, because faster runners take shorter leads. That is
+them. **Left:** the line slopes *downward* (−0.72 ft per ft/s) — every extra 1 ft/s of sprint speed
+comes with ~0.72 **fewer** feet of ground gained, because faster runners take shorter leads. That is
 why raw ground gained is partly a slow-runner statistic, and **Burst is the vertical gap above this
-line** (correlation with speed 0.00, versus −0.49 for raw ground gained). **Right:** the steepness
+line** (correlation with speed 0.00, versus −0.48 for raw ground gained). **Right:** the steepness
 *is* the price of raw speed — one extra ft/s bought **+2.20** points of success before 2023 and only
 **+1.14** after, while the whole league's floor rose (76.4% → 80.4%). The 2023 rules roughly halved
 what wheels are worth, which is the strongest single argument against pooling the eras.

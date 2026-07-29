@@ -245,9 +245,10 @@ def main():
     # season over season), so a model trained on the past predicts an easier environment than
     # the one it is scored in. That is a base-rate shift, not model over-confidence — isotonic
     # on pooled data would hide the cause rather than fix it, so no correction is applied.
-    rels = []
+    rels, roc_oof = [], {}
     for split in ("random", "forward"):
         _, oof = evaluate(df, y, ship, True, split=split, return_pred=True)
+        roc_oof[split] = oof
         r = reliability(y, oof); r.insert(0, "split", split); rels.append(r)
         print(f"\ncalibration ({split}): max |predicted − observed| = {r['gap'].abs().max():.3f}, "
               f"mean gap {r['gap'].mean():+.4f}")
@@ -278,6 +279,26 @@ def main():
         for i, v in enumerate(vals):
             ax.text(i, v + 0.0015, f"{v:.3f}", ha="center", fontweight="bold", fontsize=10.5)
         plt.tight_layout(); plt.savefig(FIGS / "Fig_v12_AUC.png", dpi=160); plt.close()
+
+        # the actual ROC curve for the shipped model, random AND forward — the gap between the two
+        # curves IS the cost of not being allowed to see the future, drawn rather than just quoted
+        from sklearn.metrics import roc_curve
+        fig, ax = plt.subplots(figsize=(5.8, 5.4), dpi=150)
+        for split, color in [("random", "#2F6FB0"), ("forward", "#C0392B")]:
+            oof = roc_oof[split]; scored = ~np.isnan(oof)
+            fpr, tpr, _ = roc_curve(y[scored], oof[scored])
+            auroc = vrows[0]["auroc"] if split == "random" else vrows[2]["auroc"]
+            ax.plot(fpr, tpr, lw=2.4, color=color, label=f"{split} (AUROC {auroc:.3f})")
+        ax.plot([0, 1], [0, 1], lw=1.1, ls="--", color="#9AA0A6", label="no-skill (0.500)")
+        ax.set_xlabel("false-positive rate"); ax.set_ylabel("true-positive rate")
+        ax.set_title("ROC — v12 shipped model, random vs forward split\n"
+                     "the gap between the curves is the cost of testing on the future",
+                     fontsize=10.5, fontweight="bold", color="#0C2340")
+        ax.legend(fontsize=9, frameon=False, loc="lower right")
+        ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+        for sp_ in ("top", "right"): ax.spines[sp_].set_visible(False)
+        fig.tight_layout(); fig.savefig(FIGS / "Fig_v12_ROC.png", dpi=160, bbox_inches="tight")
+        plt.close(fig)
     except ImportError:
         pass
 

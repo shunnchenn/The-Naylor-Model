@@ -76,8 +76,15 @@ def _classic_season(att: pd.DataFrame) -> pd.DataFrame:
     sp = pd.read_csv(DATA / "sprint_speed.csv").rename(columns={"sprint_speed_all": "sprint_speed"})
     season = season.merge(sp[["runner_id", "season", "sprint_speed"]], on=["runner_id", "season"], how="left")
 
+    # 'ground' is the same calculator-weighted blend v11 uses (see M.ground_weights): the classic
+    # calculator's OWN fitted coefficients, from CLASSIC attempts, not the modern ones — the two
+    # eras are fit separately throughout, and this stays consistent with that.
+    classic_json = DATA / "v11_players_classic.json"
+    w_lead, w_gain = M.ground_weights(classic_json)
+    att = att.assign(_ground=w_lead * pd.to_numeric(att["lead_at_firstmove_ft"], errors="coerce")
+                     + w_gain * pd.to_numeric(att["gain_to_release_ft"], errors="coerce"))
     ground = (att.groupby(["runner_id", "season"])
-                 .agg(ground=("gain_to_release_ft", "mean"),
+                 .agg(ground=("_ground", "mean"),
                       lead_rel=("lead_at_release_ft", "mean"),
                       tracked=("gain_to_release_ft", "count")).reset_index())
     season = season.merge(ground, on=["runner_id", "season"], how="inner")   # need leads for Burst
@@ -121,9 +128,9 @@ def _perattempt_auc(att: pd.DataFrame, season: pd.DataFrame, seed=42):
 
 
 def _classic_calculator(att, scored):
-    """Fit the same 3-input logistic calculator (sprint speed, Burst, ground gained on the pitch)
-    on CLASSIC attempts, so the site's era switch changes the odds model too rather than silently
-    showing modern coefficients over classic players."""
+    """Fit the same 4-input logistic calculator (sprint speed, lead at first move, ground gained
+    to release, catcher pop time) on CLASSIC attempts, so the site's era switch changes the odds
+    model too rather than silently showing modern coefficients over classic players."""
     try:
         from sklearn.model_selection import StratifiedKFold, cross_val_predict
         from sklearn.linear_model import LogisticRegression
