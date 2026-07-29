@@ -24,7 +24,8 @@ Inputs (all offline once scraped):
   Data/poptime.csv                 catcher arm                (scrape_statcast.py poptime)
   Output/Results/DF_v7_SSSI.csv    runner season skill
 
-Run:  python3 Scripts/model_v12.py
+Run:  python3 model/engines.py success     (this file, v12)
+      python3 model/engines.py decision    (the v13 attempt model, below)
 """
 from __future__ import annotations
 import warnings; warnings.filterwarnings("ignore")
@@ -34,7 +35,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from model_v11 import PA_LEAD_FEATS, PA_RUNNER_FEATS
+from metrics import PA_LEAD_FEATS, PA_RUNNER_FEATS
 
 ROOT    = Path(__file__).resolve().parent.parent
 DATA    = ROOT / "Data"
@@ -78,7 +79,7 @@ def load() -> tuple[pd.DataFrame, np.ndarray]:
         df = df.merge(ctx, on="play_id", how="left")
     else:
         raise SystemExit("Data/Raw_Attempt_Context.csv missing — "
-                         "run: python3 Scripts/scrape_statcast.py context")
+                         "run: python3 ingest/scrape_statcast.py context")
 
     cls = df["pitch_code"].map(PITCH_CLASS).fillna("other")
     for c in ("fastball", "breaking", "offspeed"):
@@ -192,7 +193,7 @@ def reliability(y: np.ndarray, p: np.ndarray, bins: int = 10) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def main():
+def main_v12():
     df, y = load()
     matched = df["is_lhp"].notna().mean()
     print(f"v12 per-attempt table: {len(df)} attempts | base rate {y.mean():.3f} | "
@@ -308,5 +309,194 @@ def main():
     return out
 
 
+# ============================================================================
+# v13 — THE DECISION MODEL: will he ATTEMPT at all?
+# Shares PITCH_CLASS and reliability() with the success engine above (same file now).
+# ============================================================================
+# pc_fastball omitted as the reference category — the three dummies sum to 1 on 99.9% of rows, so
+# including all three is the dummy-variable trap (see model_v12 BATTERY_FEATS).
+SITUATION = ["balls", "strikes", "outs", "inning", "score_diff", "is_lhp", "bat_side_r",
+             "pc_breaking", "pc_offspeed"]
+PERSONNEL = ["sprint_speed_all", "runner_rate_prior", "seen_before"]
+FEATS     = SITUATION + PERSONNEL
+
+
+def load_v13() -> tuple[pd.DataFrame, np.ndarray]:
+    # committed gzipped (41 MB -> a few MB); the scraper writes the plain .csv
+    src = DATA / "Raw_Opportunities.csv"
+    if not src.exists():
+        src = DATA / "Raw_Opportunities.csv.gz"
+    if not src.exists():
+        raise SystemExit("Data/Raw_Opportunities.csv[.gz] missing — "
+                         "run: python3 ingest/scrape_statcast.py opportunities")
+    df = pd.read_csv(src)
+    df = df[(df["balls"] <= 3) & (df["strikes"] <= 2)]          # one malformed feed row in 517k
+
+    # Season: the opportunities table has no date, but game_pk is monotonic in time and the
+    # seasons occupy cleanly separated blocks. Learn the block edges from the games that DO
+    # contain a Savant-tracked play_id, then assign EVERY game by range — joining on play_id
+    # alone would silently drop the ~36% of games with no tracked attempt in them.
+    att = pd.read_csv(DATA / "Raw_Attempts.csv", usecols=["play_id", "season"])
+    known = (df.merge(att, on="play_id", how="inner")
+               .groupby("game_pk")["season"].first().reset_index())
+    bounds = known.groupby("season")["game_pk"].agg(["min", "max"]).sort_index()
+    seasons = bounds.index.to_numpy()
+    edges = [(bounds["max"].iloc[i] + bounds["min"].iloc[i + 1]) / 2
+             for i in range(len(bounds) - 1)]
+    df["season"] = seasons[np.searchsorted(edges, df["game_pk"].values)]
+
+    cls = df["pitch_code"].map(PITCH_CLASS).fillna("other")
+    for c in ("fastball", "breaking", "offspeed"):
+        df[f"pc_{c}"] = (cls == c).astype(int)
+
+    sp = pd.read_csv(DATA / "sprint_speed.csv").rename(columns={"runner_id": "runner_1b"})
+    df = df.merge(sp, on=["runner_1b", "season"], how="left")
+
+    # NOTE: no catcher feature here. The opportunity feed carries no catcher id, and a
+    # season-league mean would be constant within a season — a column that looks like a feature
+    # but cannot inform a per-pitch decision. Attaching the real catcher needs the boxscore.
+
+    # The "scouting report" prior: how often does THIS runner go? It must be built from PRIOR
+    # SEASONS ONLY. A same-season leave-one-out rate still reads the season being predicted, which
+    # inflated the random split to AUPRC 0.25 against 0.06 grouped — the same self-contamination
+    # that produced the v11 catcher/pitcher bug and was caught again on Burst. Expanding by season
+    # is causal and is what you would actually have on hand at gametime.
+    league = float(df["attempt"].mean())
+    per = (df.groupby(["runner_1b", "season"])["attempt"].agg(["sum", "count"])
+             .sort_index().reset_index())
+    per[["cum_s", "cum_n"]] = (per.groupby("runner_1b")[["sum", "count"]]
+                                  .transform(lambda c: c.shift(1).cumsum()))
+    per["runner_rate_prior"] = (per["cum_s"] / per["cum_n"]).fillna(league)
+    df = df.merge(per[["runner_1b", "season", "runner_rate_prior"]],
+                  on=["runner_1b", "season"], how="left")
+    df["runner_rate_prior"] = df["runner_rate_prior"].fillna(league)
+    df["seen_before"] = (df["runner_rate_prior"] != league).astype(int)
+
+    df = df.reset_index(drop=True)
+    return df, df["attempt"].values
+
+
+def evaluate_v13(df, y, feats, split="random", seed=42, return_pred=False):
+    from sklearn.model_selection import StratifiedKFold, GroupKFold
+    from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss
+    from xgboost import XGBClassifier
+
+    feats = [f for f in feats if f in df.columns]
+    X = df[feats].apply(pd.to_numeric, errors="coerce").values
+
+    def splits():
+        if split == "random":
+            yield from StratifiedKFold(5, shuffle=True, random_state=seed).split(df, y)
+        elif split == "group":
+            yield from GroupKFold(5).split(df, y, df["runner_1b"].values)
+        elif split == "forward":
+            for T in sorted(df["season"].unique())[1:]:
+                tr = np.where(df["season"].values < T)[0]
+                va = np.where(df["season"].values == T)[0]
+                if len(va) >= 500 and len(tr) >= 2000:
+                    yield tr, va
+
+    oof = np.full(len(df), np.nan)
+    for tr, va in splits():
+        m = XGBClassifier(n_estimators=400, max_depth=5, learning_rate=0.05, subsample=0.8,
+                          colsample_bytree=0.8, min_child_weight=10, reg_lambda=1.0,
+                          eval_metric="logloss", verbosity=0, random_state=seed,
+                          use_label_encoder=False)
+        oof[va] = m.fit(X[tr], y[tr]).predict_proba(X[va])[:, 1]
+
+    ok = ~np.isnan(oof)
+    yy, pp = y[ok], oof[ok]
+    out = {"auprc": average_precision_score(yy, pp), "auroc": roc_auc_score(yy, pp),
+           "brier": brier_score_loss(yy, pp), "base_rate": float(yy.mean()),
+           "n_scored": int(ok.sum())}
+    return (out, oof) if return_pred else out
+
+
+def main_v13():
+    df, y = load_v13()
+    print(f"v13 DECISION MODEL (2023-2026): {len(df):,} opportunity pitches (runner on 1B, 2B empty) | "
+          f"attempts {y.sum():,} | attempt rate {y.mean()*100:.2f}%")
+    print(f"seasons: {sorted(df['season'].unique())} | distinct runners: {df['runner_1b'].nunique():,}")
+
+    rows = []
+    for name, feats in [("situation only", SITUATION),
+                        ("personnel only", PERSONNEL),
+                        ("v13 FULL (situation + personnel)", FEATS)]:
+        m = evaluate_v13(df, y, feats)
+        rows.append({"model": name, "split": "random", **{k: round(v, 4) for k, v in m.items()}})
+        print(f"  {name:34s} AUPRC {m['auprc']:.4f} (floor {m['base_rate']:.4f}) | "
+              f"AUROC {m['auroc']:.4f} | Brier {m['brier']:.4f}")
+
+    print("\nvalidation regimes (full model):")
+    for split in ("random", "group", "forward"):
+        m = evaluate_v13(df, y, FEATS, split=split)
+        rows.append({"model": "v13 FULL", "split": split, **{k: round(v, 4) for k, v in m.items()}})
+        print(f"  {split:8s} AUPRC {m['auprc']:.4f} (floor {m['base_rate']:.4f}) | "
+              f"AUROC {m['auroc']:.4f} | Brier {m['brier']:.4f} | n={m['n_scored']:,}")
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(RESULTS / "DF_v13_Attempt.csv", index=False)
+
+    # ── the diagnostic this model exists for: the selection effect, without a model ──
+    # SPEED BINS, DEFINED. Quintiles of the OPPORTUNITY population — every pitch with a runner on
+    # 1st — so a runner who reaches base often carries more weight. They are NOT MLB-wide
+    # percentiles and NOT equal numbers of runners, and a runner can fall in different bins in
+    # different seasons because sprint speed is measured per season.
+    q, edges = pd.qcut(df["sprint_speed_all"], 5, retbins=True, duplicates="drop",
+                       labels=["slowest", "slow", "mid", "fast", "fastest"])
+    tab = df.groupby(q).agg(low_ftps=("sprint_speed_all", "min"),
+                            high_ftps=("sprint_speed_all", "max"),
+                            mean_ftps=("sprint_speed_all", "mean"),
+                            runner_seasons=("runner_1b", "nunique"),
+                            opportunities=("attempt", "size"),
+                            attempts=("attempt", "sum")).round(2)
+    tab["attempt_pct"] = (100 * tab["attempts"] / tab["opportunities"]).round(2)
+    tab["share_of_opps_pct"] = (100 * tab["opportunities"] / len(df)).round(1)
+    print("\nSPEED BINS — quintiles of the opportunity population (pitch-weighted, NOT MLB percentile):")
+    print(tab.to_string())
+    tab.to_csv(RESULTS / "DF_v13_SelectionEffect.csv")
+
+    pcts = [0, 5, 10, 25, 50, 75, 90, 95, 100]
+    pct = pd.DataFrame({"percentile": pcts,
+                        "sprint_speed_ftps": [round(float(np.percentile(
+                            df["sprint_speed_all"].dropna(), p)), 1) for p in pcts]})
+    pct.to_csv(RESULTS / "DF_v13_SpeedPercentiles.csv", index=False)
+    print("speed percentiles in this population (ft/s): " +
+          " · ".join(f"p{r.percentile}={r.sprint_speed_ftps}" for r in pct.itertuples()))
+
+    print("\nattempt rate by count:")
+    ct = df.groupby(["balls", "strikes"])["attempt"].agg(["mean", "size"])
+    ct = ct[ct["size"] >= 2000].sort_values("mean", ascending=False)
+    print((ct.assign(attempt_pct=(ct["mean"] * 100).round(2))
+             .drop(columns="mean").head(6)).to_string())
+
+    _, oof = evaluate_v13(df, y, FEATS, split="forward", return_pred=True)
+    rel = reliability(y, oof)
+    rel.to_csv(RESULTS / "DF_v13_Calibration.csv", index=False)
+    print(f"\ncalibration (forward): max |predicted − observed| = {rel['gap'].abs().max():.4f}")
+
+    try:
+        import matplotlib; matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        FIGS.mkdir(parents=True, exist_ok=True)
+        fig, ax = plt.subplots(figsize=(7.6, 4.3))
+        t = df.groupby(q)["attempt"].mean() * 100
+        ax.bar([str(i) for i in t.index], t.values, color="#2F6FB0", width=0.6)
+        ax.set_ylabel("attempt rate (%)"); ax.set_xlabel("runner sprint-speed quintile")
+        ax.set_title("Runners self-select: who even tries to steal (2023–2026)", fontsize=12)
+        for i, v in enumerate(t.values):
+            ax.text(i, v + 0.03, f"{v:.2f}%", ha="center", fontweight="bold", fontsize=10)
+        plt.tight_layout(); plt.savefig(FIGS / "Fig_v13_Attempt.png", dpi=160); plt.close()
+    except ImportError:
+        pass
+    return rows
+
+
+# ── CLI ──────────────────────────────────────────────────────────────────────
+_ENTRY = {"success": main_v12, "decision": main_v13}
+
 if __name__ == "__main__":
-    main()
+    import sys as _sys
+    _cmd = _sys.argv[1] if len(_sys.argv) > 1 else "success"
+    if _cmd not in _ENTRY:
+        _sys.exit(f"usage: python3 model/engines.py [{'|'.join(_ENTRY)}]   (default: success)")
+    _ENTRY[_cmd]()

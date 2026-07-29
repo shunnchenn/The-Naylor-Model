@@ -13,20 +13,19 @@ browser, nothing to install.
 
 ---
 
-> ### Then dig in  (v14)
+> ### Then dig in  (v15)
 > | If you want to… | Open |
 > |---|---|
 > | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 4 sliders, live |
 > | **Explore the leaderboard** | **https://shunnchenn.github.io/The-Naylor-Model/** — sortable board, player cards with percentile bars, skill map |
-> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v14_Report.docx`](Naylor_Model_v14_Report.docx)** — ⭐ start here: the metrics, the era fits, the audit, the full scorecard |
-> | **Read the supporting detail** | [`Reports/v11`](Reports/Naylor_Model_v11_Report.docx) (original Steal+/Burst) · [`v12`](Reports/Naylor_Model_v12_Report.docx) (per-attempt success) · [`v13`](Reports/Naylor_Model_v13_Report.docx) (the decision model) · [`classic`](Reports/Naylor_Model_classic_Report.docx) (2015–2022) |
+> | **Read the findings** | **[`Naylor_Model_v15_Report.docx`](Naylor_Model_v15_Report.docx)** — ⭐ the single report: data, model spec, results, robustness, limitations |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |
 > | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
 > | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v11_leaderboard.csv`, `DF_v11_validation.csv`) |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
 >
-> Everything else is plumbing: `Scripts/` (scrape → features → four model scripts) ·
-> `Data/` (raw in) · `Output/` (results out) · `Reports/` (superseded write-ups, kept for reference).
+> Everything else is plumbing: `ingest/` (scrape → features) · `model/` (the ML) ·
+> `Data/` (raw in) · `Output/` (results out).
 
 ---
 
@@ -80,17 +79,19 @@ The honest read: **Steal+ is the single best answer to "who steals well"** — i
 
 ---
 
-## What v14 changed
+## What v15 changed
 
-v14 keeps every published Steal+, Burst and leaderboard value from v11 and fixes what a critical
-audit found. Nothing here overturned a finding; it made the findings defensible.
+v15 consolidates every earlier write-up (v11–v14 and the separate Results & Discussion) into a
+single ML report, and restructures the code into five scripts across `ingest/` and `model/`.
+The modelling changes below arrived across v12–v15; none of them overturned a published
+Steal+, Burst or leaderboard value — they made the findings defensible.
 
 | Change | Why | Effect |
 |---|---|---|
 | **Dropped `lead_at_release_ft`** from the per-attempt model | It is the *exact sum* of the other two lead features (R² = **0.999895**; the residual caps at 0.1 ft, the rounding granularity). VIF **1,588 / 5,836 / 9,532**. | Predictions unchanged (−0.0014 AUROC), but feature importance was being split arbitrarily across dependent columns and was **not quotable**. Now max VIF **1.14**. |
 | **`pc_fastball` made the reference category** | The three pitch-class dummies sum to 1 on 99.94% of rows — the dummy-variable trap. VIF 561. | Coefficients readable relative to a fastball. |
 | **Calculator re-specified**: speed + lead at first move + ground gained + **catcher pop time** | Measured, not assumed. Burst requires a *qualified* runner-season, so carrying it discarded ~3,600 attempts. | AUROC **0.726 → 0.756** on **10,844** attempts (up from 7,404). Burst stays a season metric; it is not a per-pitch input. |
-| **Every accuracy number printed beside its floor** | AUPRC without its no-skill floor reads better than it is; v13's F1 at the 0.5 threshold is structurally **0.000** at a 2.3% base rate. | See the scorecard in the v14 report. |
+| **Every accuracy number printed beside its floor** | AUPRC without its no-skill floor reads better than it is; v13's F1 at the 0.5 threshold is structurally **0.000** at a 2.3% base rate. | See §5.2 of the v15 report. |
 | **Eras fit separately**, pooling priced and rejected | The 2023 rules moved both baselines. | Pooling barely moves ranks (Spearman 0.994) but Burst **stops being speed-neutral** (0.00 → −0.139). |
 | **Standing collinearity guard** added to the verification harness | Nothing in the pipeline noticed the dependency above. | `assert max VIF < 10`; it caught two of the three defects on its first run. |
 | **`ground` (and therefore Burst) now blended from the calculator's own coefficients** — a weighted average of lead-at-first-move and gain-to-release, weighted 19%/81% by the calculator's fitted odds ratios rather than using gain-to-release alone | So the season metric reflects the same two quantities, weighted the same way, as the per-pitch calculator — a plain unweighted average of the two was tested first and made Burst *less* repeatable (YoY 0.53 → 0.38); the calculator-weighted version recovers nearly all of that (YoY 0.49). | Burst YoY 0.48 → 0.46 (small, disclosed cost). `ground_weights()` in `model_v11.py`. |
@@ -129,9 +130,9 @@ what wheels are worth, which is the strongest single argument against pooling th
 
 The model has two clearly separated jobs — kept apart on purpose:
 
-1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,100 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUROC ≈ 0.78** (v12: 0.741 leads-only → 0.783 with pitch context and catcher arm; **0.770 under a forward train-past/test-future holdout**, the honest number). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `Scripts/model_v11.py` (`run_perattempt`).
+1. **The skill engine (per attempt).** A per-attempt XGBoost over **~11,100 individual tracked attempts** (one row per steal, with the lead distances the runner got on that pitch). CV **AUROC ≈ 0.78** (v12: 0.741 leads-only → 0.783 with pitch context and catcher arm; **0.770 under a forward train-past/test-future holdout**, the honest number). It answers a *within-attempt* question — *given how this runner led off on this pitch, did the attempt succeed?* — driven by the per-pitch lead distances. **It is not a season forecast and not a next-season projection.** It lives in `model/metrics.py` (`run_perattempt`).
 
-2. **The metric suite (per runner-season).** `Scripts/model_v11.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
+2. **The metric suite (per runner-season).** `model/metrics.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
    - `fit_league(era)` learns the league constants (the `ground ~ sprint_speed` line, the percentile references) **once** on the whole pool;
    - `score(rows, fit)` is then a **pure function** — scoring 1 row, 5 rows, or all 452 gives identical values for the same players. `model_eras.py` asserts this over 200 random draws of 5 per era, against a deliberately leaky scorer as a negative control.
 
@@ -139,69 +140,73 @@ The model has two clearly separated jobs — kept apart on purpose:
 
 3. **Projection is validated separately** by the year T → T+1 correlations above — the only place the model speaks to "next season," and it does so honestly (Net Bases is the better volume forecaster; v11 wins on skill, efficiency, and technique).
 
-*† The modern pool is the 2023–2026 Statcast lead-tracking window, **452 runner-seasons** (2026 current through 2026-07-17). A **separate classic model** covers **2015–2022** (1,280 runner-seasons) — same Steal+/Burst architecture, re-fit on its own league constants because the 2023 rule changes (disengagement limit, bigger bases, pitch clock) made the eras non-comparable. See `Reports/Naylor_Model_classic_Report.docx` and `Scripts/model_classic.py`.*
+*† The modern pool is the 2023–2026 Statcast lead-tracking window, **452 runner-seasons** (2026 current through 2026-07-17). A **separate classic model** covers **2015–2022** (1,280 runner-seasons) — same Steal+/Burst architecture, re-fit on its own league constants because the 2023 rule changes (disengagement limit, bigger bases, pitch clock) made the eras non-comparable. See §7.1 of the v15 report and `model/metrics.py classic`.*
 
 ---
 
 ## How to Run
 
-One job per script — scrape → features → model:
+Five scripts: two that ingest, three that model.
 
 ```bash
-# Rebuild the v11 outputs (no network — reads Data/)
-python3 Scripts/model_v11.py       # metrics + validation + per-attempt AUC → Data/v11_players.json,
-                                   #   Output/Results/DF_v11_*.csv + DF_perattempt_*.csv + Fig_AUC/Importance.png
-python3 Scripts/decompose.py       # row-level audit of the calculator: per-attempt logit terms,
-                                   #   assumption checks, bootstrap / permutation / calibration
-                                   #   (--quick for fewer resamples). Writes nothing; asserts.
+# Rebuild everything from what is already on disk (no network)
+python3 model/metrics.py            # Steal+/Burst + the calculator → Data/v11_players.json,
+                                    #   Output/Results/DF_v11_*.csv, Fig_AUC/Importance/ROC
+python3 model/metrics.py eras       # three-era comparison + EVERY verification guard (asserts)
+python3 model/engines.py success    # v12 per-attempt XGBoost with full pitch/battery context
+python3 model/engines.py decision   # v13 per-opportunity decision model
+python3 model/decompose.py          # row-level audit of the calculator: every logit term per
+                                    #   attempt, manual vs sklearn, bootstrap / permutation /
+                                    #   calibration / learning curve  (--quick for fewer resamples)
+
+# Re-fit the classic era (needs network — pulls season SB/CS from the Stats API)
+python3 model/metrics.py classic
 
 # Regenerate the raw data from scratch (network → Savant / MLB API)
-python3 Scripts/scrape_statcast.py discover --start 2023 --end 2026 --expand   # per-attempt leads → Data/leads_cache
-python3 Scripts/scrape_statcast.py assets                                       # headshots + team_map.csv
-python3 Scripts/build_features.py  # leads_cache + season features → Data/Raw_Season.csv + Raw_Attempts.csv
+python3 ingest/scrape_statcast.py discover --start 2023 --end 2026 --expand
+python3 ingest/scrape_statcast.py assets
+python3 ingest/build_features.py    # leads_cache + season features → Raw_Season.csv / Raw_Attempts.csv
 ```
 
-The per-attempt AUC stage inside `model_v11.py` needs `xgboost` + `scikit-learn`; if they are
-not installed it is skipped with a note and the season metrics still build.
+The per-attempt stages need `xgboost` + `scikit-learn`; without them they are skipped with a note
+and the season metrics still build.
 
 ---
 
 ## Repository Structure
 
-The root holds the current report, one notebook, and the web app; raw in, results out:
-
 ```
 The-Naylor-Model/
-├── Naylor_Model_v14_Report.docx        ← ⭐ the applied report (metrics, era fits, audit, scorecard)
-├── Naylor_Model.ipynb                  ← ⭐ master notebook (raw → per-attempt AUC → n=1/n=5/full metrics → validation)
-├── docs/                               ← ⭐ the live web app (GitHub Pages serves this)
+├── Naylor_Model_v15_Report.docx   ← ⭐ THE report — data, model, results, robustness, limitations
+├── Naylor_Model.ipynb             ← ⭐ master notebook (raw → AUC → n=1/n=5/full metrics → validation)
+├── docs/                          ← ⭐ the live web app (GitHub Pages serves this)
 ├── README.md · AUC_Roadmap.md
-├── Reports/         ← superseded / supporting write-ups: v11, v12, v13, classic
-├── Data/            ← Raw_Season.csv, Raw_Attempts.csv, v11_players.json, team_map.csv, leads_cache/ (gitignored)
-├── Output/          ← Figures/ · Results/ (DF_v11_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
-└── Scripts/         ← seven scripts, one job each:
-                       scrape_statcast   all web scraping (the ONLY script that touches the network)
-                       build_features    leads_cache + raw pulls → Raw_Season.csv / Raw_Attempts.csv
-                       model_v11         the metric suite (Steal+ / Burst / decomposition) + the calculator
-                       decompose         row-level audit of the calculator: every logit term per
-                                         attempt, manual vs sklearn, and the validation battery
-                       model_classic     the same architecture re-fit on 2015–2022's own constants
-                       model_v12         per-attempt success with full pitch, battery and catcher context
-                       model_v13         per-opportunity decision model — will he attempt at all?
-                       model_eras        the three-era comparison AND the verification harness
-                                         (n=5 purity · negative control · leak audit · VIF guard)
+├── Data/       ← Raw_Season.csv, Raw_Attempts.csv, v11_players.json, leads_cache/ (gitignored)
+├── Output/     ← Figures/ · Results/ (DF_v11_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
+├── ingest/     ← getting the data in
+│   ├── scrape_statcast.py   the ONLY script that touches the network
+│   └── build_features.py    leads_cache + raw pulls → the two modelling tables
+└── model/      ← the ML, in pipeline order
+    ├── metrics.py     season metrics (Steal+ / Burst / decomposition), the 4-input logistic
+    │                  calculator, the classic-era re-fit, the three-era comparison, and the
+    │                  verification harness.   [modern | classic | eras]
+    ├── engines.py     per-event models: v12 success-given-attempt, v13 attempt-or-not.
+    │                  [success | decision]
+    └── decompose.py   row-level audit of the shipped calculator — every logit term per attempt,
+                       manual vs sklearn, bootstrap / permutation / calibration / learning curve.
 ```
 
-Run `python3 Scripts/model_eras.py` to re-run every guard at once; it asserts rather than prints, so
-a leak or a collinearity regression fails the run.
+Five `.py` files total. `model/metrics.py eras` and `model/decompose.py` **assert** their checks
+rather than printing them, so a leak, a collinearity regression, or drift from the committed fit
+fails the run instead of producing a quiet warning.
 
 ---
 
 ## Data Sources
 
 The **2023–2026** Statcast lead-tracking window is the only one in which per-attempt lead distances
-exist, and it is what `Scripts/model_v11.py` publishes (`ERA_MIN = 2023`). `Scripts/model_classic.py`
-covers **2015–2022** as a **separate fit on its own league constants**, and `Scripts/model_eras.py`
+exist, and it is what `model/metrics.py` publishes (`ERA_MIN = 2023`). `model/metrics.py classic`
+covers **2015–2022** as a **separate fit on its own league constants**, and `model/metrics.py eras`
 compares the two — the 2023 rule package (disengagement limit, bigger bases, pitch clock) moved both
 baselines, so the eras are never pooled into a single published number.
 
