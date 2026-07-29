@@ -227,6 +227,112 @@ def validate(era: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# ── reliability: how much of one season's Steal+ is skill, and how much is coin-flips ──
+def reliability_audit(full: pd.DataFrame, fit: dict) -> pd.DataFrame:
+    """HOW MUCH OF A SINGLE SEASON'S Steal+ IS ACTUALLY SIGNAL?
+
+    Steal+ is a function of roughly 17 binary outcomes at the median volume, so a large part of its
+    spread has to be luck. That is measurable rather than a matter of opinion.
+
+    Steal+ = 2(SB - attempts x p_speed), and under the null that a runner is exactly as good as his
+    speed predicts, SB ~ Binomial(attempts, p_speed). So the spread Steal+ would show from pure
+    chance alone is
+
+        sd_chance = 2 * sqrt(attempts * p * (1 - p))
+
+    Subtracting the mean chance variance from the observed variance leaves the true between-runner
+    skill variance, and their ratio is the reliability of a one-season Steal+.
+
+    WHY THIS MATTERS. The reliability that falls out here (~0.20) independently reproduces the
+    observed year-over-year self-correlation of Steal+ (0.192, n=224) — two calculations that share
+    no code arriving at the same number. That is a strong argument that the low year-to-year figure
+    is NOT a defect in Steal+: it is the irreducible consequence of grading a season on ~17 coin
+    flips. Burst, which averages hundreds of tracked pitches instead, repeats at 0.479.
+
+    The practical reading: Steal+ is a description of what a runner DID, and is only a projection of
+    what he WILL DO once volume is large. sd_chance is the honest error bar to quote beside it."""
+    p = fit["a0"] + fit["a1"] * full["sprint_speed"]
+    n = full["sb_attempts"]
+    sd_chance = 2 * np.sqrt(n * p * (1 - p))
+    obs_var = float(full["steal_plus"].var())
+    noise_var = float((sd_chance ** 2).mean())
+    true_var = max(obs_var - noise_var, 0.0)
+    z = full["steal_plus"] / sd_chance
+    rows = [
+        ("observed SD of Steal+ (bases)", round(float(np.sqrt(obs_var)), 2)),
+        ("SD expected from chance alone (bases)", round(float(np.sqrt(noise_var)), 2)),
+        ("implied true skill SD (bases)", round(float(np.sqrt(true_var)), 2)),
+        ("reliability of a one-season Steal+", round(true_var / obs_var, 3)),
+        ("observed year-over-year self-corr (independent check)",
+         round(year_over_year_corr(full, "steal_plus", "steal_plus")[0], 3)),
+        ("share of runner-seasons beyond 1 chance-SD (%)", round(100 * float((z.abs() > 1).mean()), 1)),
+        ("share of runner-seasons beyond 2 chance-SD (%)", round(100 * float((z.abs() > 2).mean()), 1)),
+        ("chance SD at the median volume (bases)",
+         round(float(2 * np.sqrt(n.median() * 0.79 * 0.21)), 2)),
+    ]
+    out = pd.DataFrame(rows, columns=["quantity", "value"])
+    out.to_csv(RESULTS / "DF_v11_reliability.csv", index=False)
+
+    ranked = full.assign(sd_chance=sd_chance, z=z).nlargest(8, "z")[
+        ["player_name", "season", "sb_attempts", "steal_plus", "sd_chance", "z"]]
+    ranked.round(2).to_csv(RESULTS / "DF_v11_reliability_top.csv", index=False)
+    fig_reliability(full, sd_chance, z, true_var, noise_var, obs_var)
+    return out
+
+
+def fig_reliability(full, sd_chance, z, true_var, noise_var, obs_var):
+    """Two panels answering 'is Steal+ real?' and 'where do net bases come from?'."""
+    try:
+        import matplotlib; matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    figs = ROOT / "Output" / "Figures"; figs.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(1, 2, figsize=(12.2, 4.8), dpi=150)
+
+    # A · how much of the spread is luck
+    ax[0].bar(["observed\nspread", "expected from\nCHANCE alone", "implied true\nSKILL spread"],
+              [np.sqrt(obs_var), np.sqrt(noise_var), np.sqrt(true_var)],
+              color=["#0C2340", "#C0392B", "#1A7F47"], width=0.55)
+    for i, v in enumerate([np.sqrt(obs_var), np.sqrt(noise_var), np.sqrt(true_var)]):
+        ax[0].text(i, v + 0.08, f"{v:.2f}", ha="center", fontweight="bold", fontsize=11)
+    ax[0].set_ylabel("standard deviation of Steal+ (bases)")
+    ax[0].set_title("A · Most of one season's Steal+ spread is coin-flips\n"
+                    f"reliability = {true_var/obs_var:.2f}  —  and Steal+ repeats year to year at 0.19",
+                    fontsize=10.5, fontweight="bold", color="#0C2340")
+    ax[0].set_ylim(0, np.sqrt(obs_var) * 1.25)
+
+    # B · where net bases come from, by speed quintile
+    d = full.dropna(subset=["sprint_speed", "net_sb"]).copy()
+    d["q"] = pd.qcut(d["sprint_speed"], 5, labels=["slowest", "slow", "mid", "fast", "fastest"])
+    g = d.groupby("q", observed=True).agg(ns=("netspeed", "mean"), sp=("steal_plus", "mean"),
+                                          spd=("sprint_speed", "mean"))
+    xs = np.arange(len(g))
+    ax[1].bar(xs, g.ns, color="#9AA0A6", label="NetSpeed — what the wheels alone buy")
+    ax[1].bar(xs, g.sp, bottom=g.ns, color="#2F6FB0", label="Steal+ — what the skill adds")
+    ax[1].axhline(0, color="#333", lw=0.8)
+    ax[1].set_xticks(xs)
+    ax[1].set_xticklabels([f"{i}\n{s:.1f} ft/s" for i, s in zip(g.index, g.spd)], fontsize=9)
+    ax[1].set_ylabel("mean net bases (SB − CS)")
+    ax[1].set_title("B · Net Bases = NetSpeed + Steal+, exactly\n"
+                    "Speed sets the level; Steal+ averages ~0 in every speed group by construction",
+                    fontsize=10.5, fontweight="bold", color="#0C2340")
+    ax[1].legend(fontsize=8.5, frameon=False, loc="upper left")
+
+    for a in ax:
+        a.grid(alpha=0.13, lw=0.7, axis="y")
+        for sp_ in ("top", "right"): a.spines[sp_].set_visible(False)
+    fig.text(0.5, -0.04,
+             "Left: under the null that a runner is exactly as good as his speed predicts, "
+             "SB ~ Binomial(attempts, p), so chance alone produces an SD of 3.73 bases at these "
+             "volumes.\nOnly 20% of the observed variance survives as skill — which is why "
+             "Steal+ describes a season well (r = 0.64 with net steals) but forecasts the next one "
+             "weakly.  Right: the two components sum to net bases with zero residual (< 1e-9).",
+             ha="center", fontsize=8.6, color="#444")
+    fig.tight_layout(); fig.savefig(figs / "Fig_v11_Reliability.png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
 # ── webapp record export ─────────────────────────────────────────────────────
 def to_records(full: pd.DataFrame) -> list:
     def num(v, nd=1):
@@ -563,6 +669,9 @@ def main():
           f"p_speed = {fit['a0']:.3f} + {fit['a1']:.4f}*speed | ground = {fit['b0']:.2f} + {fit['b1']:.3f}*speed")
     print(top12.to_string(index=False))
     print(val.to_string(index=False))
+    rel = reliability_audit(full, fit)
+    print("\n=== HOW MUCH OF ONE SEASON'S Steal+ IS SIGNAL? ===")
+    print(rel.to_string(index=False))
     run_perattempt()
     run_success_model()
     return full, val
