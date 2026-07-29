@@ -22,8 +22,11 @@ the sprint-speed leaderboard and the PER-ATTEMPT drawer (the running-game servic
 
 Field mapping for the per-attempt data (verified against the public leaderboard drawer):
     r_primary_lead         -> lead_at_firstmove_ft   lead (ft) at the pitcher's first move
-    r_secondary_lead       -> lead_at_release_ft     secondary lead (ft): pitch reaching the catcher
+    r_secondary_lead       -> lead_at_release_ft     secondary lead (ft) at the pitcher's RELEASE
     r_sec_minus_prim_lead  -> gain_to_release_ft     ground gained between those two -> feeds Burst
+       Both lead endpoints are pitcher events (first move, release). Neither is the ball
+       arriving at the catcher: the drawer carries no ball-arrival timestamp, so an
+       arrival-anchored lead cannot be built from this feed.
     runner_moved_cd        -> result (SB / CS)
     runs_stolen_on_running_act -> run_value  (Statcast's own steals-above-average credit)
 

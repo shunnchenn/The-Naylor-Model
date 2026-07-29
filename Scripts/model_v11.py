@@ -22,8 +22,9 @@ averaged, because they answer different questions:
            from a 24 ft/s body counts. Best single answer to "who steals well" — same-season
            r≈0.88 with success rate.       — "the bases your skill adds above your wheels"
   Burst    A DIFFERENT lens (near-zero corr with Steal+): feet of ground the runner gains off
-           the base from the pitcher's first move until the pitch reaches the catcher (his
-           secondary lead) ABOVE what his speed predicts. The coachable process / upside;
+           the base from the pitcher's first move until the pitcher's RELEASE (his secondary
+           lead) ABOVE what his speed predicts. The endpoint is release, not the ball reaching
+           the catcher — the feed has no ball-arrival timestamp, so that is not observable. The coachable process / upside;
            replaces v10's Statcast 'SB Run Value'.  — "the coachable jump/lead, before the throw"
            'Ground' is a WEIGHTED blend of the calculator's own two lead features — lead at first
            move and gain to release — weighted by the calculator's fitted coefficients (see

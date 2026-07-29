@@ -49,7 +49,7 @@ Net Bases Gained tells you *what happened* but bundles five things — sprint sp
 | Metric | What it is | Unit | 0 = |
 |---|---|---|---|
 | **Steal+** (headline) | Net bases (SB − CS) above what an average runner of his **sprint speed** would produce over the same attempts. `= 2(1−p)·SB − 2p·CS`, so a caught stealing costs **~4×** a steal (p ≈ speed-expected success ≈ 0.80). **Volume-aware.** | bases | same-speed average |
-| **Ground gained** (the raw measurement) | Feet the runner wins from the pitcher's **first move** until the pitch **reaches the catcher**. On a single pitch this is the strongest lever in the model — each extra foot ≈ **1.36×** the odds of being safe. **Not speed-neutral:** it correlates **−0.48** with sprint speed, because slower runners take bigger secondary leads. | feet | — (raw) |
+| **Ground gained** (the raw measurement) | Feet the runner wins from the pitcher's **first move** until the pitcher's **release** (Savant `r_secondary_lead − r_primary_lead`). The endpoint is release, not the ball arriving at the catcher — the per-attempt feed carries no ball-arrival timestamp, so that endpoint is not observable here. On a single pitch this is the strongest lever in the model — each extra foot ≈ **1.36×** the odds of being safe. **Not speed-neutral:** it correlates **−0.48** with sprint speed, because slower runners take bigger secondary leads. | feet | — (raw) |
 | **Burst** (the same thing, speed-adjusted) | Ground gained **minus what a runner of that sprint speed typically gains**. Correlation with sprint speed: **0.00**. This is the fair cross-runner comparison, measured *before any steal outcome* — the coachable jump/lead; replaces v10's "SB Run Value." | feet | speed-predicted |
 
 **Ground gained vs Burst — the distinction that matters.** They are *the same measurement at two baselines*, correlated **+0.87** but not interchangeable. Rank by raw ground gained and you systematically flatter slow runners:
@@ -151,6 +151,9 @@ One job per script — scrape → features → model:
 # Rebuild the v11 outputs (no network — reads Data/)
 python3 Scripts/model_v11.py       # metrics + validation + per-attempt AUC → Data/v11_players.json,
                                    #   Output/Results/DF_v11_*.csv + DF_perattempt_*.csv + Fig_AUC/Importance.png
+python3 Scripts/decompose.py       # row-level audit of the calculator: per-attempt logit terms,
+                                   #   assumption checks, bootstrap / permutation / calibration
+                                   #   (--quick for fewer resamples). Writes nothing; asserts.
 
 # Regenerate the raw data from scratch (network → Savant / MLB API)
 python3 Scripts/scrape_statcast.py discover --start 2023 --end 2026 --expand   # per-attempt leads → Data/leads_cache
@@ -176,10 +179,12 @@ The-Naylor-Model/
 ├── Reports/         ← superseded / supporting write-ups: v11, v12, v13, classic
 ├── Data/            ← Raw_Season.csv, Raw_Attempts.csv, v11_players.json, team_map.csv, leads_cache/ (gitignored)
 ├── Output/          ← Figures/ · Results/ (DF_v11_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
-└── Scripts/         ← six scripts, one job each:
+└── Scripts/         ← seven scripts, one job each:
                        scrape_statcast   all web scraping (the ONLY script that touches the network)
                        build_features    leads_cache + raw pulls → Raw_Season.csv / Raw_Attempts.csv
                        model_v11         the metric suite (Steal+ / Burst / decomposition) + the calculator
+                       decompose         row-level audit of the calculator: every logit term per
+                                         attempt, manual vs sklearn, and the validation battery
                        model_classic     the same architecture re-fit on 2015–2022's own constants
                        model_v12         per-attempt success with full pitch, battery and catcher context
                        model_v13         per-opportunity decision model — will he attempt at all?

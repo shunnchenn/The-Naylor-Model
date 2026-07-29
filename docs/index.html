@@ -350,7 +350,7 @@
       <div class="def b">
         <div class="nm">Burst <span class="tag">Coachable · process</span></div>
         <div class="d">Feet of ground the runner gains off the base between the pitcher's <b>first
-          move</b> and the pitch <b>reaching the catcher</b> (his secondary lead), above what his speed
+          move</b> and the pitcher's <b>release</b> (his secondary lead), above what his speed
           predicts. Measured <i>before any steal outcome exists</i> — it's the jump and lead itself.
           Nearly uncorrelated with Steal+, so it's a genuinely separate read.</div>
         <div class="f">Burst = ground gained − (<span id="gfit"></span>)</div>
@@ -388,9 +388,9 @@
       <div class="threeup">
         <div class="mcard gd">
           <div class="mc-h"><span class="mc-n">Ground gained</span><span class="mc-tag">Step 1 · what he did</span></div>
-          <div class="mc-q">How many feet did he win before the ball arrived?</div>
+          <div class="mc-q">How many feet did he win before the pitch left the hand?</div>
           <p>The raw measurement — the blue stretch above. From the pitcher's <b>first move</b> until
-          the pitch <b>reaches the catcher</b>. On any single pitch this is the <b>strongest lever
+          the pitcher's <b>release</b>. On any single pitch this is the <b>strongest lever
           there is</b>: each extra foot multiplies his odds of being safe by about <b>1.36×</b>.</p>
           <div class="mc-eq">Ground gained = secondary lead − primary lead &nbsp;(feet)</div>
           <div class="mc-k warn"><b>But it is not a fair ranking.</b> Slower runners naturally gain
@@ -446,8 +446,8 @@
           <div class="cat-d">Max-effort throw velocity to second. Higher is tougher. Pop time and arm
             are why two identical jumps can end differently.</div></div>
         <div class="cat"><div class="cat-n" id="hGround">—</div><div class="cat-l">League ground gained</div>
-          <div class="cat-d">The average feet won between the pitcher's first move and the catcher's
-            glove. Beat this <b>for your speed</b> and your Burst is positive.</div></div>
+          <div class="cat-d">The average feet won between the pitcher's first move and his release.
+            Beat this <b>for your speed</b> and your Burst is positive.</div></div>
       </div>
       <div class="cat-note">Every runner row on the leaderboard carries the <b>average pop time and
         arm he actually faced</b>, so a big Steal+ against tough catchers is not the same as a big
@@ -531,7 +531,7 @@
           <th data-k="success" title="SB / (SB + CS)">SB%</th>
           <th data-k="net" title="Net Bases Gained = SB − CS (the raw baseline)">Net</th>
           <th data-k="steal_plus" class="sorted" title="Steal+ — net bases above what his speed predicts">Steal+</th>
-          <th data-k="ground" title="GROUND GAINED — raw feet won from the pitcher's first move until the pitch reaches the catcher. What he actually did. Note: slower runners naturally gain more.">Ground</th>
+          <th data-k="ground" title="GROUND GAINED — raw feet won from the pitcher's first move until the pitcher's release. What he actually did. Note: slower runners naturally gain more.">Ground</th>
           <th data-k="burst" title="BURST — the same ground gained, minus what his sprint speed predicts. Speed-neutral, so it compares a slow runner and a fast one fairly.">Burst</th>
           <th data-k="pop" data-asc="1" title="Average catcher POP TIME faced (s) — catch-to-2B transfer + throw. Lower = tougher catcher.">Pop faced</th>
           <th data-k="arm" data-asc="1" title="Average catcher ARM STRENGTH faced (mph), max-effort throw. Higher = tougher catcher.">Arm faced</th>
@@ -723,7 +723,7 @@ function cardHTML(r){
     (${ord(r.sp_pct)} percentile) — he nets ${signed(r.steal_plus,1)} bases more than an average runner
     of his ${ord(r.speed_pct)}-percentile speed would over the same ${r.attempts} attempts, going
     ${r.sb}/${r.sb+r.cs} (${r.success}%). His <b class="pr">Burst is ${signed(r.burst,1)} ft</b>
-    (${ord(r.burst_pct)}) — the ground he gains before the ball reaches the catcher.`;
+    (${ord(r.burst_pct)}) — the ground he gains before the pitcher releases the ball.`;
   return `<div class="pc">
     <div class="who">
       <img class="hs" src="${hs(r.id)}" alt="" onerror="this.src='assets/_blank.png'">
@@ -868,7 +868,7 @@ function vget(qpre,metric){ const r=VAL.find(v=>v.question.startsWith(qpre)&&v.m
 function buildGlossary(){
   const G=[
     ["Steal+","THE HEADLINE. Net bases (SB − CS) above an average runner of the same sprint speed, over the same attempts. Equals 2(1−p)·SB − 2p·CS, so a caught stealing costs about 4× what a steal earns. Volume-aware and speed-neutral."],
-    ["Ground gained","THE RAW MEASUREMENT, in feet: how much ground the runner wins between the pitcher's first move and the pitch reaching the catcher. On a single pitch it is the strongest lever in the model (each extra foot ≈ <b>1.36×</b> the odds of being safe). <b>It is not speed-neutral</b> — it correlates <b>−0.49</b> with sprint speed, because slower runners take bigger secondary leads. Good for describing what happened; unfair for ranking runners against each other."],
+    ["Ground gained","THE RAW MEASUREMENT, in feet: how much ground the runner wins between the pitcher's first move and the pitcher's release. On a single pitch it is the strongest lever in the model (each extra foot ≈ <b>1.36×</b> the odds of being safe). <b>It is not speed-neutral</b> — it correlates <b>−0.49</b> with sprint speed, because slower runners take bigger secondary leads. Good for describing what happened; unfair for ranking runners against each other."],
     ["Burst","THE SAME MEASUREMENT, SPEED-ADJUSTED: ground gained minus the ground a runner of that sprint speed typically gains. Correlation with sprint speed: <b>0.00</b>. This is the fair comparison — Naylor gains 16.7 ft (the most) but only +1.6 Burst, while Carroll gains 12.8 ft yet +2.7 Burst, because at 30 ft/s that much ground is far harder to win. Measured before any outcome exists, so it cannot be luck."],
     ["Net Bases Gained","SB − CS. The honest raw baseline. Bundles speed, volume, opponent difficulty, execution and luck — which is exactly why the two metrics above exist."],
     ["NetSpeed","attempts × (2 × speed-expected SB% − 1). The net bases a runner's wheels alone buy. Net Bases = NetSpeed + Steal+, exactly."],
@@ -904,7 +904,7 @@ const CALC_META = {
   lead_at_firstmove_ft: {label:"Lead at the pitcher's first move", unit:"ft", step:0.1,
                          hint:"how far off the bag he already was when the pitcher committed"},
   gain_to_release_ft:   {label:"Ground gained from there", unit:"ft", step:0.1,
-                         hint:"first move → pitch reaching the catcher. The strongest lever here."},
+                         hint:"first move → pitcher's release. The strongest lever here."},
   pop_faced:            {label:"Catcher pop time", unit:"s", step:0.01,
                          hint:"catch → second base. LOWER is a tougher catcher to run on."},
   burst_ft:             {label:"Burst (his typical)", unit:"ft", step:0.1,
