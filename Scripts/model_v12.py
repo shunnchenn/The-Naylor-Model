@@ -48,7 +48,11 @@ PITCH_CLASS = {
     "SC": "breaking", "CS": "breaking", "KN": "breaking",
     "CH": "offspeed", "FS": "offspeed", "FO": "offspeed", "EP": "offspeed",
 }
-BATTERY_FEATS   = ["is_lhp", "bat_side_r", "pc_fastball", "pc_breaking", "pc_offspeed"]
+# pc_fastball is the REFERENCE category and is deliberately omitted: the three pitch-class dummies
+# sum to 1 on 99.94% of rows (only 7 "unknown" codes), so carrying all three is the dummy-variable
+# trap — it put a VIF of 561 on pc_fastball. Two dummies + an implicit fastball baseline encode the
+# same information without the dependency.
+BATTERY_FEATS   = ["is_lhp", "bat_side_r", "pc_breaking", "pc_offspeed"]
 SITUATION_FEATS = ["balls", "strikes", "outs", "inning", "score_diff", "ahead_in_count"]
 # what actually ships: the post-pitch count columns are dropped (see load()), the
 # unambiguous situation columns are kept.

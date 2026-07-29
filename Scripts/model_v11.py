@@ -268,8 +268,19 @@ def build():
 # Confirms the thesis quantitatively: the per-pitch LEAD distances (which drive Burst)
 # predict whether an individual attempt succeeds. Heavy deps (xgboost/sklearn) are
 # imported lazily so the season model above never depends on them.
-PA_LEAD_FEATS = ["lead_at_firstmove_ft", "gain_to_release_ft", "lead_at_release_ft"]
-PA_RUNNER_FEATS = ["sprint_speed", "jump_time", "accel_gap", "primary_lead", "lead_gain", "bolts"]
+# Only the two INDEPENDENT lead quantities: where he already was when the pitcher committed, and
+# how much he gained from there. lead_at_release_ft is deliberately EXCLUDED because it is their
+# exact sum (lead_at_release = lead_at_firstmove + gain_to_release, R^2 = 0.999895; the residual
+# caps at 0.1 ft, which is just the rounding granularity). Carrying all three gave VIFs of
+# 1,588 / 5,836 / 9,532 — harmless for XGBoost's predictions, but it split feature importance
+# arbitrarily across perfectly dependent columns, which made the importance chart unquotable.
+# Dropping it costs 0.0014 AUROC (inside noise) and buys an interpretable model.
+PA_LEAD_FEATS = ["lead_at_firstmove_ft", "gain_to_release_ft"]
+# jump_time is omitted: it is a second measurement of the same thing as sprint_speed (r = -0.59,
+# and bolts r = +0.71), which pushed sprint_speed to VIF 16.8. Dropping it takes max VIF to 6.6 AND
+# nudges AUROC up (0.7820 -> 0.7829), so nothing is traded away. jump_time is still carried in the
+# data and shown on the player card — it is only excluded as a MODEL feature.
+PA_RUNNER_FEATS = ["sprint_speed", "accel_gap", "primary_lead", "lead_gain", "bolts"]
 PA_FRIENDLY = {"lead_at_firstmove_ft": "Lead at first move (ft)",
                "gain_to_release_ft": "Ground gained to release (ft)",
                "lead_at_release_ft": "Lead at release (ft)", "base_is_3b": "Stealing 3rd",
@@ -381,14 +392,26 @@ def run_perattempt(seed: int = 42):
     return auc_leads, auc_full
 
 
-# ── the whiteboard model: 3 inputs, plain logistic regression ────────────────
-SIMPLE_FEATS = ["sprint_speed", "burst_ft", "gain_to_release_ft"]
+# ── the whiteboard model: 4 inputs, plain logistic regression ────────────────
+# Chosen by measurement, not taste. Every candidate spec was fit on the sample it could actually
+# ship on (see AUC_Roadmap):
+#   speed + burst + gain                     n= 7,404   AUROC 0.7259   <- the old spec
+#   speed + burst + firstmove + gain + pop   n= 7,264   AUROC 0.7470
+#   speed + firstmove + gain + pop           n=10,844   AUROC 0.7559   <- this one
+# Burst is DROPPED here and only here. It needs a qualified runner-season (>=10 attempts), so
+# carrying it discarded ~3,600 attempts, and once the model already knows what the runner gained
+# on THIS pitch it added only +0.002 AUROC while taking a confusing negative coefficient. Burst
+# remains the season-level technique metric on the leaderboard, where it is speed-neutral and the
+# most repeatable number in the project — it is simply not a per-pitch input.
+# Catcher pop time replaces it: worth ~8x more (+0.017), and it is a genuine per-attempt fact.
+SIMPLE_FEATS = ["sprint_speed", "lead_at_firstmove_ft", "gain_to_release_ft", "pop_faced"]
 
 def run_success_model(seed: int = 42):
-    """P(safe) for ONE attempt from three numbers a coach already has: sprint speed, the
-    runner's Burst, and the ground he gained on that pitch (first move -> pitch reaching the
-    catcher). Deliberately a plain logistic regression on RAW units, so the coefficients read
-    directly as 'per ft/s' and 'per foot' and the web calculator can evaluate it in one line.
+    """P(safe) for ONE attempt from four numbers a coach already has: sprint speed, the lead he
+    had when the pitcher committed, the ground he gained from there, and the pop time of the
+    catcher he is running on. Deliberately a plain logistic regression on RAW units — it also
+    BEAT XGBoost on the same features (0.726 vs 0.722), so nothing is sacrificed for the
+    simplicity — and the coefficients read directly as 'per ft/s', 'per foot' and 'per second'.
     Writes Output/Results/DF_success_model.csv and syncs the fit into docs/index.html."""
     try:
         from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -429,6 +452,13 @@ def run_success_model(seed: int = 42):
     burst_all = (ground_shrunk - (b0 + b1 * at["sprint_speed"])).where(n_tracked >= 3)
     at["burst_ft"] = at["burst_ft"].fillna(burst_all)
 
+    pop_path = DATA / "poptime.csv"
+    if pop_path.exists():
+        pop = pd.read_csv(pop_path)[["catcher_id", "season", "pop_2b_sba"]] \
+                .rename(columns={"pop_2b_sba": "pop_faced"})
+        at = at.merge(pop, on=["catcher_id", "season"], how="left")
+    else:
+        at["pop_faced"] = np.nan
     at[SIMPLE_FEATS] = at[SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
 
     # Primary lead (the ground he has BEFORE the pitcher commits) is context, not an input:
@@ -453,13 +483,25 @@ def run_success_model(seed: int = 42):
 
     pipe = make_pipeline(SimpleImputer(), LogisticRegression(max_iter=5000))
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    auc = roc_auc_score(y, cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1])
+    oof = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+    auc = roc_auc_score(y, oof)
+    # AUPRC is meaningless without its no-skill floor (= the base rate), and F1 at a fixed 0.5
+    # is vacuous on a skewed target — report the floor and the tuned threshold explicitly.
+    from sklearn.metrics import average_precision_score, brier_score_loss, f1_score
+    auprc = float(average_precision_score(y, oof))
+    brier = float(brier_score_loss(y, oof))
+    grid = np.linspace(0.05, 0.95, 91)
+    f1s = [f1_score(y, (oof >= t).astype(int)) for t in grid]
+    best = int(np.argmax(f1s))
     pipe.fit(X, y)
     lr = pipe.named_steps["logisticregression"]
     coefs = dict(zip(SIMPLE_FEATS, lr.coef_[0]))
     payload = {"intercept": float(lr.intercept_[0]),
                "coef": {k: float(v) for k, v in coefs.items()},
                "auc": round(float(auc), 4), "n": int(len(at)),
+               "auprc": round(auprc, 4), "auprc_floor": round(float(y.mean()), 4),
+               "brier": round(brier, 4),
+               "f1_best": round(float(f1s[best]), 4), "f1_threshold": round(float(grid[best]), 2),
                "base_rate": round(float(y.mean()), 4),
                "primary_lead": primary_lead,
                # full observed span so the sliders cover everyone (incl. Naylor at 24.4 ft/s)
@@ -484,8 +526,10 @@ def run_success_model(seed: int = 42):
                             encoding="utf-8")
 
     per_ft = np.exp(coefs["gain_to_release_ft"])
-    print(f"3-input success model (logistic): AUC {auc:.4f}, n={len(at)} | "
-          f"each +1 ft of ground gained multiplies the odds of being safe by {per_ft:.2f}x")
+    print(f"4-input success model (logistic): AUROC {auc:.4f} | AUPRC {auprc:.4f} "
+          f"(floor {y.mean():.4f}) | Brier {brier:.4f} | F1 {f1s[best]:.4f} @thr "
+          f"{grid[best]:.2f} | n={len(at)}")
+    print(f"  each +1 ft of ground gained multiplies the odds of being safe by {per_ft:.2f}x")
     return payload
 
 

@@ -134,6 +134,13 @@ def _classic_calculator(att, scored):
         return None
     a = att.merge(scored[["runner_id", "season", "sprint_speed", "burst_ft"]],
                   on=["runner_id", "season"], how="left")
+    pop_path = DATA / "poptime.csv"                     # same 4-input spec as the modern calculator
+    if pop_path.exists():
+        pop = pd.read_csv(pop_path)[["catcher_id", "season", "pop_2b_sba"]] \
+                .rename(columns={"pop_2b_sba": "pop_faced"})
+        a = a.merge(pop, on=["catcher_id", "season"], how="left")
+    else:
+        a["pop_faced"] = np.nan
     a[M.SIMPLE_FEATS] = a[M.SIMPLE_FEATS].apply(pd.to_numeric, errors="coerce")
 
     pl = pd.to_numeric(a["lead_at_firstmove_ft"], errors="coerce")

@@ -44,8 +44,10 @@ DATA    = ROOT / "Data"
 RESULTS = ROOT / "Output" / "Results"
 FIGS    = ROOT / "Output" / "Figures"
 
+# pc_fastball omitted as the reference category — the three dummies sum to 1 on 99.9% of rows, so
+# including all three is the dummy-variable trap (see model_v12 BATTERY_FEATS).
 SITUATION = ["balls", "strikes", "outs", "inning", "score_diff", "is_lhp", "bat_side_r",
-             "pc_fastball", "pc_breaking", "pc_offspeed"]
+             "pc_breaking", "pc_offspeed"]
 PERSONNEL = ["sprint_speed_all", "runner_rate_prior", "seen_before"]
 FEATS     = SITUATION + PERSONNEL
 

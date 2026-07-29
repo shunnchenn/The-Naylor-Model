@@ -128,6 +128,59 @@ def verify_detector(pool: pd.DataFrame, fit: dict) -> dict:
     return {"leaky_scorer_diff": round(float(caught), 3), "real_scorer_diff": float(clean)}
 
 
+def vif_audit(max_vif: float = 10.0) -> pd.DataFrame:
+    """STANDING COLLINEARITY GUARD.
+
+    v12 once shipped three lead features where one was the exact sum of the other two
+    (lead_at_release = lead_at_firstmove + gain_to_release, R^2 = 0.999895), giving VIFs of
+    1,588 / 5,836 / 9,532. XGBoost's predictions were unaffected, so nothing failed — but feature
+    importance was split arbitrarily across perfectly dependent columns, which quietly made the
+    importance chart unquotable. Nothing in the pipeline noticed. This does."""
+    from sklearn.linear_model import LinearRegression
+    import model_v12 as V12
+
+    df, _ = V12.load()
+    sets = {
+        "v12 leads": M.PA_LEAD_FEATS,
+        "v12 shipped": (M.PA_LEAD_FEATS + ["base_is_3b"]
+                        + [c for c in M.PA_RUNNER_FEATS if c in df.columns]
+                        + V12.BATTERY_FEATS + V12.SAFE_SITUATION_FEATS + V12.ARM_FEATS),
+        "v11 calculator": M.SIMPLE_FEATS,
+    }
+    calc = pd.read_csv(DATA / "Raw_Attempts.csv")
+    calc = calc[calc["result"].isin(["SB", "CS"])]
+    pop = DATA / "poptime.csv"
+    if pop.exists():
+        calc = calc.merge(pd.read_csv(pop)[["catcher_id", "season", "pop_2b_sba"]]
+                          .rename(columns={"pop_2b_sba": "pop_faced"}),
+                          on=["catcher_id", "season"], how="left")
+    sp = pd.read_csv(DATA / "sprint_speed.csv").rename(columns={"sprint_speed_all": "sprint_speed"})
+    calc = calc.merge(sp[["runner_id", "season", "sprint_speed"]], on=["runner_id", "season"], how="left")
+
+    rows = []
+    for name, feats in sets.items():
+        src = calc if name == "v11 calculator" else df
+        cols = [c for c in feats if c in src.columns]
+        sub = src[cols].apply(pd.to_numeric, errors="coerce").dropna()
+        if len(sub) < 50 or len(cols) < 2:
+            continue
+        worst, worst_col = 0.0, ""
+        for c in cols:
+            X = sub[[x for x in cols if x != c]].values
+            r2 = LinearRegression().fit(X, sub[c].values).score(X, sub[c].values)
+            v = float("inf") if r2 >= 1 - 1e-12 else 1 / (1 - r2)
+            if v > worst:
+                worst, worst_col = v, c
+        rows.append({"feature_set": name, "n_features": len(cols), "n_rows": len(sub),
+                     "max_vif": round(worst, 2), "worst_feature": worst_col,
+                     "passes": bool(worst < max_vif)})
+    out = pd.DataFrame(rows)
+    bad = out[~out.passes]
+    assert bad.empty, ("COLLINEARITY: " + "; ".join(
+        f"{r.feature_set} has VIF {r.max_vif:.0f} on {r.worst_feature}" for r in bad.itertuples()))
+    return out
+
+
 def leak_audit(pool: pd.DataFrame) -> pd.DataFrame:
     """Assert no outcome-derived column smuggled itself into the pool the fit sees."""
     rows = []
@@ -274,6 +327,8 @@ def main():
     leak_audit(pools["ALL 2016-2026"]).to_csv(RESULTS / "DF_eras_leak_audit.csv", index=False)
 
     det = verify_detector(pools["POST 2023-2026"], fits["POST 2023-2026"])
+    vifs = vif_audit()
+    vifs.to_csv(RESULTS / "DF_eras_vif_audit.csv", index=False)
 
     cost = pooling_cost(pools, fits)
     cost.to_csv(RESULTS / "DF_eras_pooling_cost.csv", index=False)
@@ -308,6 +363,9 @@ def main():
           f"and modern Steal+ shifts {r.steal_plus_mean_shift:+.2f} on average,")
     print(f"     because {share:.0f}% of the pooled rows are pre-2023. Shown for completeness, "
           f"not recommended.")
+
+    print("\n=== COLLINEARITY GUARD (max VIF must stay under 10) ===")
+    print(vifs.to_string(index=False))
 
     print("\n=== LEAK AUDIT === no outcome-derived column reached any pool "
           f"({len(LEAK_DENY)} denied columns checked, all absent)")

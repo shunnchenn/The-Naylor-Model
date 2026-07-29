@@ -2,19 +2,21 @@
 
 ## ▶ **[Try the steal-odds calculator](https://shunnchenn.github.io/The-Naylor-Model/#calc)** &nbsp;·&nbsp; [explore the full model](https://shunnchenn.github.io/The-Naylor-Model/)
 
-**Drag three sliders — sprint speed, the ground a runner gains off the base, and his Burst — and see
-the modelled odds that a stolen-base attempt is safe.** Runs in the browser, nothing to install.
+**Drag four sliders — sprint speed, the lead he already had, the ground he gained from there, and
+the catcher's pop time — and see the modelled odds that a stolen-base attempt is safe.** Runs in the
+browser, nothing to install.
 
-> A slow runner with a great jump (24.4 ft/s, 16.7 ft gained) reads **86.7 %**.
-> An elite sprinter with a poor jump (30.5 ft/s, 8 ft) reads **80.0 %**.
-> That gap is the whole project.
+> A slow runner with a great jump (24.4 ft/s, 16.7 ft gained) reads **86 %**.
+> An elite sprinter with a poor jump (30.5 ft/s, 8 ft) reads **80 %**.
+> And the catcher swings it hard: that same slow runner reads **81 %** against an elite 1.85 s pop
+> time and **93 %** against a slow 2.05 s one.
 
 ---
 
 > ### Then dig in  (v11)
 > | If you want to… | Open |
 > |---|---|
-> | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 3 sliders, live |
+> | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 4 sliders, live |
 > | **Explore the leaderboard** | **https://shunnchenn.github.io/The-Naylor-Model/** — sortable board, player cards with percentile bars, skill map |
 > | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v11_Report.docx`](Naylor_Model_v11_Report.docx)** (Steal+/Burst) · [`v12`](Naylor_Model_v12_Report.docx) (per-attempt success) · [`v13`](Naylor_Model_v13_Report.docx) (the 2023–2026 decision model) · [`classic`](Naylor_Model_classic_Report.docx) (2015–2022) |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |

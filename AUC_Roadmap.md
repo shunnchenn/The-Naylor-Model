@@ -145,6 +145,50 @@ attempts — Savant never publishes a lead for a pitch where the runner stayed. 
 structurally cannot see the runner's *signal*, only the situation and the personnel. Not a
 modelling choice; a data limitation.
 
+## Collinearity audit — two structural defects found and fixed
+
+A critical review asked whether Burst and ground gained are redundant. They are not (they are the
+same measurement at two baselines, VIF ~1.2 in the calculator), but the audit that answered the
+question surfaced **two real defects elsewhere**, both invisible to accuracy:
+
+**1. Three lead features carrying two pieces of information.** `lead_at_release =
+lead_at_firstmove + gain_to_release` to R² = **0.999895** — the residual caps at 0.1 ft, which is
+just the rounding. VIFs were **1,588 / 5,836 / 9,532**. XGBoost's predictions were unaffected
+(dropping any one moved AUROC ±0.002), but feature importance was split arbitrarily across
+perfectly dependent columns, so the importance chart could not be quoted. `lead_at_release_ft` is
+now dropped.
+
+**2. The dummy-variable trap.** `pc_fastball + pc_breaking + pc_offspeed` sum to 1 on **99.94%** of
+rows (7 "unknown" codes), giving pc_fastball a VIF of **561**. Fastball is now the reference
+category and is omitted, in v12 and v13.
+
+**3. Redundant speed measures.** `jump_time` correlates −0.59 with sprint speed (and bolts +0.71),
+pushing sprint_speed to VIF 16.8. Dropping it takes max VIF to **6.6** *and* nudges AUROC up
+(0.7820 → 0.7829). It is still carried in the data and shown on player cards — only removed as a
+model feature.
+
+Net effect on the headline: **v12 AUROC 0.7829, unchanged.** Nothing was traded away; the model is
+simply now interpretable. A standing **VIF guard** in `model_eras.py` asserts max VIF < 10 across
+every feature set, so this class of defect fails the build from now on — it is what caught defects
+2 and 3.
+
+**Metric reporting fixed too.** AUPRC was being published without its no-skill floor (0.939 against
+a floor of 0.811 is a modest lift, not an excellent one), and v13's F1@0.5 is exactly **0.000**
+because at a 2.3% base rate nothing crosses 0.5. Both now print with floor and tuned threshold.
+
+**Calculator respecified by measurement.** Every candidate was fit on the sample it could ship on:
+
+| spec | n | AUROC |
+|---|---|---|
+| speed + burst + gain (old) | 7,404 | 0.7259 |
+| speed + burst + firstmove + gain + pop | 7,264 | 0.7470 |
+| **speed + firstmove + gain + pop** | **10,844** | **0.7559** |
+
+Burst needs a qualified runner-season, so carrying it discarded ~3,600 attempts while adding only
++0.002; catcher pop time was worth ~8× more. Burst stays the season-level technique metric on the
+leaderboard — it is simply not a per-pitch input. Logistic regression was kept over XGBoost because
+it **beat** it on the same features (0.726 vs 0.722).
+
 ## Would deep learning help? No.
 
 At ~10k rows and ~10 tabular features, **gradient boosting is the right tool**. Neural nets need far
