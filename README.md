@@ -13,19 +13,20 @@ browser, nothing to install.
 
 ---
 
-> ### Then dig in  (v11)
+> ### Then dig in  (v14)
 > | If you want to… | Open |
 > |---|---|
 > | **Try the calculator** | **https://shunnchenn.github.io/The-Naylor-Model/#calc** — 4 sliders, live |
 > | **Explore the leaderboard** | **https://shunnchenn.github.io/The-Naylor-Model/** — sortable board, player cards with percentile bars, skill map |
-> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v11_Report.docx`](Naylor_Model_v11_Report.docx)** (Steal+/Burst) · [`v12`](Naylor_Model_v12_Report.docx) (per-attempt success) · [`v13`](Naylor_Model_v13_Report.docx) (the 2023–2026 decision model) · [`classic`](Naylor_Model_classic_Report.docx) (2015–2022) |
+> | **Read the findings** (coaches / R&D) | **[`Naylor_Model_v14_Report.docx`](Naylor_Model_v14_Report.docx)** — ⭐ start here: the metrics, the era fits, the audit, the full scorecard |
+> | **Read the supporting detail** | [`Reports/v11`](Reports/Naylor_Model_v11_Report.docx) (original Steal+/Burst) · [`v12`](Reports/Naylor_Model_v12_Report.docx) (per-attempt success) · [`v13`](Reports/Naylor_Model_v13_Report.docx) (the decision model) · [`classic`](Reports/Naylor_Model_classic_Report.docx) (2015–2022) |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |
 > | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
 > | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v11_leaderboard.csv`, `DF_v11_validation.csv`) |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
 >
-> Everything else is plumbing: `Scripts/` (three analysis scripts — scrape, features, model) ·
-> `Data/` (raw in) · `Output/` (results out).
+> Everything else is plumbing: `Scripts/` (scrape → features → four model scripts) ·
+> `Data/` (raw in) · `Output/` (results out) · `Reports/` (superseded write-ups, kept for reference).
 
 ---
 
@@ -60,7 +61,7 @@ Net Bases Gained tells you *what happened* but bundles five things — sprint sp
 
 Naylor wins the most raw ground of anyone — but he is slow, and slow runners are *expected* to. At 30.1 ft/s, Carroll's 12.8 ft is the harder feat. Burst is what makes that comparison fair. Both are shown side by side on the leaderboard.
 
-Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.16): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
+Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.15): Steal+ answers *who steals well*, Burst answers *who has coachable, repeatable technique*. A v10 "Steal Grade" averaged their percentiles; **dropped in v11** — validation showed it predicts net steals / success no better than Steal+ alone and mis-ranks pure producers (Ohtani graded ~109th; he leads Steal+).
 
 Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is the net bases your wheels alone buy (`attempts × (2·p_speed − 1)`), Steal+ is the net bases your skill adds. (Steal+ *is* the surplus term.)
 
@@ -68,18 +69,46 @@ Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is 
 
 | Question | Net Bases | Steal+ | Burst | Verdict |
 |---|---|---|---|---|
-| **corr with sprint speed** (0 = pure skill) | +0.30 | **−0.01** | **+0.00** | Steal+/Burst are speed-neutral |
+| **corr with sprint speed** (0 = pure skill) | +0.29 | **−0.01** | **+0.00** | Steal+/Burst are speed-neutral |
 | **describes net steals** (SB−CS, same year) | — | **+0.64** | +0.08 | Steal+ is the production read |
-| **describes success rate** (same year) | — | **+0.88** | +0.15 | Steal+ tracks efficiency |
-| predict next-year **net steals** | **+0.32** | +0.14 | +0.05 | **Net Bases wins** volume — we concede it |
-| predict next-year **success rate** | +0.13 | **+0.20** | +0.04 | Steal+ wins skill |
-| **year-to-year stability** (repeatable) | +0.32 | +0.17 | **+0.47** | Burst is the most repeatable |
+| **describes success rate** (same year) | — | **+0.89** | +0.15 | Steal+ tracks efficiency |
+| predict next-year **net steals** | **+0.38** | +0.17 | +0.09 | **Net Bases wins** volume — we concede it |
+| predict next-year **success rate** | +0.16 | **+0.23** | +0.04 | Steal+ wins skill |
+| **year-to-year stability** (repeatable) | +0.38 | +0.19 | **+0.48** | Burst is the most repeatable |
 
-The honest read: **Steal+ is the single best answer to "who steals well"** — it describes same-season net steals (0.64) and success rate (0.88) far better than anything else while staying speed-neutral. **Burst is a genuinely different, more repeatable signal** (year-to-year 0.47) for coachable technique. Net Bases still wins raw next-year volume.
+The honest read: **Steal+ is the single best answer to "who steals well"** — it describes same-season net steals (0.64) and success rate (0.89) far better than anything else while staying speed-neutral. **Burst is a genuinely different, more repeatable signal** (year-to-year 0.48) for coachable technique. Net Bases still wins raw next-year volume.
+
+---
+
+## What v14 changed
+
+v14 keeps every published Steal+, Burst and leaderboard value from v11 and fixes what a critical
+audit found. Nothing here overturned a finding; it made the findings defensible.
+
+| Change | Why | Effect |
+|---|---|---|
+| **Dropped `lead_at_release_ft`** from the per-attempt model | It is the *exact sum* of the other two lead features (R² = **0.999895**; the residual caps at 0.1 ft, the rounding granularity). VIF **1,588 / 5,836 / 9,532**. | Predictions unchanged (−0.0014 AUROC), but feature importance was being split arbitrarily across dependent columns and was **not quotable**. Now max VIF **1.14**. |
+| **`pc_fastball` made the reference category** | The three pitch-class dummies sum to 1 on 99.94% of rows — the dummy-variable trap. VIF 561. | Coefficients readable relative to a fastball. |
+| **Calculator re-specified**: speed + lead at first move + ground gained + **catcher pop time** | Measured, not assumed. Burst requires a *qualified* runner-season, so carrying it discarded ~3,600 attempts. | AUROC **0.726 → 0.756** on **10,844** attempts (up from 7,404). Burst stays a season metric; it is not a per-pitch input. |
+| **Every accuracy number printed beside its floor** | AUPRC without its no-skill floor reads better than it is; v13's F1 at the 0.5 threshold is structurally **0.000** at a 2.3% base rate. | See the scorecard in the v14 report. |
+| **Eras fit separately**, pooling priced and rejected | The 2023 rules moved both baselines. | Pooling barely moves ranks (Spearman 0.994) but Burst **stops being speed-neutral** (0.00 → −0.159). |
+| **Standing collinearity guard** added to the verification harness | Nothing in the pipeline noticed the dependency above. | `assert max VIF < 10`; it caught two of the three defects on its first run. |
 
 ---
 
 ## Key Results
+
+### The two league baselines — and what the slopes mean
+![Era fits](Output/Figures/Fig_eras_fits.png)
+
+These are the only two lines the model subtracts from, so neither metric can be checked without
+them. **Left:** the line slopes *downward* (−0.89 ft per ft/s) — every extra 1 ft/s of sprint speed
+comes with ~0.89 **fewer** feet of ground gained, because faster runners take shorter leads. That is
+why raw ground gained is partly a slow-runner statistic, and **Burst is the vertical gap above this
+line** (correlation with speed 0.00, versus −0.49 for raw ground gained). **Right:** the steepness
+*is* the price of raw speed — one extra ft/s bought **+2.20** points of success before 2023 and only
+**+1.14** after, while the whole league's floor rose (76.4% → 80.4%). The 2023 rules roughly halved
+what wheels are worth, which is the strongest single argument against pooling the eras.
 
 ### The scorecard, in clear units
 ![Metric cards](Output/Figures/Fig_Metric_Cards.png)
@@ -103,19 +132,19 @@ The model has two clearly separated jobs — kept apart on purpose:
 
 2. **The metric suite (per runner-season).** `Scripts/model_v11.py` turns the season data into Steal+ (headline), Burst, and the Net-Bases decomposition. It is written in two stages so it can be trusted:
    - `fit_league(era)` learns the league constants (the `ground ~ sprint_speed` line, the percentile references) **once** on the whole pool;
-   - `score(rows, fit)` is then a **pure function** — scoring 1 row, 5 rows, or 408 gives identical values for the same players.
+   - `score(rows, fit)` is then a **pure function** — scoring 1 row, 5 rows, or all 452 gives identical values for the same players. `model_eras.py` asserts this over 200 random draws of 5 per era, against a deliberately leaky scorer as a negative control.
 
    The notebook exploits this to test like a coder: **n=1 → n=5 (two players) → full**, asserting the decomposition closes exactly at each step, then **proving the test rows are byte-identical** to the full run.
 
 3. **Projection is validated separately** by the year T → T+1 correlations above — the only place the model speaks to "next season," and it does so honestly (Net Bases is the better volume forecaster; v11 wins on skill, efficiency, and technique).
 
-*† The modern pool is the 2023–2026 Statcast lead-tracking window, **452 runner-seasons** (2026 current through 2026-07-17). A **separate classic model** covers **2015–2022** (1,280 runner-seasons) — same Steal+/Burst architecture, re-fit on its own league constants because the 2023 rule changes (disengagement limit, bigger bases, pitch clock) made the eras non-comparable. See `Naylor_Model_classic_Report.docx` and `Scripts/model_classic.py`.*
+*† The modern pool is the 2023–2026 Statcast lead-tracking window, **452 runner-seasons** (2026 current through 2026-07-17). A **separate classic model** covers **2015–2022** (1,280 runner-seasons) — same Steal+/Burst architecture, re-fit on its own league constants because the 2023 rule changes (disengagement limit, bigger bases, pitch clock) made the eras non-comparable. See `Reports/Naylor_Model_classic_Report.docx` and `Scripts/model_classic.py`.*
 
 ---
 
 ## How to Run
 
-Three scripts, one job each — scrape → features → model:
+One job per script — scrape → features → model:
 
 ```bash
 # Rebuild the v11 outputs (no network — reads Data/)
@@ -135,29 +164,40 @@ not installed it is skipped with a note and the season metrics still build.
 
 ## Repository Structure
 
-The root holds the report, one notebook, and the web app; raw in, results out:
+The root holds the current report, one notebook, and the web app; raw in, results out:
 
 ```
-The-Naylor-Model/                       ← = v11
-├── Naylor_Model_v11_Report.docx        ← ⭐ the applied report (the question, the evidence, the decomposition)
+The-Naylor-Model/
+├── Naylor_Model_v14_Report.docx        ← ⭐ the applied report (metrics, era fits, audit, scorecard)
 ├── Naylor_Model.ipynb                  ← ⭐ master notebook (raw → per-attempt AUC → n=1/n=5/full metrics → validation)
 ├── docs/                               ← ⭐ the live web app (GitHub Pages serves this)
-├── README.md
+├── README.md · AUC_Roadmap.md
+├── Reports/         ← superseded / supporting write-ups: v11, v12, v13, classic
 ├── Data/            ← Raw_Season.csv, Raw_Attempts.csv, v11_players.json, team_map.csv, leads_cache/ (gitignored)
-├── Output/          ← Figures/ · Results/ (DF_v11_* + DF_perattempt_*)
-└── Scripts/         ← THREE analysis scripts, one job each:
-                       scrape_statcast (all web scraping), build_features (feature engineering),
-                       model_v11 (the metrics + the per-attempt AUC model, fit/score)
+├── Output/          ← Figures/ · Results/ (DF_v11_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
+└── Scripts/         ← six scripts, one job each:
+                       scrape_statcast   all web scraping (the ONLY script that touches the network)
+                       build_features    leads_cache + raw pulls → Raw_Season.csv / Raw_Attempts.csv
+                       model_v11         the metric suite (Steal+ / Burst / decomposition) + the calculator
+                       model_classic     the same architecture re-fit on 2015–2022's own constants
+                       model_v12         per-attempt success with full pitch, battery and catcher context
+                       model_v13         per-opportunity decision model — will he attempt at all?
+                       model_eras        the three-era comparison AND the verification harness
+                                         (n=5 purity · negative control · leak audit · VIF guard)
 ```
+
+Run `python3 Scripts/model_eras.py` to re-run every guard at once; it asserts rather than prints, so
+a leak or a collinearity regression fails the run.
 
 ---
 
 ## Data Sources
 
-All modelling uses the **2023–2026** Statcast lead-tracking era — the only window in which
-per-attempt lead distances exist. `Scripts/model_v11.py` filters to this window via `ERA_MIN =
-2023`; a few committed season files (`DF_v7_SSSI.csv`, `Raw_Season.csv`) still carry inert
-2015–2022 rows from an earlier build, but nothing below 2023 is ever read by the pipeline.
+The **2023–2026** Statcast lead-tracking window is the only one in which per-attempt lead distances
+exist, and it is what `Scripts/model_v11.py` publishes (`ERA_MIN = 2023`). `Scripts/model_classic.py`
+covers **2015–2022** as a **separate fit on its own league constants**, and `Scripts/model_eras.py`
+compares the two — the 2023 rule package (disengagement limit, bigger bases, pitch clock) moved both
+baselines, so the eras are never pooled into a single published number.
 
 - **Baseball Savant** — per-attempt lead distances and SB run value (the base-stealing drawer),
   sprint speed and running splits, catcher pop time and arm strength.

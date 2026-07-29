@@ -224,26 +224,97 @@ def fig_ingestion(pools):
 
 
 def fig_fits(fits, pools):
-    """The two league lines, drawn per era — this is what pooling would average away."""
+    """THE TWO LEAGUE BASELINES — the only two lines the whole model subtracts from.
+
+    An earlier version of this figure drew three bare lines with axis-name titles and no
+    annotation, which left the reader with no way to answer the only two questions that matter:
+    what is this for, and what does a slope mean. Both are now written onto the figure itself.
+
+    WHAT IT IS FOR. Steal+ and Burst are each "actual minus expected", and these are the two
+    expectation lines. Neither metric can be read without seeing them.
+
+      LEFT   ground = b0 + b1 x speed        -> Burst  = ground gained  -  this line
+      RIGHT  p      = a0 + a1 x speed        -> Steal+ = net bases      -  attempts x (2p - 1)
+
+    WHAT THE SLOPES MEAN, in words, because that was the actual complaint.
+      b1 (left)  is NEGATIVE: every +1 ft/s of sprint speed comes with ~0.89 ft LESS ground gained
+                 post-2023. Faster runners take a shorter lead and break later relative to the
+                 pitch, so raw ground gained is partly a slow-runner statistic. That is exactly
+                 why Burst subtracts this line instead of quoting ground gained directly.
+      a1 (right) is the price of speed: +1 ft/s bought +2.20 percentage points of success before
+                 2023 and only +1.14 after — the rules HALVED what raw wheels are worth, while
+                 lifting everybody's floor (intercept 76.4% -> 80.4% at league mean). This is the
+                 single strongest argument in the project for not pooling the eras.
+
+    Each panel is drawn over the actual runner-seasons it was fit on, so the line is visibly a
+    summary of data rather than an assertion."""
     import matplotlib; matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     colors = {"PRE 2016-2022": "#9AA0A6", "POST 2023-2026": "#2F6FB0", "ALL 2016-2026": "#C0392B"}
-    fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.2), dpi=150)
+    PRE_K, POST_K, ALL_K = "PRE 2016-2022", "POST 2023-2026", "ALL 2016-2026"
+    fig, ax = plt.subplots(1, 2, figsize=(12.4, 5.4), dpi=150)
     xs = np.linspace(24, 31, 50)
+
+    # the data underneath the lines: post-2023 runner-seasons, so "the line" is visibly a fit
+    post = pools[POST_K]
+    ax[0].scatter(post.sprint_speed, post.ground, s=9, color="#2F6FB0", alpha=0.16,
+                  lw=0, zorder=1, label="_nolegend_")
+
     for k, f in fits.items():
-        ax[0].plot(xs, f["b0"] + f["b1"] * xs, lw=2.4, color=colors[k],
-                   ls="--" if k.startswith("ALL") else "-", label=k)
-        ax[1].plot(xs, 100 * (f["a0"] + f["a1"] * xs), lw=2.4, color=colors[k],
-                   ls="--" if k.startswith("ALL") else "-", label=k)
-    ax[0].set_title("Ground gained vs sprint speed", fontsize=11, fontweight="bold")
-    ax[0].set_xlabel("sprint speed (ft/s)"); ax[0].set_ylabel("ground gained (ft)")
-    ax[1].set_title("Expected SB success vs sprint speed", fontsize=11, fontweight="bold")
-    ax[1].set_xlabel("sprint speed (ft/s)"); ax[1].set_ylabel("expected success (%)")
+        ls = "--" if k is ALL_K or k == ALL_K else "-"
+        ax[0].plot(xs, f["b0"] + f["b1"] * xs, lw=2.6, color=colors[k], ls=ls, zorder=3,
+                   label=f"{k}   slope {f['b1']:+.2f} ft per ft/s")
+        ax[1].plot(xs, 100 * (f["a0"] + f["a1"] * xs), lw=2.6, color=colors[k], ls=ls, zorder=3,
+                   label=f"{k}   slope {100*f['a1']:+.2f} pts per ft/s")
+
+    # ── LEFT: what Burst is measured against ────────────────────────────────
+    fp = fits[POST_K]
+    g25, g30 = fp["b0"] + fp["b1"] * 25, fp["b0"] + fp["b1"] * 30
+    ax[0].set_title("A · The line Burst is measured from\n"
+                    "Slower runners gain MORE ground — so raw ground gained must be speed-adjusted",
+                    fontsize=10.5, fontweight="bold", color="#0C2340")
+    for x0, y0, lab in [(25, g25, f"25 ft/s expects {g25:.1f} ft"),
+                        (30, g30, f"30 ft/s expects {g30:.1f} ft")]:
+        ax[0].plot([x0], [y0], "o", ms=7, color="#0C2340", zorder=5)
+        ax[0].annotate(lab, (x0, y0), textcoords="offset points", xytext=(8, 12),
+                       fontsize=9, fontweight="bold", color="#0C2340")
+    # one runner drawn as the vertical gap he actually is
+    ax[0].annotate("", xy=(26.6, g25 + fp["b1"] * 1.6 + 2.6), xytext=(26.6, g25 + fp["b1"] * 1.6),
+                   arrowprops=dict(arrowstyle="<->", lw=1.8, color="#C0392B"))
+    ax[0].annotate("BURST = this gap\n(actual − expected)", (26.75, g25 + fp["b1"] * 1.6 + 1.3),
+                   fontsize=9, fontweight="bold", color="#C0392B", va="center")
+    ax[0].set_xlabel("sprint speed (ft/s)"); ax[0].set_ylabel("ground gained on the pitch (ft)")
+    ax[0].set_ylim(0, 30)
+
+    # ── RIGHT: what the rule change did to the price of speed ───────────────
+    a1p, a1o = 100 * fits[PRE_K]["a1"], 100 * fits[POST_K]["a1"]
+    ax[1].set_title("B · What one ft/s of sprint speed buys\n"
+                    f"The 2023 rules HALVED it: {a1p:.2f} → {a1o:.2f} points of success per ft/s",
+                    fontsize=10.5, fontweight="bold", color="#0C2340")
+    for k, xa, off in [(PRE_K, 27.2, (0, -20)), (POST_K, 26.4, (0, 16))]:
+        f = fits[k]
+        ax[1].annotate(f"+{100*f['a1']:.2f} pts per ft/s", (xa, 100 * (f["a0"] + f["a1"] * xa)),
+                       textcoords="offset points", xytext=off, ha="center",
+                       fontsize=9.5, fontweight="bold", color=colors[k])
+    ax[1].set_xlabel("sprint speed (ft/s)"); ax[1].set_ylabel("expected success rate (%)")
+    lo = min(100 * (f["a0"] + f["a1"] * 24) for f in fits.values())
+    hi = max(100 * (f["a0"] + f["a1"] * 31) for f in fits.values())
+    ax[1].set_ylim(lo - 0.12 * (hi - lo), hi + 0.06 * (hi - lo))
+
     for x in ax:
-        x.legend(fontsize=8.5, frameon=False)
+        x.legend(fontsize=8.5, frameon=False, loc="lower left")
+        x.grid(alpha=0.13, lw=0.7)
         for sp in ("top", "right"): x.spines[sp].set_visible(False)
-    fig.text(0.5, -0.02, "The pooled (red, dashed) line sits between two eras and describes neither — "
-             "which is why PRE and POST are fit separately.", ha="center", fontsize=8.5, color="#555")
+
+    fig.text(0.5, -0.055,
+             "HOW TO READ A SLOPE HERE.  Left: the line runs DOWNWARD, so a fast runner is "
+             "expected to gain less ground than a slow one; Burst is the vertical distance a "
+             "runner sits above it, which is why Burst\ncorrelates 0.00 with speed while raw "
+             "ground gained correlates −0.49.  Right: the line's steepness IS the value of raw "
+             "speed, and it is half as steep after 2023 while sitting higher —\nthe league got "
+             "safer and speed got less decisive.  The pooled red line splits the two eras and "
+             "describes neither, which is why PRE and POST are fit separately.",
+             ha="center", fontsize=8.6, color="#444")
     fig.tight_layout(); fig.savefig(FIGS / "Fig_eras_fits.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
