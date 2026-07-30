@@ -23,10 +23,13 @@ Every function returns named objects rather than only a final number; no calcula
 inside a pipeline that could be reconstructed outside one. Row identity is the modeling-frame
 index `attempt_ix`, carried onto every diagnostic frame.
 
-    python3 Scripts/decompose.py            full audit (~1 min)
-    python3 Scripts/decompose.py --quick    same audit, fewer resamples
+    python3 model/decompose.py            full audit (~4 min: 1000 bootstraps + 200 permutations)
+    python3 model/decompose.py --quick    same audit, fewer resamples (~20 s)
 
-    import decompose as D; a = D.run()      a["decomposition"], a["coefficients"], ...
+    import decompose as D; a = D.run()    a["decomposition"], a["coefficients"], ...
+
+Progress goes to STDERR so it stays visible when stdout is redirected to a file. Without it the
+full run prints nothing for four minutes and is indistinguishable from a hang.
 """
 from __future__ import annotations
 import argparse
@@ -65,6 +68,19 @@ CURVE_SEED = 13
 
 REFERENCE = {"intercept": -23.01083, "sprint_speed": 0.31684, "lead_at_firstmove_ft": 0.06874,
              "gain_to_release_ft": 0.30281, "pop_faced": 5.85786, "auc": 0.7559, "n": 10844}
+
+_T0 = None
+
+
+def _stage(msg: str) -> None:
+    """Progress line on STDERR, flushed. The resampling stages below run for minutes with no
+    output of their own; when stdout is redirected to a file Python block-buffers it, so without
+    this the whole audit is silent until it finishes and looks like it hung."""
+    import sys as _sys, time as _time
+    global _T0
+    if _T0 is None:
+        _T0 = _time.time()
+    print(f"[decompose {_time.time() - _T0:6.1f}s] {msg}", file=_sys.stderr, flush=True)
 
 
 # ── data ─────────────────────────────────────────────────────────────────────
@@ -526,15 +542,18 @@ def decompose_season() -> dict:
 
 # ── orchestration ────────────────────────────────────────────────────────────
 def run(n_boot: int = 1000, n_perm: int = 200, n_repeats: int = 10) -> dict:
+    _stage("loading Raw_Attempts + sprint speed + pop time")
     data = load_data()
     model = data["model"]
 
+    _stage(f"n = {len(model)} attempts; checks, VIF, fit, 5-fold OOF")
     checks  = validate_data(data["merged"], model)
     vif     = collinearity(model)
     fit     = fit_model(model)
     metrics = evaluate_model(model)
     dec     = decompose_prediction(model, fit)
 
+    _stage("asserting the decomposition identities against sklearn")
     verification = verify_predictions(dec, fit)
     reference    = verify_reference(fit, metrics)
 
@@ -543,15 +562,29 @@ def run(n_boot: int = 1000, n_perm: int = 200, n_repeats: int = 10) -> dict:
 
     cal = calibration(model["y"].to_numpy(int), metrics["oof"].to_numpy())
 
+    # the four resampling stages below are the slow ones — named here rather than inlined in the
+    # return dict purely so each can be announced before it starts
+    _stage(f"bootstrap: {n_boot} resamples")
+    boot = bootstrap_validation(model, n_boot=n_boot)
+    _stage(f"repeated CV: {n_repeats} partitions")
+    rcv = repeated_cv(model, n_repeats=n_repeats)
+    _stage(f"permutation null: {n_perm} label shuffles")
+    perm = permutation_test(model, n_perm=n_perm, observed=metrics["auc"])
+    _stage("learning curve")
+    curve = learning_curve(model)
+    _stage("season decomposition (Net Bases = NetSpeed + Steal+)")
+    season = decompose_season()
+    _stage("done")
+
     return {"data": data, "checks": checks, "collinearity": vif, "fit": fit,
             "coefficients": fit["coefficients"], "metrics": metrics,
             "decomposition": dec, "verification": verification, "reference": reference,
             "calibration": cal, "calibration_error": calibration_error(cal),
-            "bootstrap": bootstrap_validation(model, n_boot=n_boot),
-            "repeated_cv": repeated_cv(model, n_repeats=n_repeats),
-            "permutation": permutation_test(model, n_perm=n_perm, observed=metrics["auc"]),
-            "learning_curve": learning_curve(model),
-            "season": decompose_season()}
+            "bootstrap": boot,
+            "repeated_cv": rcv,
+            "permutation": perm,
+            "learning_curve": curve,
+            "season": season}
 
 
 def sample_rows(dec: pd.DataFrame, n: int = 8, seed: int = SEED) -> pd.DataFrame:
