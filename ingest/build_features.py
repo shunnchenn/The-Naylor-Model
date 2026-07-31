@@ -14,7 +14,7 @@ Inputs (all already on disk — no network): Data/leads_cache/*.csv (from
 scrape_statcast.py), Output/Results/DF_v7_SSSI.csv + DF_v7_xSB_Outcome.csv (the season
 feature set), and Data/team_map.csv (from `scrape_statcast.py assets`).
 
-Run:  python3 Scripts/build_features.py
+Run:  python3 ingest/build_features.py
 """
 from pathlib import Path
 import re
@@ -36,7 +36,7 @@ XSB_ONLY = ["runner_id", "season", "net_sb", "z_net_sb", "z_sprint",
             "xsb_outcome", "sb_potential_gap", "quadrant"]
 
 # Legacy season-level Steal+ (kept in Raw_Season.csv for reference only). The FLAGSHIP,
-# volume-aware Steal+ is computed fresh in model_v11.py from SB/CS + sprint speed and
+# volume-aware Steal+ is computed fresh in model/metrics.py from SB/CS + sprint speed and
 # does NOT depend on these columns. sb_run_value is Statcast's own steals-above-average.
 REF_ATTEMPTS = 30          # legacy scale: a full base-stealing season
 MIN_ATTEMPTS = 10          # qualified runner-season (for the legacy league baseline)
@@ -73,7 +73,7 @@ def sb_run_value_map():
 
 def add_legacy_metrics(df):
     """Attach the legacy season-level Steal+ (sb_residual x 30) and the average-runner
-    net-bases baseline. Reference columns only — model_v11.py recomputes the flagship."""
+    net-bases baseline. Reference columns only — model/metrics.py recomputes the flagship."""
     q = df[df["sb_attempts"] >= MIN_ATTEMPTS]
     league_net_rate = float((q["SB"] - q["CS"]).sum() / max(1, q["sb_attempts"].sum()))
     df["league_net_rate"] = round(league_net_rate, 4)

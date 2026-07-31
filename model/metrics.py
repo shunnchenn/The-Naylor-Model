@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-model_v11.py — the Naylor Model v11 metric suite (single source of truth).
+metrics.py — the Naylor Model season metric suite (single source of truth).
 
 Written in two stages a coder can test on a tiny sample before trusting the full pool:
 
@@ -48,7 +48,7 @@ attempts — the grain that actually decides a steal — as the quantitative pro
 per-pitch lead distances (which drive Burst) carry the signal (5-fold OOF AUC ~0.74).
 
 No network. Reads Data/Raw_Season.csv + Data/Raw_Attempts.csv.
-Writes Data/v11_players.json, Output/Results/DF_v11_leaderboard.csv + DF_v11_validation.csv,
+Writes Data/v15_players.json, Output/Results/DF_v15_leaderboard.csv + DF_v15_validation.csv,
 Output/Results/DF_perattempt_AUC.csv + DF_perattempt_Importance.csv, and Fig_AUC/Fig_Importance.png.
 Usage:  python3 model/metrics.py            the modern 2023-2026 metric suite + calculator
         python3 model/metrics.py classic    the same architecture re-fit on 2015-2022 (network)
@@ -321,11 +321,11 @@ def reliability_audit(full: pd.DataFrame, fit: dict) -> pd.DataFrame:
          round(float(2 * np.sqrt(n.median() * 0.79 * 0.21)), 2)),
     ]
     out = pd.DataFrame(rows, columns=["quantity", "value"])
-    out.to_csv(RESULTS / "DF_v11_reliability.csv", index=False)
+    out.to_csv(RESULTS / "DF_v15_reliability.csv", index=False)
 
     ranked = full.assign(sd_chance=sd_chance, z=z).nlargest(8, "z")[
         ["player_name", "season", "sb_attempts", "steal_plus", "sd_chance", "z"]]
-    ranked.round(2).to_csv(RESULTS / "DF_v11_reliability_top.csv", index=False)
+    ranked.round(2).to_csv(RESULTS / "DF_v15_reliability_top.csv", index=False)
     fig_reliability(full, sd_chance, z, true_var, noise_var, obs_var)
     return out
 
@@ -379,7 +379,7 @@ def fig_reliability(full, sd_chance, z, true_var, noise_var, obs_var):
              "Steal+ describes a season well (r = 0.64 with net steals) but forecasts the next one "
              "weakly.  Right: the two components sum to net bases with zero residual (< 1e-9).",
              ha="center", fontsize=8.6, color="#444")
-    fig.tight_layout(); fig.savefig(figs / "Fig_v11_Reliability.png", dpi=160, bbox_inches="tight")
+    fig.tight_layout(); fig.savefig(figs / "Fig_v15_Reliability.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -562,6 +562,92 @@ def run_perattempt(seed: int = 42):
 # Catcher pop time replaces it: worth ~8x more (+0.017), and it is a genuine per-attempt fact.
 SIMPLE_FEATS = ["sprint_speed", "lead_at_firstmove_ft", "gain_to_release_ft", "pop_faced"]
 
+
+def fit_calibrator(oof: np.ndarray, y: np.ndarray) -> dict | None:
+    """THE SHIPPED CALIBRATION MAP — isotonic, serialized for the browser.
+
+    The raw logistic is a good RANKER and a poor RATE. Out-of-fold it discriminates at AUROC
+    0.756 but its expected calibration error is 0.021, with 5 of 10 deciles more than two
+    binomial SE off: it reads ~0.876 where the observed rate is 0.919. The calculator prints that
+    number as "chance the attempt is safe", so the error is the user-facing claim, not a footnote.
+
+    WHY ISOTONIC AND NOT PLATT. The miscalibration is a WAVE, not a monotone S — over-confident in
+    deciles 2-3, under-confident in 6-8, reversing again at 9 — and the signed gaps sum to
+    -0.0000, i.e. the errors cancel and the model is unbiased in aggregate. A global shift or a
+    single-slope sigmoid therefore cannot help; measured, Platt makes it WORSE (ECE 0.021 ->
+    0.034, 8 bad deciles). Isotonic is free to bend with the wave: ECE 0.021 -> 0.009 with ZERO
+    deciles beyond 2 SE, and Brier improves too (0.1359 -> 0.1350). The cost is 0.003 AUROC from
+    the step map creating ties, which sits well inside the bootstrap CI (0.7416-0.7703).
+
+    (An earlier note in this project declined to calibrate on the grounds that isotonic "would
+    hide" a falling league base rate. That argument was written about v12's FORWARD holdout, where
+    the drift is a genuine base-rate shift across seasons. It does not describe this table, which
+    is a pooled random split whose signed gaps cancel — a shape problem, not a drift problem.)
+
+    WHICH MAP SHIPS. Fit ONE isotonic on the full-data out-of-fold predictions. Fitting on OOF
+    rather than in-sample is what keeps it honest; fitting a single final map on all of them uses
+    every row. The performance NUMBERS quoted anywhere else come from a nested run (calibrator fit
+    on inner training folds only) — never from this map scored on its own training data, which
+    would be optimistic.
+
+    Returned as {"x": [...], "y": [...]}: 68 breakpoints, ~1.3 KB. sklearn's predict() on an
+    isotonic fit is exactly linear interpolation over these thresholds with end clipping — checked
+    to a max difference of 0.0 across [0,1] — so the browser reproduces it with a plain interp."""
+    try:
+        from sklearn.isotonic import IsotonicRegression
+    except ImportError:
+        return None
+    ir = IsotonicRegression(out_of_bounds="clip").fit(oof, y)
+    return {"x": [round(float(v), 6) for v in ir.X_thresholds_],
+            "y": [round(float(v), 6) for v in ir.y_thresholds_]}
+
+
+def nested_calibrated_oof(X, y, seed: int = 42) -> np.ndarray | None:
+    """Out-of-fold predictions of the CALIBRATED model, with the calibrator fit only on inner
+    training folds. This is the only honest way to score a calibrated model: fitting the map on
+    the same rows you then score inflates the result, because isotonic can memorise them.
+
+    Outer 5-fold -> within each training side, an inner 5-fold produces clean OOF predictions ->
+    the isotonic map is fit on those -> it is applied to the held-out outer fold, which no part of
+    the calibrator has seen. Returns predictions aligned to the input rows."""
+    try:
+        from sklearn.isotonic import IsotonicRegression
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.model_selection import StratifiedKFold
+    except ImportError:
+        return None
+    out = np.zeros(len(y))
+    outer = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    for tr, te in outer.split(X, y):
+        lr = LogisticRegression(max_iter=5000).fit(X[tr], y[tr])
+        inner_oof = np.zeros(len(tr))
+        inner = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed + 1)
+        for itr, ite in inner.split(X[tr], y[tr]):
+            li = LogisticRegression(max_iter=5000).fit(X[tr][itr], y[tr][itr])
+            inner_oof[ite] = li.predict_proba(X[tr][ite])[:, 1]
+        ir = IsotonicRegression(out_of_bounds="clip").fit(inner_oof, y[tr])
+        out[te] = ir.predict(lr.predict_proba(X[te])[:, 1])
+    return out
+
+
+def expected_calibration_error(y, p, bins: int = 10) -> tuple[float, int]:
+    """(ECE, number of deciles more than 2 binomial SE from their predicted rate).
+
+    Equal-COUNT quantile bins, n-weighted mean |observed - predicted|. The second number is the
+    one that actually matters: ECE averages signed errors away, so a model whose deciles miss by
+    +4 and -4 points can post a respectable ECE while being wrong everywhere."""
+    q = pd.qcut(p, bins, labels=False, duplicates="drop")
+    total, beyond, n = 0.0, 0, len(y)
+    for b in np.unique(q):
+        m = q == b
+        obs, pred, nb = float(y[m].mean()), float(p[m].mean()), int(m.sum())
+        se = np.sqrt(max(obs * (1 - obs), 1e-12) / nb)
+        total += (nb / n) * abs(obs - pred)
+        if abs(obs - pred) / se > 2:
+            beyond += 1
+    return float(total), int(beyond)
+
+
 def run_success_model(seed: int = 42):
     """P(safe) for ONE attempt from four numbers a coach already has: sprint speed, the lead he
     had when the pitcher committed, the ground he gained from there, and the pop time of the
@@ -582,7 +668,7 @@ def run_success_model(seed: int = 42):
     at = pd.read_csv(DATA / "Raw_Attempts.csv")
     at = at[at["result"].isin(["SB", "CS"])].copy()
     at["y"] = (at["result"] == "SB").astype(int)
-    lb = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")[["runner_id", "season", "sprint_speed", "burst_ft"]]
+    lb = pd.read_csv(RESULTS / "DF_v15_leaderboard.csv")[["runner_id", "season", "sprint_speed", "burst_ft"]]
     at = at.merge(lb, on=["runner_id", "season"], how="left")
 
     # The leaderboard only holds the 408 QUALIFIED runner-seasons (>=10 attempts, gated upstream
@@ -596,7 +682,7 @@ def run_success_model(seed: int = 42):
         at = at.merge(sp, on=["runner_id", "season"], how="left")
         at["sprint_speed"] = at["sprint_speed"].fillna(at["sprint_speed_all"])
 
-    meta = json.loads((DATA / "v11_players.json").read_text(encoding="utf-8"))["meta"]
+    meta = json.loads((DATA / "v15_players.json").read_text(encoding="utf-8"))["meta"]
     b0, b1 = meta["ground_fit"]["b0"], meta["ground_fit"]["b1"]
     w_lead, w_gain = ground_weights(RESULTS / "DF_success_model.csv")   # same blend load_era() used
     gain = (w_lead * pd.to_numeric(at["lead_at_firstmove_ft"], errors="coerce")
@@ -643,6 +729,13 @@ def run_success_model(seed: int = 42):
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
     oof = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
     auc = roc_auc_score(y, oof)
+
+    # ── calibration ────────────────────────────────────────────────────────
+    # Two fits, two purposes — see fit_calibrator(). `cal_oof` is NESTED (the calibrator never
+    # sees the fold it scores) and is what the reported calibrated metrics come from; `calib` is
+    # the single map that ships to the browser.
+    cal_oof = nested_calibrated_oof(X, y, seed=seed)
+    calib = fit_calibrator(oof, y)
     # AUPRC is meaningless without its no-skill floor (= the base rate), and F1 at a fixed 0.5
     # is vacuous on a skewed target — report the floor and the tuned threshold explicitly.
     from sklearn.metrics import average_precision_score, brier_score_loss, f1_score
@@ -654,6 +747,7 @@ def run_success_model(seed: int = 42):
     pipe.fit(X, y)
     lr = pipe.named_steps["logisticregression"]
     coefs = dict(zip(SIMPLE_FEATS, lr.coef_[0]))
+    ece_raw, bad_raw = expected_calibration_error(y, oof)
     payload = {"intercept": float(lr.intercept_[0]),
                "coef": {k: float(v) for k, v in coefs.items()},
                "auc": round(float(auc), 4), "n": int(len(at)),
@@ -661,11 +755,23 @@ def run_success_model(seed: int = 42):
                "brier": round(brier, 4),
                "f1_best": round(float(f1s[best]), 4), "f1_threshold": round(float(grid[best]), 2),
                "base_rate": round(float(y.mean()), 4),
+               "ece_raw": round(ece_raw, 4), "bad_deciles_raw": bad_raw,
+               # 95% CI from decompose.py's 1000-resample bootstrap, and the label-permutation
+               # null it is measured against — both quoted on the model card so the page states
+               # its own uncertainty instead of a bare point estimate.
+               "auc_ci": [0.7416, 0.7703], "perm_null": 0.4985,
                "primary_lead": primary_lead,
                # full observed span so the sliders cover everyone (incl. Naylor at 24.4 ft/s)
                "range": {f: [round(float(at[f].min()), 1),
                              round(float(at[f].max()), 1),
                              round(float(at[f].median()), 1)] for f in SIMPLE_FEATS}}
+    if calib is not None:
+        payload["calibration"] = calib
+    if cal_oof is not None:
+        ece_cal, bad_cal = expected_calibration_error(y, cal_oof)
+        payload.update({"auc_cal": round(float(roc_auc_score(y, cal_oof)), 4),
+                        "brier_cal": round(float(brier_score_loss(y, cal_oof)), 4),
+                        "ece_cal": round(ece_cal, 4), "bad_deciles_cal": bad_cal})
     rows = [{"term": "intercept", "coefficient": round(payload["intercept"], 5), "odds_multiplier": ""}]
     rows += [{"term": f, "coefficient": round(v, 5), "odds_multiplier": round(float(np.exp(v)), 4)}
              for f, v in coefs.items()]
@@ -687,6 +793,11 @@ def run_success_model(seed: int = 42):
     print(f"4-input success model (logistic): AUROC {auc:.4f} | AUPRC {auprc:.4f} "
           f"(floor {y.mean():.4f}) | Brier {brier:.4f} | F1 {f1s[best]:.4f} @thr "
           f"{grid[best]:.2f} | n={len(at)}")
+    if cal_oof is not None:
+        print(f"  + isotonic (SHIPPED, nested OOF): AUROC {payload['auc_cal']:.4f} | "
+              f"Brier {payload['brier_cal']:.4f} | ECE {ece_raw:.4f} -> "
+              f"{payload['ece_cal']:.4f} | deciles beyond 2 SE {bad_raw} -> "
+              f"{payload['bad_deciles_cal']}  [{len(calib['x'])}-point map -> browser]")
     print(f"  each +1 ft of ground gained multiplies the odds of being safe by {per_ft:.2f}x")
     fig_roc_calculator(y, oof, auc)
     return payload
@@ -730,12 +841,14 @@ def main():
                "steal_plus", "steal_plus_pct", "burst_pct",
                "netspeed", "surplus", "sb_run_value"]
     full[lb_cols].sort_values("steal_plus", ascending=False).to_csv(
-        RESULTS / "DF_v11_leaderboard.csv", index=False)
-    val.to_csv(RESULTS / "DF_v11_validation.csv", index=False)
+        RESULTS / "DF_v15_leaderboard.csv", index=False)
+    val.to_csv(RESULTS / "DF_v15_validation.csv", index=False)
 
     league = fit["league"]
     payload = {
-        "meta": {"version": "v11", "era": f"{ERA_MIN}-2026",
+        # the site badge reads this — it is the MODEL version, not the era (the era dropdown
+        # carries that separately), so both payloads report the same version
+        "meta": {"version": "v15", "era": f"{ERA_MIN}-2026",
                  "n_player_seasons": len(full), "league_success_pct": round(league * 100, 1),
                  # league fits, so the report/site can draw the speed→expectation curves + Steal+ coefficients
                  "p_speed_fit": {"a0": fit["a0"], "a1": fit["a1"]},   # expected success = a0 + a1*speed
@@ -743,7 +856,7 @@ def main():
         "validation": val.to_dict(orient="records"),
         "players": to_records(full),
     }
-    (DATA / "v11_players.json").write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    (DATA / "v15_players.json").write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     sync_site_payload(payload, "const PAYLOAD = ")
 
     show = ["player_name", "season", "sprint_speed", "SB", "CS", "net_sb", "steal_plus", "burst_ft"]
@@ -805,6 +918,11 @@ def _classic_attempts() -> pd.DataFrame:
 def _classic_season(att: pd.DataFrame) -> pd.DataFrame:
     # year-correct season SB/CS totals (Stats API), one call per season
     rows = []
+    # the scraper lives in the sibling ingest/ package; add it to the path here rather than at
+    # import time so `import metrics` never drags in `requests` for the offline paths
+    _ing = str(ROOT / "ingest")
+    if _ing not in sys.path:
+        sys.path.insert(0, _ing)
     for y in CLASSIC:
         import scrape_statcast as S          # lazy: needs `requests`, only for this call
         for pid, a in S.fetch_sb_cs(y, y).items():
@@ -819,7 +937,7 @@ def _classic_season(att: pd.DataFrame) -> pd.DataFrame:
     # 'ground' is the same calculator-weighted blend v11 uses (see M.ground_weights): the classic
     # calculator's OWN fitted coefficients, from CLASSIC attempts, not the modern ones — the two
     # eras are fit separately throughout, and this stays consistent with that.
-    classic_json = DATA / "v11_players_classic.json"
+    classic_json = DATA / "v15_players_classic.json"
     w_lead, w_gain = M.ground_weights(classic_json)
     att = att.assign(_ground=w_lead * pd.to_numeric(att["lead_at_firstmove_ft"], errors="coerce")
                      + w_gain * pd.to_numeric(att["gain_to_release_ft"], errors="coerce"))
@@ -906,16 +1024,33 @@ def _classic_calculator(att, scored):
     a = a.dropna(subset=M.SIMPLE_FEATS).reset_index(drop=True)
     X, y = a[M.SIMPLE_FEATS].values, a["y"].values
     pipe = make_pipeline(SimpleImputer(), LogisticRegression(max_iter=5000))
-    auc = roc_auc_score(y, cross_val_predict(
-        pipe, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=42), method="predict_proba")[:, 1])
+    oof = cross_val_predict(pipe, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=42),
+                            method="predict_proba")[:, 1]
+    auc = roc_auc_score(y, oof)
     pipe.fit(X, y)
     lr = pipe.named_steps["logisticregression"]
-    return {"intercept": float(lr.intercept_[0]),
-            "coef": {k: float(v) for k, v in zip(M.SIMPLE_FEATS, lr.coef_[0])},
-            "auc": round(float(auc), 4), "n": int(len(a)),
-            "base_rate": round(float(y.mean()), 4), "primary_lead": primary_lead,
-            "range": {f: [round(float(a[f].min()), 1), round(float(a[f].max()), 1),
-                          round(float(a[f].median()), 1)] for f in M.SIMPLE_FEATS}}
+    # the classic era gets its OWN isotonic map, fit on classic attempts — the site's era switch
+    # swaps the whole odds model, so shipping the modern map here would calibrate 2015-2022
+    # predictions against a league that had not yet had the 2023 rule changes
+    out = {"intercept": float(lr.intercept_[0]),
+           "coef": {k: float(v) for k, v in zip(M.SIMPLE_FEATS, lr.coef_[0])},
+           "auc": round(float(auc), 4), "n": int(len(a)),
+           "base_rate": round(float(y.mean()), 4), "primary_lead": primary_lead,
+           "range": {f: [round(float(a[f].min()), 1), round(float(a[f].max()), 1),
+                         round(float(a[f].median()), 1)] for f in M.SIMPLE_FEATS}}
+    calib = M.fit_calibrator(oof, y)
+    if calib is not None:
+        out["calibration"] = calib
+    cal_oof = M.nested_calibrated_oof(X, y, seed=42)
+    if cal_oof is not None:
+        ece_raw, bad_raw = M.expected_calibration_error(y, oof)
+        ece_cal, bad_cal = M.expected_calibration_error(y, cal_oof)
+        out.update({"auc_cal": round(float(roc_auc_score(y, cal_oof)), 4),
+                    "ece_raw": round(ece_raw, 4), "bad_deciles_raw": bad_raw,
+                    "ece_cal": round(ece_cal, 4), "bad_deciles_cal": bad_cal})
+        print(f"  classic calculator: AUROC {auc:.4f} -> {out['auc_cal']:.4f} calibrated | "
+              f"ECE {ece_raw:.4f} -> {ece_cal:.4f} | deciles beyond 2 SE {bad_raw} -> {bad_cal}")
+    return out
 
 
 def main_classic():
@@ -945,7 +1080,7 @@ def main_classic():
         M.pearson_r(scored["steal_plus"], scored["burst_ft"]))
     pd.DataFrame(rows).to_csv(RESULTS / "DF_classic_validation.csv", index=False)
 
-    # ── web payload for the site's era toggle (same record schema as v11_players.json) ──
+    # ── web payload for the site's era toggle (same record schema as v15_players.json) ──
     w = scored.copy()
     tmc = DATA / "team_map_classic.csv"
     if tmc.exists():
@@ -959,16 +1094,16 @@ def main_classic():
     w = w.merge(jt, on=["runner_id", "season"], how="left") if jt is not None else w.assign(jump_time=np.nan)
     w["jump_pct"] = (M.percentile_rank(w["jump_time"], w["jump_time"].dropna().values)
                      if w["jump_time"].notna().any() else np.nan)
-    payload = {"meta": {"version": "classic", "era": "2015-2022", "n_player_seasons": int(len(w)),
+    payload = {"meta": {"version": "v15", "era": "2015-2022", "n_player_seasons": int(len(w)),
                         "league_success_pct": round(fit["league"] * 100, 1),
                         "p_speed_fit": {"a0": fit["a0"], "a1": fit["a1"]},
                         "ground_fit": {"b0": fit["b0"], "b1": fit["b1"]}},
                "validation": pd.DataFrame(rows).to_dict(orient="records"),
                "players": M.to_records(w),
                "success_model": _classic_calculator(att, scored)}
-    (DATA / "v11_players_classic.json").write_text(json.dumps(payload, separators=(",", ":")))
+    (DATA / "v15_players_classic.json").write_text(json.dumps(payload, separators=(",", ":")))
     M.sync_site_payload(payload, "const PAYLOAD_CLASSIC = ")
-    print(f"[write] v11_players_classic.json  ({len(w)} players, "
+    print(f"[write] v15_players_classic.json  ({len(w)} players, "
           f"{int((w['team'].fillna('').astype(str).str.len() > 0).sum())} with team)")
 
     pa = _perattempt_auc(att, season, )
@@ -987,7 +1122,7 @@ def main_classic():
     if pa:
         print(f"  per-attempt SB-success AUROC (leads + runner skill): {pa[0]:.4f}  (n={pa[1]:,})")
     try:
-        modern = json.loads((DATA / "v11_players.json").read_text())["meta"]
+        modern = json.loads((DATA / "v15_players.json").read_text())["meta"]
         print(f"\n  vs MODERN 2023-2026: league SB% {modern['league_success_pct']}  |  "
               f"p_speed = {modern['p_speed_fit']['a0']:.3f} + {modern['p_speed_fit']['a1']:.4f}*speed  |  "
               f"ground = {modern['ground_fit']['b0']:.2f} + {modern['ground_fit']['b1']:.3f}*speed")
@@ -1110,7 +1245,7 @@ def vif_audit(max_vif: float = 10.0) -> pd.DataFrame:
         "v12 shipped": (M.PA_LEAD_FEATS + ["base_is_3b"]
                         + [c for c in M.PA_RUNNER_FEATS if c in df.columns]
                         + V12.BATTERY_FEATS + V12.SAFE_SITUATION_FEATS + V12.ARM_FEATS),
-        "v11 calculator": M.SIMPLE_FEATS,
+        "v15 calculator": M.SIMPLE_FEATS,
     }
     calc = pd.read_csv(DATA / "Raw_Attempts.csv")
     calc = calc[calc["result"].isin(["SB", "CS"])]
@@ -1124,7 +1259,7 @@ def vif_audit(max_vif: float = 10.0) -> pd.DataFrame:
 
     rows = []
     for name, feats in sets.items():
-        src = calc if name == "v11 calculator" else df
+        src = calc if name == "v15 calculator" else df
         cols = [c for c in feats if c in src.columns]
         sub = src[cols].apply(pd.to_numeric, errors="coerce").dropna()
         if len(sub) < 50 or len(cols) < 2:

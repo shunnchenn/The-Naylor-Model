@@ -21,7 +21,7 @@ browser, nothing to install.
 > | **Read the findings** | **[`Naylor_Model_v15_Report.docx`](Naylor_Model_v15_Report.docx)** — ⭐ the single report: data, model spec, results, robustness, limitations |
 > | **Run the model** end-to-end | **[`Naylor_Model.ipynb`](Naylor_Model.ipynb)** — built n=1 → n=5 → full, every claim validated |
 > | **See the raw data** | `Data/Raw_Season.csv` (runner-seasons) · `Data/Raw_Attempts.csv` (per attempt) |
-> | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v11_leaderboard.csv`, `DF_v11_validation.csv`) |
+> | **See the outputs** | `Output/Figures/` · `Output/Results/` (`DF_v15_leaderboard.csv`, `DF_v15_validation.csv`) |
 > | **Improve the AUC** | [`AUC_Roadmap.md`](AUC_Roadmap.md) |
 >
 > Everything else is plumbing: `ingest/` (scrape → features) · `model/` (the ML) ·
@@ -37,7 +37,7 @@ Sprint biomechanics research points to three specific targets every baseball pla
 
 ---
 
-## What v11 asks — and proves
+## What the model asks — and proves
 
 **One question:** *is there a base-stealing number more useful than Net Bases Gained (SB − CS)?*
 
@@ -64,7 +64,7 @@ Steal+ and Burst are kept **separate** (near-zero correlation, r ≈ 0.16): Stea
 
 Plus the exact decomposition: **Net Bases = NetSpeed + Steal+** — NetSpeed is the net bases your wheels alone buy (`attempts × (2·p_speed − 1)`), Steal+ is the net bases your skill adds. (Steal+ *is* the surplus term.)
 
-### The validation (see `Output/Results/DF_v11_validation.csv`)
+### The validation (see `Output/Results/DF_v15_validation.csv`)
 
 | Question | Net Bases | Steal+ | Burst | Verdict |
 |---|---|---|---|---|
@@ -94,7 +94,8 @@ Steal+, Burst or leaderboard value — they made the findings defensible.
 | **Every accuracy number printed beside its floor** | AUPRC without its no-skill floor reads better than it is; v13's F1 at the 0.5 threshold is structurally **0.000** at a 2.3% base rate. | See §5.2 of the v15 report. |
 | **Eras fit separately**, pooling priced and rejected | The 2023 rules moved both baselines. | Pooling barely moves ranks (Spearman 0.994) but Burst **stops being speed-neutral** (0.00 → −0.139). |
 | **Standing collinearity guard** added to the verification harness | Nothing in the pipeline noticed the dependency above. | `assert max VIF < 10`; it caught two of the three defects on its first run. |
-| **`ground` (and therefore Burst) now blended from the calculator's own coefficients** — a weighted average of lead-at-first-move and gain-to-release, weighted 19%/81% by the calculator's fitted odds ratios rather than using gain-to-release alone | So the season metric reflects the same two quantities, weighted the same way, as the per-pitch calculator — a plain unweighted average of the two was tested first and made Burst *less* repeatable (YoY 0.53 → 0.38); the calculator-weighted version recovers nearly all of that (YoY 0.49). | Burst YoY 0.48 → 0.46 (small, disclosed cost). `ground_weights()` in `model_v11.py`. |
+| **`ground` (and therefore Burst) now blended from the calculator's own coefficients** — a weighted average of lead-at-first-move and gain-to-release, weighted 19%/81% by the calculator's fitted odds ratios rather than using gain-to-release alone | So the season metric reflects the same two quantities, weighted the same way, as the per-pitch calculator — a plain unweighted average of the two was tested first and made Burst *less* repeatable (YoY 0.53 → 0.38); the calculator-weighted version recovers nearly all of that (YoY 0.49). | Burst YoY 0.48 → 0.46 (small, disclosed cost). `ground_weights()` in `model/metrics.py`. |
+| **Isotonic calibration layer, shipped** | The raw logistic ranks well but states a poor *rate*: out of fold it reads ~0.876 where the observed rate is 0.919, with **5 of 10 deciles** more than two binomial SE off. The calculator prints that number as a probability, so the error was the user-facing claim. The miscalibration is a **wave** (over-confident in deciles 2–3, under-confident in 6–8) whose signed gaps cancel to −0.0000 — so no global shift helps, and Platt measurably makes it worse. | ECE **0.0208 → 0.0091** with **0** deciles beyond 2 SE; Brier 0.1359 → 0.1350. Costs 0.003 AUROC (0.7559 → 0.7528), an order of magnitude inside the bootstrap CI. Both eras ship their own map. |
 
 ---
 
@@ -116,10 +117,10 @@ what wheels are worth, which is the strongest single argument against pooling th
 ![Metric cards](Output/Figures/Fig_Metric_Cards.png)
 
 ### The evidence — three honest wins
-![Evidence](Output/Figures/Fig_v11_Evidence.png)
+![Evidence](Output/Figures/Fig_v15_Evidence.png)
 
 ### The decomposition — Net Bases = NetSpeed + Steal+
-![Decomposition](Output/Figures/Fig_v11_Decomposition.png)
+![Decomposition](Output/Figures/Fig_v15_Decomposition.png)
 
 ### The skill engine — per-attempt model accuracy (AUC)
 ![AUC](Output/Figures/Fig_AUC.png)
@@ -150,8 +151,8 @@ Five scripts: two that ingest, three that model.
 
 ```bash
 # Rebuild everything from what is already on disk (no network)
-python3 model/metrics.py            # Steal+/Burst + the calculator → Data/v11_players.json,
-                                    #   Output/Results/DF_v11_*.csv, Fig_AUC/Importance/ROC
+python3 model/metrics.py            # Steal+/Burst + the calculator → Data/v15_players.json,
+                                    #   Output/Results/DF_v15_*.csv, Fig_AUC/Importance/ROC
 python3 model/metrics.py eras       # three-era comparison + EVERY verification guard (asserts)
 python3 model/engines.py success    # v12 per-attempt XGBoost with full pitch/battery context
 python3 model/engines.py decision   # v13 per-opportunity decision model
@@ -181,8 +182,8 @@ The-Naylor-Model/
 ├── Naylor_Model.ipynb             ← ⭐ master notebook (raw → AUC → n=1/n=5/full metrics → validation)
 ├── docs/                          ← ⭐ the live web app (GitHub Pages serves this)
 ├── README.md · AUC_Roadmap.md
-├── Data/       ← Raw_Season.csv, Raw_Attempts.csv, v11_players.json, leads_cache/ (gitignored)
-├── Output/     ← Figures/ · Results/ (DF_v11_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
+├── Data/       ← Raw_Season.csv, Raw_Attempts.csv, v15_players.json, leads_cache/ (gitignored)
+├── Output/     ← Figures/ · Results/ (DF_v15_* · DF_v12_* · DF_v13_* · DF_eras_* · DF_classic_*)
 ├── ingest/     ← getting the data in
 │   ├── scrape_statcast.py   the ONLY script that touches the network
 │   └── build_features.py    leads_cache + raw pulls → the two modelling tables

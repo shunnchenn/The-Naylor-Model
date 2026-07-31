@@ -3,7 +3,7 @@
 ## TL;DR — the model is per-attempt, and that's what got us into range
 
 The project's model works at the **attempt grain**: ~10,366 individual tracked steal attempts
-(`Scripts/model_v11.py` (`run_perattempt`)), not 673 season averages. That choice is what reached the target —
+(`model/metrics.py` (`run_perattempt`)), not 673 season averages. That choice is what reached the target —
 CV AUC **0.753**, with no leakage. (An earlier season-aggregate predictor topped out near 0.62 and
 has been removed; season data now only powers the descriptive SSSI / xSB / Blueprint outputs.)
 
@@ -51,7 +51,7 @@ pool:
 | ground vs speed | 25.1 − 0.48·spd | 36.8 − 0.89·spd |
 | per-attempt AUROC | 0.745 (leads+runner) | 0.783 (full) |
 
-Same architecture (`Scripts/model_classic.py` reuses v11's `fit_league`/`score`), own constants.
+Same architecture (`model/metrics.py classic` reuses the same `fit_league`/`score`), own constants.
 Classic = v11 + v12 only; the v13 decision model is deliberately **2023–2026** (the attempt-vs-
 no-attempt question is about the current rule environment). The modern 2026 season was refreshed
 current (through 2026-07-17), which re-fit the league on fuller data and republished the leaderboard
@@ -243,7 +243,7 @@ Pulled with the same Savant per-pitch feed (or the cached pitch table), keyed by
 
 1. **Join `play_id` → matchup fields** from the Savant per-pitch feed (the `play_id` is already stored
    in every leads-cache row), starting with Tier 1.
-2. **Add them as per-attempt features** in `Scripts/model_v11.py` (`run_perattempt`, extend the `feats` list), re-run
+2. **Add them as per-attempt features** in `model/metrics.py` (`run_perattempt`, extend the `feats` list), re-run
    the 5-fold CV, and read the marginal AUC of each block before keeping it.
 3. **Tune once the feature set is wider.** Model A is currently an untuned default spec; after adding
    matchup features, an Optuna search (with nested CV to keep the estimate honest) is the right step.
@@ -260,5 +260,5 @@ Pulled with the same Savant per-pitch feed (or the cached pitch table), keyed by
 
 > The per-attempt model (0.753) uses leads + base + runner skill + catcher tendency. To push further: fetch
 > **`p_throws`** and **`pitch_name`** for each `play_id` in the leads cache (Savant per-pitch feed),
-> add `is_lhp` and `pitch_class` as per-attempt features in `Scripts/model_v11.py` (`run_perattempt`), and re-run.
+> add `is_lhp` and `pitch_class` as per-attempt features in `model/metrics.py` (`run_perattempt`), and re-run.
 > Pitcher handedness at the attempt level is the single most likely lift (LHP see and hold the runner).

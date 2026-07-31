@@ -2,7 +2,7 @@
 """
 decompose.py — row-level audit of the Naylor Model steal calculator.
 
-Rebuilds the committed 4-input logistic fit (model_v11.run_success_model) from raw inputs and
+Rebuilds the committed 4-input logistic fit (metrics.run_success_model) from raw inputs and
 exposes every quantity sklearn computes internally:
 
     logit_i = b0 + SUM_f  beta_f * x_{i,f}          p_i = 1 / (1 + exp(-logit_i))
@@ -92,7 +92,7 @@ def load_data() -> dict:
     decided  = attempts[attempts["result"].isin(("SB", "CS"))].copy()
     decided["y"] = (decided["result"] == "SB").astype(int)
 
-    speed_qualified = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")[
+    speed_qualified = pd.read_csv(RESULTS / "DF_v15_leaderboard.csv")[
         ["runner_id", "season", "sprint_speed"]]
     speed_all = pd.read_csv(DATA / "sprint_speed.csv")            # unqualified runner-seasons
     pop = (pd.read_csv(DATA / "poptime.csv")[["catcher_id", "season", "pop_2b_sba"]]
@@ -341,6 +341,53 @@ def verify_reference(fit: dict, metrics: dict, tol: float = 5e-5) -> pd.DataFram
     return out
 
 
+# ── calibration (the shipped layer) ─────────────────────────────────────────
+def calibrated_model(model: pd.DataFrame, seed: int = SEED) -> dict:
+    """NESTED out-of-fold predictions of the CALIBRATED model — the honest scoring of the layer
+    that actually ships to the browser.
+
+    The raw logistic discriminates well and states a poor rate: §5.3's decile table reads ~0.876
+    where the observed rate is 0.919, five deciles beyond two binomial SE. The web calculator
+    prints that number as a probability, so the miscalibration is the user-facing claim.
+
+    The map must be scored by nesting or the result is self-congratulatory: an isotonic fit can
+    memorise the rows it is then measured on. So the outer 5-fold holds out a test fold, an inner
+    5-fold inside the training side produces clean predictions, the map is fit on those, and only
+    then is it applied to the untouched outer fold.
+
+    Isotonic rather than Platt because the miscalibration is a WAVE (over-confident in deciles
+    2-3, under-confident in 6-8, reversing at 9) whose signed gaps cancel to -0.0000. A single
+    sigmoid slope cannot bend that shape and measurably makes it worse; a monotone step map can.
+
+    NOTE this does not disturb anything else in this file: isotonic is a post-hoc map on the
+    model's OUTPUT, so the coefficients, the odds ratios, the linear-predictor decomposition and
+    verify_reference() are all untouched. Only the probabilities move."""
+    from sklearn.isotonic import IsotonicRegression
+
+    X = model[FEATURES].to_numpy(float)
+    y = model["y"].to_numpy(int)
+    out = np.zeros(len(y))
+    outer = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    for tr, te in outer.split(X, y):
+        lr = LogisticRegression(max_iter=5000).fit(X[tr], y[tr])
+        inner_oof = np.zeros(len(tr))
+        inner = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed + 1)
+        for itr, ite in inner.split(X[tr], y[tr]):
+            li = LogisticRegression(max_iter=5000).fit(X[tr][itr], y[tr][itr])
+            inner_oof[ite] = li.predict_proba(X[tr][ite])[:, 1]
+        ir = IsotonicRegression(out_of_bounds="clip").fit(inner_oof, y[tr])
+        out[te] = ir.predict(lr.predict_proba(X[te])[:, 1])
+
+    grid = np.linspace(0.05, 0.95, 91)
+    f1s = np.array([f1_score(y, (out >= t).astype(int)) for t in grid])
+    best = int(f1s.argmax())
+    return {"oof": pd.Series(out, index=model.index, name="p_oof_cal"),
+            "auc": float(roc_auc_score(y, out)),
+            "auprc": float(average_precision_score(y, out)),
+            "brier": float(brier_score_loss(y, out)),
+            "f1_best": float(f1s[best]), "f1_threshold": float(grid[best])}
+
+
 # ── evaluation ───────────────────────────────────────────────────────────────
 def evaluate_model(model: pd.DataFrame, seed: int = SEED) -> dict:
     """5-fold out-of-fold predictions — the AUROC the project quotes. Fold ids are returned so
@@ -516,9 +563,9 @@ def decompose_season() -> dict:
         Steal+   = net_sb - NetSpeed             net bases the SKILL adds
 
     Closure is exact by construction; recomputing it catches a leaderboard written by a
-    different fit than the one in v11_players.json."""
-    lb = pd.read_csv(RESULTS / "DF_v11_leaderboard.csv")
-    meta = json.loads((DATA / "v11_players.json").read_text(encoding="utf-8"))["meta"]
+    different fit than the one in v15_players.json."""
+    lb = pd.read_csv(RESULTS / "DF_v15_leaderboard.csv")
+    meta = json.loads((DATA / "v15_players.json").read_text(encoding="utf-8"))["meta"]
     a0, a1 = meta["p_speed_fit"]["a0"], meta["p_speed_fit"]["a1"]
 
     d = lb.copy()
@@ -562,6 +609,13 @@ def run(n_boot: int = 1000, n_perm: int = 200, n_repeats: int = 10) -> dict:
 
     cal = calibration(model["y"].to_numpy(int), metrics["oof"].to_numpy())
 
+    # the shipped calibration layer, scored by nesting, through the SAME two functions so the
+    # before/after comparison is like-for-like
+    _stage("nested isotonic calibration (the layer that ships)")
+    calmodel = calibrated_model(model)
+    cal_after = calibration(model["y"].to_numpy(int), calmodel["oof"].to_numpy())
+    dec["p_oof_cal"] = calmodel["oof"]
+
     # the four resampling stages below are the slow ones — named here rather than inlined in the
     # return dict purely so each can be announced before it starts
     _stage(f"bootstrap: {n_boot} resamples")
@@ -580,6 +634,8 @@ def run(n_boot: int = 1000, n_perm: int = 200, n_repeats: int = 10) -> dict:
             "coefficients": fit["coefficients"], "metrics": metrics,
             "decomposition": dec, "verification": verification, "reference": reference,
             "calibration": cal, "calibration_error": calibration_error(cal),
+            "calibrated": calmodel, "calibration_after": cal_after,
+            "calibration_error_after": calibration_error(cal_after),
             "bootstrap": boot,
             "repeated_cv": rcv,
             "permutation": perm,
@@ -653,11 +709,21 @@ def report(audit: dict) -> None:
     print("\n=== SINGLE-ATTEMPT HAND CHECK (league-median attempt) ===")
     print(predict_one(fit, **med.to_dict()).round(4).to_string(index=False))
 
-    print("\n=== CALIBRATION (OOF deciles) ===")
+    print("\n=== CALIBRATION (OOF deciles) — RAW ===")
     print(audit["calibration"].round(4).to_string(index=False))
     ce = audit["calibration_error"]
     print(f"ECE = {ce['ece']:.4f} | worst bin {ce['worst_bin']} gap {ce['max_abs_gap']:.4f} | "
           f"{ce['bins_beyond_2se']}/10 bins beyond 2 binomial SE")
+
+    print("\n=== CALIBRATION (OOF deciles) — AFTER ISOTONIC (nested; this is what ships) ===")
+    print(audit["calibration_after"].round(4).to_string(index=False))
+    ca, cm = audit["calibration_error_after"], audit["calibrated"]
+    print(f"ECE = {ca['ece']:.4f} | worst bin {ca['worst_bin']} gap {ca['max_abs_gap']:.4f} | "
+          f"{ca['bins_beyond_2se']}/10 bins beyond 2 binomial SE")
+    print(f"  raw -> calibrated:  ECE {ce['ece']:.4f} -> {ca['ece']:.4f}  |  "
+          f"bins beyond 2 SE {ce['bins_beyond_2se']} -> {ca['bins_beyond_2se']}  |  "
+          f"AUROC {m['auc']:.4f} -> {cm['auc']:.4f}  |  Brier {m['brier']:.4f} -> {cm['brier']:.4f}")
+    print("  the AUROC cost is the step map creating ties; it is inside the bootstrap CI below.")
 
     b = audit["bootstrap"]
     print(f"\n=== BOOTSTRAP ({b['n_boot']} resamples, seed {BOOT_SEED}) ===")

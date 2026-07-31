@@ -8,12 +8,12 @@ Two subcommands, run in this order to (re)build the raw inputs:
              SB/CS (StatsAPI) with sprint speed + percentile (Savant). Writes one
              runners_<start>_<end>.csv. With --expand it then pulls per-attempt leads
              for every runner it kept.
-                 python3 Scripts/scrape_statcast.py discover --start 2023 --end 2026 --expand
+                 python3 ingest/scrape_statcast.py discover --start 2023 --end 2026 --expand
 
   leads      Pull one runner-season's per-attempt steal data (the lead distances that
              become Burst) from Savant's basestealing-running-game service, and print a
              coverage check against that runner's official StatsAPI SB/CS total.
-                 python3 Scripts/scrape_statcast.py leads 647304 2025
+                 python3 ingest/scrape_statcast.py leads 647304 2025
 
 Why these two sources and not the obvious one: Savant's basestealing-run-value LEADERBOARD
 export silently ignores its year parameter (it returns the latest season regardless), so
